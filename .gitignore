@@ -1,0 +1,14 @@
+# macOS
+.DS_Store
+
+# Local agent/runtime state
+.omx/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+
+# Local environment files
+.env
+.env.*
