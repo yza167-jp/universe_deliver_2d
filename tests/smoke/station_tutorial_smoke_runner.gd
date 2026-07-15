@@ -127,7 +127,11 @@ func _run_smoke() -> void:
 	var objective: Control = station.get_node(
 		"TutorialUILayer/TutorialObjective"
 	) as Control
-	_check(not objective.visible, "Tutorial objective must hide after completion.")
+	_check(objective.visible, "Completed tutorial must hand guidance to the station route flow.")
+	_check(
+		controller.get_objective_text().contains("接取赤砂星订单"),
+		"Post-tutorial guidance must direct the player to the first order."
+	)
 
 	station.queue_free()
 	await process_frame

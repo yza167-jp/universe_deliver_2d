@@ -34,5 +34,35 @@ func run() -> Array[String]:
 		"App scene must contain DebugLayer.",
 		failures
 	)
+	var debug_layer: CanvasLayer = main_scene.get_node_or_null(
+		NodePath("DebugLayer")
+	) as CanvasLayer
+	if debug_layer != null:
+		expect_true(
+			not debug_layer.visible,
+			"Player-facing startup must keep the debug layer hidden by default.",
+			failures
+		)
+	expect_true(
+		not UniverseDeliverApp.should_show_debug_ui(true, PackedStringArray()),
+		"A debug build alone must not expose developer controls.",
+		failures
+	)
+	expect_true(
+		UniverseDeliverApp.should_show_debug_ui(
+			true,
+			PackedStringArray([UniverseDeliverApp.DEBUG_UI_ARGUMENT])
+		),
+		"The explicit debug UI argument must enable developer controls in debug builds.",
+		failures
+	)
+	expect_true(
+		not UniverseDeliverApp.should_show_debug_ui(
+			false,
+			PackedStringArray([UniverseDeliverApp.DEBUG_UI_ARGUMENT])
+		),
+		"Release builds must ignore the debug UI argument.",
+		failures
+	)
 	main_scene.free()
 	return failures

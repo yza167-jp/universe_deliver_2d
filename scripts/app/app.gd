@@ -1,4 +1,7 @@
+class_name UniverseDeliverApp
 extends Control
+
+const DEBUG_UI_ARGUMENT: String = "--show-debug-ui"
 
 @onready var scene_container: Control = %SceneContainer
 @onready var debug_layer: CanvasLayer = %DebugLayer
@@ -11,7 +14,10 @@ func _ready() -> void:
 	if not scene_router.stage_changed.is_connected(_on_stage_changed):
 		scene_router.stage_changed.connect(_on_stage_changed)
 
-	debug_layer.visible = OS.is_debug_build()
+	debug_layer.visible = should_show_debug_ui(
+		OS.is_debug_build(),
+		OS.get_cmdline_user_args()
+	)
 	if debug_layer.visible:
 		_build_debug_stage_switcher()
 
@@ -46,3 +52,10 @@ func _on_debug_stage_requested(stage: int) -> void:
 
 func _on_stage_changed(_previous_stage: int, current_stage: int) -> void:
 	current_stage_label.text = "STAGE: %s" % SceneRouterService.get_stage_name(current_stage)
+
+
+static func should_show_debug_ui(
+	is_debug_build: bool,
+	user_arguments: PackedStringArray
+) -> bool:
+	return is_debug_build and user_arguments.has(DEBUG_UI_ARGUMENT)

@@ -172,6 +172,12 @@ func get_ship_loadout_controller() -> StationShipLoadoutController:
 	) as StationShipLoadoutController
 
 
+func get_departure_controller() -> StationDepartureController:
+	return get_node_or_null(
+		"StationDepartureController"
+	) as StationDepartureController
+
+
 func get_interactables() -> Array[Interactable2D]:
 	var interactables: Array[Interactable2D] = []
 	var interaction_root: Node = get_node_or_null("Interactables")
