@@ -97,6 +97,10 @@ run_step \
   "Unit and scene smoke tests" \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/test_runner.gd
 
+run_step \
+  "Dialogue UI layout and Chinese glyph smoke test" \
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/dialogue_ui_smoke_runner.gd
+
 run_step "Working tree whitespace check" git -C "${PROJECT_ROOT}" diff --check
 run_step "Index whitespace check" git -C "${PROJECT_ROOT}" diff --cached --check
 

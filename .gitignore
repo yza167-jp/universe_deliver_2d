@@ -11,6 +11,7 @@
 # Godot-generated localization and export metadata
 *.translation
 !data/localization/bootstrap_*.translation
+!data/localization/game_text.*.translation
 export.cfg
 export_credentials.cfg
 

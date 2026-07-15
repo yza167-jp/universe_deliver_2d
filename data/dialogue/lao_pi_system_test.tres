@@ -1,0 +1,115 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=19 format=3]
+
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_sequence.gd" id="1_sequence"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_line.gd" id="2_line"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_choice.gd" id="3_choice"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_condition.gd" id="4_condition"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_effect.gd" id="5_effect"]
+[ext_resource type="Resource" path="res://data/characters/lao_pi.tres" id="6_lao_pi"]
+
+[sub_resource type="Resource" id="EffectProfessional"]
+script = ExtResource("5_effect")
+effect_type = 0
+effect_id = &"story_dialogue_test_professional"
+bool_value = true
+
+[sub_resource type="Resource" id="EffectEquipment"]
+script = ExtResource("5_effect")
+effect_type = 0
+effect_id = &"story_dialogue_test_equipment_first"
+bool_value = true
+
+[sub_resource type="Resource" id="EffectComplete"]
+script = ExtResource("5_effect")
+effect_type = 1
+effect_id = &"dialogue_test_completed"
+bool_value = true
+
+[sub_resource type="Resource" id="ConditionProfessional"]
+script = ExtResource("4_condition")
+condition_type = 0
+flag_id = &"story_dialogue_test_professional"
+expected_value = true
+
+[sub_resource type="Resource" id="ConditionEquipment"]
+script = ExtResource("4_condition")
+condition_type = 0
+flag_id = &"story_dialogue_test_equipment_first"
+expected_value = true
+
+[sub_resource type="Resource" id="ChoiceProfessional"]
+script = ExtResource("3_choice")
+id = &"follow_process"
+text_key = &"DIALOGUE_TEST_CHOICE_PROCESS"
+conditions = []
+effects = [SubResource("EffectProfessional")]
+next_line_id = &"process_response"
+
+[sub_resource type="Resource" id="ChoiceEquipment"]
+script = ExtResource("3_choice")
+id = &"check_equipment"
+text_key = &"DIALOGUE_TEST_CHOICE_EQUIPMENT"
+conditions = []
+effects = [SubResource("EffectEquipment")]
+next_line_id = &"equipment_response"
+
+[sub_resource type="Resource" id="LineIntro"]
+script = ExtResource("2_line")
+id = &"intro"
+speaker = ExtResource("6_lao_pi")
+text_key = &"DIALOGUE_TEST_INTRO"
+portrait_expression = &"relaxed"
+conditions = []
+effects = []
+choices = []
+next_line_id = &"prompt"
+
+[sub_resource type="Resource" id="LinePrompt"]
+script = ExtResource("2_line")
+id = &"prompt"
+speaker = ExtResource("6_lao_pi")
+text_key = &"DIALOGUE_TEST_PROMPT"
+portrait_expression = &"neutral"
+conditions = []
+effects = []
+choices = [SubResource("ChoiceProfessional"), SubResource("ChoiceEquipment")]
+next_line_id = &""
+
+[sub_resource type="Resource" id="LineProcessResponse"]
+script = ExtResource("2_line")
+id = &"process_response"
+speaker = ExtResource("6_lao_pi")
+text_key = &"DIALOGUE_TEST_RESPONSE_PROCESS"
+portrait_expression = &"relaxed"
+conditions = [SubResource("ConditionProfessional")]
+effects = []
+choices = []
+next_line_id = &"finish"
+
+[sub_resource type="Resource" id="LineEquipmentResponse"]
+script = ExtResource("2_line")
+id = &"equipment_response"
+speaker = ExtResource("6_lao_pi")
+text_key = &"DIALOGUE_TEST_RESPONSE_EQUIPMENT"
+portrait_expression = &"friendly"
+conditions = [SubResource("ConditionEquipment")]
+effects = []
+choices = []
+next_line_id = &"finish"
+
+[sub_resource type="Resource" id="LineFinish"]
+script = ExtResource("2_line")
+id = &"finish"
+speaker = ExtResource("6_lao_pi")
+text_key = &"DIALOGUE_TEST_FINISH"
+portrait_expression = &"neutral"
+conditions = []
+effects = [SubResource("EffectComplete")]
+choices = []
+next_line_id = &""
+
+[resource]
+script = ExtResource("1_sequence")
+id = &"dialogue_lao_pi_system_test"
+start_line_id = &"intro"
+lines = [SubResource("LineIntro"), SubResource("LinePrompt"), SubResource("LineProcessResponse"), SubResource("LineEquipmentResponse"), SubResource("LineFinish")]

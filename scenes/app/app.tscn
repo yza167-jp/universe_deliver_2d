@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/app/app.gd" id="1_app"]
+[ext_resource type="PackedScene" path="res://scenes/narrative/dialogue_ui.tscn" id="2_dialogue_ui"]
 
 [node name="App" type="Control"]
 layout_mode = 3
@@ -22,6 +23,8 @@ grow_vertical = 2
 
 [node name="PersistentUI" type="CanvasLayer" parent="."]
 layer = 10
+
+[node name="DialogueUI" parent="PersistentUI" instance=ExtResource("2_dialogue_ui")]
 
 [node name="TransitionLayer" type="CanvasLayer" parent="."]
 layer = 50

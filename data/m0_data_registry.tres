@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="GameDataRegistry" load_steps=10 format=3]
+[gd_resource type="Resource" script_class="GameDataRegistry" load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/game_data_registry.gd" id="1_registry"]
 [ext_resource type="Resource" path="res://data/planets/red_sand.tres" id="2_planet"]
@@ -9,6 +9,7 @@
 [ext_resource type="Resource" path="res://data/modules/asteroid_laser.tres" id="7_laser"]
 [ext_resource type="Resource" path="res://data/characters/company_dispatch.tres" id="8_sender"]
 [ext_resource type="Resource" path="res://data/characters/red_sand_recipient.tres" id="9_recipient"]
+[ext_resource type="Resource" path="res://data/characters/lao_pi.tres" id="10_lao_pi"]
 
 [resource]
 script = ExtResource("1_registry")
@@ -16,4 +17,4 @@ planets = [ExtResource("2_planet")]
 orders = [ExtResource("3_order")]
 cargo_items = [ExtResource("4_cargo")]
 modules = [ExtResource("5_drive"), ExtResource("6_shield"), ExtResource("7_laser")]
-characters = [ExtResource("8_sender"), ExtResource("9_recipient")]
+characters = [ExtResource("8_sender"), ExtResource("9_recipient"), ExtResource("10_lao_pi")]

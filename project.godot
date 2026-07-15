@@ -92,7 +92,7 @@ pause={
 [internationalization]
 
 locale/fallback="zh_CN"
-locale/translations=PackedStringArray("res://data/localization/bootstrap_zh_cn.translation", "res://data/localization/bootstrap_en.translation")
+locale/translations=PackedStringArray("res://data/localization/bootstrap_zh_cn.translation", "res://data/localization/bootstrap_en.translation", "res://data/localization/game_text.zh_CN.translation", "res://data/localization/game_text.en.translation")
 
 [rendering]
 
