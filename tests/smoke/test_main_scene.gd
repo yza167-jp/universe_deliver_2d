@@ -1,6 +1,6 @@
 extends ProjectTestSuite
 
-const MAIN_SCENE_PATH: String = "res://scenes/main.tscn"
+const MAIN_SCENE_PATH: String = "res://scenes/app/app.tscn"
 
 
 func run() -> Array[String]:
@@ -13,15 +13,25 @@ func run() -> Array[String]:
 		return failures
 
 	var main_scene: Node = packed_scene.instantiate()
-	expect_true(main_scene.name == &"Main", "Main scene root must be named Main.", failures)
+	expect_true(main_scene.name == &"App", "Main scene root must be named App.", failures)
 	expect_true(
-		main_scene.get_node_or_null(NodePath("Frame/Content/Title")) != null,
-		"Main scene must contain its title label.",
+		main_scene.get_node_or_null(NodePath("SceneContainer")) != null,
+		"App scene must contain SceneContainer.",
 		failures
 	)
 	expect_true(
-		main_scene.get_node_or_null(NodePath("Frame/Content/Status")) != null,
-		"Main scene must contain its status label.",
+		main_scene.get_node_or_null(NodePath("PersistentUI")) != null,
+		"App scene must contain PersistentUI.",
+		failures
+	)
+	expect_true(
+		main_scene.get_node_or_null(NodePath("TransitionLayer")) != null,
+		"App scene must contain TransitionLayer.",
+		failures
+	)
+	expect_true(
+		main_scene.get_node_or_null(NodePath("DebugLayer")) != null,
+		"App scene must contain DebugLayer.",
 		failures
 	)
 	main_scene.free()

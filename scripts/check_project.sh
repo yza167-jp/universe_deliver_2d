@@ -22,6 +22,22 @@ run_step() {
   fi
 }
 
+run_godot_checked() {
+  local command_output=""
+  local command_status=0
+
+  command_output="$("${GODOT_EXECUTABLE}" "$@" 2>&1)" || command_status=$?
+  printf '%s\n' "${command_output}"
+
+  if [[ ${command_status} -ne 0 ]]; then
+    return "${command_status}"
+  fi
+  if printf '%s\n' "${command_output}" | grep -Eq '(^|[[:space:]])(SCRIPT ERROR:|ERROR:)'; then
+    return 1
+  fi
+  return 0
+}
+
 resolve_godot() {
   local candidate=""
 
@@ -61,7 +77,7 @@ printf '[check] Using Godot %s\n' "${GODOT_VERSION}"
 
 run_step \
   "Headless project import" \
-  "${GODOT_EXECUTABLE}" --headless --path "${PROJECT_ROOT}" --import
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --import
 
 GDSCRIPT_FILES=()
 while IFS= read -r script_path; do
@@ -74,12 +90,12 @@ for script_path in "${GDSCRIPT_FILES[@]}"; do
   resource_path="res://${script_path#./}"
   run_step \
     "Parse ${resource_path}" \
-    "${GODOT_EXECUTABLE}" --headless --path "${PROJECT_ROOT}" --check-only --script "${resource_path}"
+    run_godot_checked --headless --path "${PROJECT_ROOT}" --check-only --script "${resource_path}"
 done
 
 run_step \
   "Unit and scene smoke tests" \
-  "${GODOT_EXECUTABLE}" --headless --path "${PROJECT_ROOT}" --script res://tests/test_runner.gd
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/test_runner.gd
 
 run_step "Working tree whitespace check" git -C "${PROJECT_ROOT}" diff --check
 run_step "Index whitespace check" git -C "${PROJECT_ROOT}" diff --cached --check
