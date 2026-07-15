@@ -26,6 +26,8 @@ const DIALOGUE_UI_SCENE: PackedScene = preload("res://scenes/narrative/dialogue_
 @export var interaction_ack_sequence: DialogueSequence
 @export var completion_sequence: DialogueSequence
 @export var daily_sequence: DialogueSequence
+@export var order_accepted_sequence: DialogueSequence
+@export var active_order_daily_sequence: DialogueSequence
 
 var _stage: Stage = Stage.BOOTSTRAP
 var _progress: StationTutorialProgress
@@ -94,6 +96,12 @@ func is_tutorial_complete() -> bool:
 	)
 
 
+func play_order_accepted_dialogue() -> bool:
+	if _stage != Stage.COMPLETE:
+		return false
+	return _start_dialogue(order_accepted_sequence)
+
+
 func _initialize_tutorial() -> void:
 	_player = get_node_or_null("../StationPlayer") as StationPlayer
 	_lao_pi = get_node_or_null("../Characters/LaoPi") as LaoPiStation
@@ -160,7 +168,10 @@ func _on_lao_pi_interacted(_actor: Node) -> void:
 	if _progress == null:
 		return
 	if _stage == Stage.COMPLETE:
-		_start_dialogue(daily_sequence)
+		var context_sequence: DialogueSequence = daily_sequence
+		if _game_state != null and not _game_state.current_order_id.is_empty():
+			context_sequence = active_order_daily_sequence
+		_start_dialogue(context_sequence)
 		return
 	_progress.record_interaction(StationTutorialProgress.LAO_PI_INTERACTION_ID)
 	_resume_progression()
@@ -239,7 +250,7 @@ func _on_dialogue_finished() -> void:
 			_set_stage(Stage.COMPLETE)
 			tutorial_completed.emit()
 		_:
-			if daily_sequence != null and finished_dialogue_id == daily_sequence.id:
+			if _is_station_context_dialogue(finished_dialogue_id):
 				_set_stage(Stage.COMPLETE)
 			else:
 				_apply_safe_fallback_for_sequence(finished_dialogue_id)
@@ -259,6 +270,17 @@ func _apply_safe_fallback_for_sequence(sequence_id: StringName) -> void:
 		_game_state.set_story_flag(COMPLETION_FLAG)
 		_set_stage(Stage.COMPLETE)
 		tutorial_completed.emit()
+
+
+func _is_station_context_dialogue(sequence_id: StringName) -> bool:
+	for sequence: DialogueSequence in [
+		daily_sequence,
+		order_accepted_sequence,
+		active_order_daily_sequence,
+	]:
+		if sequence != null and sequence_id == sequence.id:
+			return true
+	return false
 
 
 func _set_stage(new_stage: Stage) -> void:

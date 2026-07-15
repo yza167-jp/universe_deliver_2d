@@ -1,4 +1,4 @@
-[gd_scene load_steps=21 format=3]
+[gd_scene load_steps=25 format=3]
 
 [ext_resource type="Script" path="res://scripts/station/station_hub.gd" id="1_hub"]
 [ext_resource type="PackedScene" path="res://scenes/station/station_player.tscn" id="2_player"]
@@ -10,6 +10,10 @@
 [ext_resource type="Resource" path="res://data/dialogue/lao_pi_tutorial_interact_ack.tres" id="8_interact_ack"]
 [ext_resource type="Resource" path="res://data/dialogue/lao_pi_tutorial_complete.tres" id="9_complete"]
 [ext_resource type="Resource" path="res://data/dialogue/lao_pi_station_daily.tres" id="10_daily"]
+[ext_resource type="PackedScene" path="res://scenes/ui/order_terminal.tscn" id="11_order_terminal_ui"]
+[ext_resource type="Script" path="res://scripts/station/station_order_terminal_controller.gd" id="12_order_terminal_controller"]
+[ext_resource type="Resource" path="res://data/dialogue/lao_pi_order_accepted.tres" id="13_order_accepted"]
+[ext_resource type="Resource" path="res://data/dialogue/lao_pi_active_order_daily.tres" id="14_active_order_daily"]
 
 [sub_resource type="SystemFont" id="SystemFontStation"]
 font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
@@ -371,6 +375,12 @@ movement_ack_sequence = ExtResource("7_move_ack")
 interaction_ack_sequence = ExtResource("8_interact_ack")
 completion_sequence = ExtResource("9_complete")
 daily_sequence = ExtResource("10_daily")
+order_accepted_sequence = ExtResource("13_order_accepted")
+active_order_daily_sequence = ExtResource("14_active_order_daily")
+
+[node name="StationOrderTerminalController" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("12_order_terminal_controller")
 
 [node name="TutorialUILayer" type="CanvasLayer" parent="."]
 layer = 15
@@ -403,3 +413,9 @@ theme_override_font_sizes/font_size = 14
 text = "UI_TUTORIAL_OBJECTIVE_MOVE"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="OrderTerminalUILayer" type="CanvasLayer" parent="."]
+layer = 20
+
+[node name="OrderTerminalUI" parent="OrderTerminalUILayer" instance=ExtResource("11_order_terminal_ui")]
+unique_name_in_owner = true

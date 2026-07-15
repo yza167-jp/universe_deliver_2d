@@ -152,6 +152,16 @@ func get_tutorial_controller() -> StationTutorialController:
 	return get_node_or_null("StationTutorialController") as StationTutorialController
 
 
+func get_order_terminal_ui() -> OrderTerminalUI:
+	return get_node_or_null("OrderTerminalUILayer/OrderTerminalUI") as OrderTerminalUI
+
+
+func get_order_terminal_controller() -> StationOrderTerminalController:
+	return get_node_or_null(
+		"StationOrderTerminalController"
+	) as StationOrderTerminalController
+
+
 func get_interactables() -> Array[Interactable2D]:
 	var interactables: Array[Interactable2D] = []
 	var interaction_root: Node = get_node_or_null("Interactables")

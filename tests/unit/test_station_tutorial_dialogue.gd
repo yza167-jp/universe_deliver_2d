@@ -8,6 +8,8 @@ const SEQUENCE_PATHS: PackedStringArray = [
 	"res://data/dialogue/lao_pi_tutorial_interact_ack.tres",
 	"res://data/dialogue/lao_pi_tutorial_complete.tres",
 	"res://data/dialogue/lao_pi_station_daily.tres",
+	"res://data/dialogue/lao_pi_order_accepted.tres",
+	"res://data/dialogue/lao_pi_active_order_daily.tres",
 ]
 
 var _flow_events: Array[StringName] = []

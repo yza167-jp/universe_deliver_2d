@@ -3,6 +3,20 @@ extends Node
 
 ## Session data that must outlive stage scenes; persistence is intentionally handled later.
 signal runtime_state_reset
+signal order_status_changed(order_id: StringName, status: OrderStatus)
+
+enum OrderStatus {
+	NOT_ACCEPTED,
+	ACCEPTED,
+	COMPLETED,
+}
+
+const ORDER_ERROR_MISSING_DATA: StringName = &"missing_data"
+const ORDER_ERROR_STORY_REQUIREMENT: StringName = &"story_requirement"
+const ORDER_ERROR_ACTIVE_ORDER: StringName = &"active_order"
+const ORDER_ERROR_ALREADY_ACCEPTED: StringName = &"already_accepted"
+const ORDER_ERROR_ALREADY_COMPLETED: StringName = &"already_completed"
+const ORDER_ERROR_NOT_ACTIVE: StringName = &"not_active"
 
 var current_order_id: StringName = &""
 var destination_id: StringName = &""
@@ -10,6 +24,8 @@ var cargo_id: StringName = &""
 var ship_configuration: Dictionary[StringName, StringName] = {}
 var story_flags: Dictionary[StringName, bool] = {}
 var read_dialogue_ids: Dictionary[StringName, bool] = {}
+var completed_order_ids: Dictionary[StringName, bool] = {}
+var last_order_error: StringName = &""
 
 
 func reset_runtime_state() -> void:
@@ -19,7 +35,68 @@ func reset_runtime_state() -> void:
 	ship_configuration.clear()
 	story_flags.clear()
 	read_dialogue_ids.clear()
+	completed_order_ids.clear()
+	last_order_error = &""
 	runtime_state_reset.emit()
+
+
+func get_order_status(order_id: StringName) -> OrderStatus:
+	if has_completed_order(order_id):
+		return OrderStatus.COMPLETED
+	if not order_id.is_empty() and current_order_id == order_id:
+		return OrderStatus.ACCEPTED
+	return OrderStatus.NOT_ACCEPTED
+
+
+func get_order_acceptance_error(order: OrderDefinition) -> StringName:
+	if not _has_required_order_data(order):
+		return ORDER_ERROR_MISSING_DATA
+	if has_completed_order(order.id):
+		return ORDER_ERROR_ALREADY_COMPLETED
+	if current_order_id == order.id:
+		return ORDER_ERROR_ALREADY_ACCEPTED
+	if not current_order_id.is_empty():
+		return ORDER_ERROR_ACTIVE_ORDER
+	for requirement: StringName in order.story_requirements:
+		if not has_story_flag(requirement):
+			return ORDER_ERROR_STORY_REQUIREMENT
+	return &""
+
+
+func can_accept_order(order: OrderDefinition) -> bool:
+	return get_order_acceptance_error(order).is_empty()
+
+
+func accept_order(order: OrderDefinition) -> bool:
+	last_order_error = get_order_acceptance_error(order)
+	if not last_order_error.is_empty():
+		return false
+	current_order_id = order.id
+	destination_id = order.destination_planet.id
+	cargo_id = order.cargo.id
+	order_status_changed.emit(order.id, OrderStatus.ACCEPTED)
+	return true
+
+
+## Moves the active order forward without exposing a main-order cancellation transition.
+func complete_current_order(order: OrderDefinition) -> bool:
+	last_order_error = &""
+	if not _has_required_order_data(order):
+		last_order_error = ORDER_ERROR_MISSING_DATA
+		return false
+	if current_order_id != order.id:
+		last_order_error = ORDER_ERROR_NOT_ACTIVE
+		return false
+	completed_order_ids[order.id] = true
+	for completion_flag: StringName in order.completion_flags:
+		set_story_flag(completion_flag)
+	current_order_id = &""
+	order_status_changed.emit(order.id, OrderStatus.COMPLETED)
+	return true
+
+
+func has_completed_order(order_id: StringName) -> bool:
+	return not order_id.is_empty() and completed_order_ids.get(order_id, false)
 
 
 func set_story_flag(flag_id: StringName, enabled: bool = true) -> void:
@@ -40,3 +117,25 @@ func has_read_dialogue_line(sequence_id: StringName, line_id: StringName) -> boo
 
 func _get_dialogue_read_id(sequence_id: StringName, line_id: StringName) -> StringName:
 	return StringName("%s/%s" % [sequence_id, line_id])
+
+
+func _has_required_order_data(order: OrderDefinition) -> bool:
+	if (
+		order == null
+		or order.id.is_empty()
+		or order.display_name_key.is_empty()
+		or order.sender == null
+		or order.sender.id.is_empty()
+		or order.recipient == null
+		or order.recipient.id.is_empty()
+		or order.destination_planet == null
+		or order.destination_planet.id.is_empty()
+		or order.cargo == null
+		or order.cargo.id.is_empty()
+		or order.customer_history_keys.is_empty()
+	):
+		return false
+	for module: ShipModuleDefinition in order.required_modules:
+		if module == null or module.id.is_empty():
+			return false
+	return true

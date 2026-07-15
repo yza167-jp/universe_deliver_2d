@@ -35,6 +35,11 @@ func run() -> Array[String]:
 	expect_true(order.cargo != null, "Red Sand order must reference cargo.", failures)
 	expect_true(order.required_modules.size() == 2, "Red Sand order must declare required modules.", failures)
 	expect_true(
+		order.customer_history_keys.size() == 3,
+		"Red Sand order must provide a concise three-entry customer history.",
+		failures
+	)
+	expect_true(
 		order.delivery_method == OrderDefinition.DeliveryMethod.LANDING,
 		"Red Sand M0 order must use landing delivery.",
 		failures
