@@ -1,48 +1,263 @@
-[gd_scene format=3]
+[gd_scene load_steps=10 format=3]
 
-[node name="Station" type="Control"]
+[ext_resource type="Script" path="res://scripts/station/station_hub.gd" id="1_hub"]
+
+[sub_resource type="SystemFont" id="SystemFontStation"]
+font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
+allow_system_fallback = true
+
+[sub_resource type="Theme" id="ThemeStation"]
+default_font = SubResource("SystemFontStation")
+
+[sub_resource type="RectangleShape2D" id="ShapeOuterHorizontal"]
+size = Vector2(960, 48)
+
+[sub_resource type="RectangleShape2D" id="ShapeOuterVertical"]
+size = Vector2(48, 496)
+
+[sub_resource type="RectangleShape2D" id="ShapeOrderTerminal"]
+size = Vector2(88, 64)
+
+[sub_resource type="RectangleShape2D" id="ShapeWorkbench"]
+size = Vector2(120, 56)
+
+[sub_resource type="RectangleShape2D" id="ShapeLounge"]
+size = Vector2(112, 60)
+
+[sub_resource type="RectangleShape2D" id="ShapeMemorabilia"]
+size = Vector2(112, 24)
+
+[node name="Station" type="Node2D"]
+script = ExtResource("1_hub")
+
+[node name="ArchitectureLayer" type="TileMapLayer" parent="."]
+unique_name_in_owner = true
+z_index = -10
+
+[node name="CollisionBodies" type="Node2D" parent="."]
+
+[node name="OuterTop" type="StaticBody2D" parent="CollisionBodies"]
+position = Vector2(480, 24)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CollisionBodies/OuterTop"]
+shape = SubResource("ShapeOuterHorizontal")
+
+[node name="OuterBottom" type="StaticBody2D" parent="CollisionBodies"]
+position = Vector2(480, 520)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CollisionBodies/OuterBottom"]
+shape = SubResource("ShapeOuterHorizontal")
+
+[node name="OuterLeft" type="StaticBody2D" parent="CollisionBodies"]
+position = Vector2(24, 272)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CollisionBodies/OuterLeft"]
+shape = SubResource("ShapeOuterVertical")
+
+[node name="OuterRight" type="StaticBody2D" parent="CollisionBodies"]
+position = Vector2(936, 272)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CollisionBodies/OuterRight"]
+shape = SubResource("ShapeOuterVertical")
+
+[node name="OrderTerminalBody" type="StaticBody2D" parent="CollisionBodies"]
+position = Vector2(230, 220)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CollisionBodies/OrderTerminalBody"]
+shape = SubResource("ShapeOrderTerminal")
+
+[node name="WorkbenchBody" type="StaticBody2D" parent="CollisionBodies"]
+position = Vector2(730, 220)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CollisionBodies/WorkbenchBody"]
+shape = SubResource("ShapeWorkbench")
+
+[node name="LoungeBody" type="StaticBody2D" parent="CollisionBodies"]
+position = Vector2(280, 388)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CollisionBodies/LoungeBody"]
+shape = SubResource("ShapeLounge")
+
+[node name="MemorabiliaBody" type="StaticBody2D" parent="CollisionBodies"]
+position = Vector2(680, 400)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CollisionBodies/MemorabiliaBody"]
+shape = SubResource("ShapeMemorabilia")
+
+[node name="FeatureAnchors" type="Node2D" parent="."]
+
+[node name="PlayerSpawn" type="Marker2D" parent="FeatureAnchors" groups=["station_spawn"]]
+position = Vector2(480, 430)
+metadata/spawn_id = &"station_main_entrance"
+metadata/facing = Vector2(0, -1)
+
+[node name="OrderTerminal" type="Marker2D" parent="FeatureAnchors" groups=["station_feature"]]
+position = Vector2(230, 220)
+metadata/feature_id = &"order_terminal"
+
+[node name="ShipWorkbench" type="Marker2D" parent="FeatureAnchors" groups=["station_feature"]]
+position = Vector2(730, 220)
+metadata/feature_id = &"ship_workbench"
+
+[node name="CockpitEntry" type="Marker2D" parent="FeatureAnchors" groups=["station_feature"]]
+position = Vector2(480, 120)
+metadata/feature_id = &"cockpit_entry"
+
+[node name="LaoPiRestArea" type="Marker2D" parent="FeatureAnchors" groups=["station_feature"]]
+position = Vector2(280, 388)
+metadata/feature_id = &"lao_pi_rest_area"
+
+[node name="MemorabiliaWall" type="Marker2D" parent="FeatureAnchors" groups=["station_feature"]]
+position = Vector2(680, 388)
+metadata/feature_id = &"memorabilia_wall"
+
+[node name="ApproachAnchors" type="Node2D" parent="."]
+
+[node name="OrderTerminalApproach" type="Marker2D" parent="ApproachAnchors" groups=["station_approach"]]
+position = Vector2(230, 270)
+metadata/feature_id = &"order_terminal"
+
+[node name="ShipWorkbenchApproach" type="Marker2D" parent="ApproachAnchors" groups=["station_approach"]]
+position = Vector2(730, 270)
+metadata/feature_id = &"ship_workbench"
+
+[node name="CockpitEntryApproach" type="Marker2D" parent="ApproachAnchors" groups=["station_approach"]]
+position = Vector2(480, 160)
+metadata/feature_id = &"cockpit_entry"
+
+[node name="LaoPiRestApproach" type="Marker2D" parent="ApproachAnchors" groups=["station_approach"]]
+position = Vector2(352, 388)
+metadata/feature_id = &"lao_pi_rest_area"
+
+[node name="MemorabiliaApproach" type="Marker2D" parent="ApproachAnchors" groups=["station_approach"]]
+position = Vector2(680, 350)
+metadata/feature_id = &"memorabilia_wall"
+
+[node name="StateChangeAnchors" type="Node2D" parent="."]
+
+[node name="FirstDeliveryMemorabiliaSlot" type="Marker2D" parent="StateChangeAnchors" groups=["station_state_anchor"]]
+position = Vector2(652, 380)
+metadata/state_change_id = &"first_delivery_memorabilia"
+
+[node name="WorkbenchUpgradeSlot" type="Marker2D" parent="StateChangeAnchors" groups=["station_state_anchor"]]
+position = Vector2(790, 220)
+metadata/state_change_id = &"workbench_upgrade"
+
+[node name="AmbientLightUpgradeSlot" type="Marker2D" parent="StateChangeAnchors" groups=["station_state_anchor"]]
+position = Vector2(480, 96)
+metadata/state_change_id = &"station_lighting_upgrade"
+
+[node name="FeatureLabels" type="Control" parent="."]
 layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="Background" type="ColorRect" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+anchors_preset = 0
+offset_right = 960.0
+offset_bottom = 544.0
 mouse_filter = 2
-color = Color(0.0705882, 0.12549, 0.14902, 1)
+theme = SubResource("ThemeStation")
 
-[node name="Content" type="VBoxContainer" parent="."]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -180.0
-offset_top = -48.0
-offset_right = 180.0
-offset_bottom = 48.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_constants/separation = 10
-alignment = 1
-
-[node name="StageLabel" type="Label" parent="Content"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.87451, 0.815686, 0.65098, 1)
-theme_override_font_sizes/font_size = 30
-text = "UI_STAGE_STATION"
+[node name="StationTitleLabel" type="Label" parent="FeatureLabels"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 176.0
+offset_top = 100.0
+offset_right = 400.0
+offset_bottom = 122.0
+theme_override_colors/font_color = Color(0.905882, 0.87451, 0.784314, 1)
+theme_override_colors/font_outline_color = Color(0.0313726, 0.0666667, 0.121569, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 14
+text = "UI_STATION_HUB_TITLE"
 horizontal_alignment = 1
 
-[node name="PlaceholderLabel" type="Label" parent="Content"]
-layout_mode = 2
+[node name="CockpitEntryLabel" type="Label" parent="FeatureLabels"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 408.0
+offset_top = 150.0
+offset_right = 552.0
+offset_bottom = 172.0
+theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
+theme_override_colors/font_outline_color = Color(0.0313726, 0.0666667, 0.121569, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 13
+text = "UI_STATION_COCKPIT_ENTRY"
+horizontal_alignment = 1
+
+[node name="OrderTerminalLabel" type="Label" parent="FeatureLabels"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 166.0
+offset_top = 256.0
+offset_right = 294.0
+offset_bottom = 278.0
 theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
-text = "UI_STAGE_PLACEHOLDER"
+theme_override_colors/font_outline_color = Color(0.0313726, 0.0666667, 0.121569, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 13
+text = "UI_STATION_ORDER_TERMINAL"
 horizontal_alignment = 1
+
+[node name="WorkbenchLabel" type="Label" parent="FeatureLabels"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 660.0
+offset_top = 252.0
+offset_right = 800.0
+offset_bottom = 274.0
+theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
+theme_override_colors/font_outline_color = Color(0.0313726, 0.0666667, 0.121569, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 13
+text = "UI_STATION_WORKBENCH"
+horizontal_alignment = 1
+
+[node name="LaoPiRestLabel" type="Label" parent="FeatureLabels"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 212.0
+offset_top = 421.0
+offset_right = 348.0
+offset_bottom = 443.0
+theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
+theme_override_colors/font_outline_color = Color(0.0313726, 0.0666667, 0.121569, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 13
+text = "UI_STATION_LAO_PI_REST"
+horizontal_alignment = 1
+
+[node name="MemorabiliaLabel" type="Label" parent="FeatureLabels"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 610.0
+offset_top = 421.0
+offset_right = 750.0
+offset_bottom = 443.0
+theme_override_colors/font_color = Color(0.603922, 0.654902, 0.709804, 1)
+theme_override_colors/font_outline_color = Color(0.0313726, 0.0666667, 0.121569, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 13
+text = "UI_STATION_MEMORABILIA_WALL"
+horizontal_alignment = 1
+
+[node name="EntranceLabel" type="Label" parent="FeatureLabels"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 416.0
+offset_top = 405.0
+offset_right = 544.0
+offset_bottom = 425.0
+theme_override_colors/font_color = Color(0.905882, 0.87451, 0.784314, 1)
+theme_override_colors/font_outline_color = Color(0.0313726, 0.0666667, 0.121569, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 12
+text = "UI_STATION_ENTRANCE"
+horizontal_alignment = 1
+
+[node name="Camera2D" type="Camera2D" parent="."]
+unique_name_in_owner = true
+position = Vector2(480, 272)
+limit_left = 0
+limit_top = 0
+limit_right = 960
+limit_bottom = 544
+position_smoothing_enabled = false

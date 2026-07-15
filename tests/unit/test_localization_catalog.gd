@@ -59,6 +59,13 @@ func run() -> Array[String]:
 		"debug settings saved": &"UI_DEBUG_SETTINGS_SAVED",
 		"debug settings save failed": &"UI_DEBUG_SETTINGS_SAVE_FAILED",
 		"debug settings unavailable": &"UI_DEBUG_SETTINGS_UNAVAILABLE",
+		"station hub title": &"UI_STATION_HUB_TITLE",
+		"station order terminal": &"UI_STATION_ORDER_TERMINAL",
+		"station workbench": &"UI_STATION_WORKBENCH",
+		"station cockpit entry": &"UI_STATION_COCKPIT_ENTRY",
+		"station lao pi rest": &"UI_STATION_LAO_PI_REST",
+		"station memorabilia wall": &"UI_STATION_MEMORABILIA_WALL",
+		"station entrance": &"UI_STATION_ENTRANCE",
 	}
 	var ui_errors: PackedStringArray = LocalizationValidator.validate_keys(
 		ui_keys,
