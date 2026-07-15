@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/app/app.gd" id="1_app"]
 [ext_resource type="PackedScene" path="res://scenes/narrative/dialogue_ui.tscn" id="2_dialogue_ui"]
+[ext_resource type="PackedScene" path="res://scenes/ui/debug_settings_panel.tscn" id="3_debug_settings"]
 
 [node name="App" type="Control"]
 layout_mode = 3
@@ -56,3 +57,5 @@ text = "STAGE: NONE"
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 4
+
+[node name="DebugSettingsPanel" parent="DebugLayer" instance=ExtResource("3_debug_settings")]

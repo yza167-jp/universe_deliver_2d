@@ -1,0 +1,96 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/debug_settings_panel.gd" id="1_panel"]
+
+[sub_resource type="StyleBoxFlat" id="StylePanel"]
+bg_color = Color(0.0352941, 0.0627451, 0.105882, 0.96)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.466667, 0.788235, 0.768627, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="SystemFont" id="SystemFontDebug"]
+font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
+allow_system_fallback = true
+
+[sub_resource type="Theme" id="ThemeDebug"]
+default_font = SubResource("SystemFontDebug")
+
+[node name="DebugSettingsPanel" type="PanelContainer"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -280.0
+offset_top = 72.0
+offset_right = -8.0
+offset_bottom = 286.0
+grow_horizontal = 0
+theme = SubResource("ThemeDebug")
+theme_override_styles/panel = SubResource("StylePanel")
+script = ExtResource("1_panel")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="Content" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="Title" type="Label" parent="Margin/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
+theme_override_font_sizes/font_size = 14
+text = "UI_DEBUG_SETTINGS_TITLE"
+
+[node name="SlowMotionButton" type="CheckButton" parent="Margin/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 25)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "UI_DEBUG_SLOW_MOTION"
+
+[node name="RouteHintsButton" type="CheckButton" parent="Margin/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 25)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "UI_DEBUG_ROUTE_HINTS"
+
+[node name="HighContrastButton" type="CheckButton" parent="Margin/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 25)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "UI_DEBUG_HIGH_CONTRAST"
+
+[node name="AssistStrengthLabel" type="Label" parent="Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "UI_DEBUG_FLIGHT_ASSIST"
+
+[node name="AssistStrengthSlider" type="HSlider" parent="Margin/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+max_value = 100.0
+step = 1.0
+value = 75.0
+
+[node name="FeedbackLabel" type="Label" parent="Margin/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.639216, 0.843137, 0.815686, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_DEBUG_SETTINGS_READY"
+autowrap_mode = 2

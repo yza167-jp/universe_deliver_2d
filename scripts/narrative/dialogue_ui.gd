@@ -24,13 +24,22 @@ var _revealed_characters: float = 0.0
 var _is_revealing: bool = false
 var _history_lines: PackedStringArray = []
 var _controls_initialized: bool = false
+var _settings_service: SettingsServiceModel
 
 
 func _ready() -> void:
 	_initialize_controls()
+	_bind_settings_service()
 	if _runtime == null:
 		visible = false
 	set_process(_is_revealing)
+
+
+func _exit_tree() -> void:
+	if _settings_service == null:
+		return
+	if _settings_service.settings_changed.is_connected(_apply_text_speed_setting):
+		_settings_service.settings_changed.disconnect(_apply_text_speed_setting)
 
 
 func _process(delta: float) -> void:
@@ -250,3 +259,17 @@ func _initialize_controls() -> bool:
 	history_panel.visible = false
 	_controls_initialized = true
 	return true
+
+
+func _bind_settings_service() -> void:
+	_settings_service = get_node_or_null("/root/SettingsService") as SettingsServiceModel
+	if _settings_service == null:
+		return
+	if not _settings_service.settings_changed.is_connected(_apply_text_speed_setting):
+		_settings_service.settings_changed.connect(_apply_text_speed_setting)
+	_apply_text_speed_setting()
+
+
+func _apply_text_speed_setting() -> void:
+	if _settings_service != null:
+		characters_per_second = _settings_service.settings.text_speed

@@ -48,6 +48,17 @@ func run() -> Array[String]:
 		"dialogue history title": &"UI_DIALOGUE_HISTORY_TITLE",
 		"dialogue history close": &"UI_DIALOGUE_HISTORY_CLOSE",
 		"dialogue demo title": &"UI_DIALOGUE_DEMO_TITLE",
+		"debug settings title": &"UI_DEBUG_SETTINGS_TITLE",
+		"debug slow motion": &"UI_DEBUG_SLOW_MOTION",
+		"debug route hints": &"UI_DEBUG_ROUTE_HINTS",
+		"debug high contrast": &"UI_DEBUG_HIGH_CONTRAST",
+		"debug flight assist": &"UI_DEBUG_FLIGHT_ASSIST",
+		"debug setting on": &"UI_DEBUG_SETTING_ON",
+		"debug setting off": &"UI_DEBUG_SETTING_OFF",
+		"debug settings ready": &"UI_DEBUG_SETTINGS_READY",
+		"debug settings saved": &"UI_DEBUG_SETTINGS_SAVED",
+		"debug settings save failed": &"UI_DEBUG_SETTINGS_SAVE_FAILED",
+		"debug settings unavailable": &"UI_DEBUG_SETTINGS_UNAVAILABLE",
 	}
 	var ui_errors: PackedStringArray = LocalizationValidator.validate_keys(
 		ui_keys,
