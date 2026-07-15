@@ -1,4 +1,4 @@
-[gd_scene load_steps=25 format=3]
+[gd_scene load_steps=27 format=3]
 
 [ext_resource type="Script" path="res://scripts/station/station_hub.gd" id="1_hub"]
 [ext_resource type="PackedScene" path="res://scenes/station/station_player.tscn" id="2_player"]
@@ -14,6 +14,8 @@
 [ext_resource type="Script" path="res://scripts/station/station_order_terminal_controller.gd" id="12_order_terminal_controller"]
 [ext_resource type="Resource" path="res://data/dialogue/lao_pi_order_accepted.tres" id="13_order_accepted"]
 [ext_resource type="Resource" path="res://data/dialogue/lao_pi_active_order_daily.tres" id="14_active_order_daily"]
+[ext_resource type="PackedScene" path="res://scenes/ui/ship_loadout.tscn" id="15_ship_loadout_ui"]
+[ext_resource type="Script" path="res://scripts/station/station_ship_loadout_controller.gd" id="16_ship_loadout_controller"]
 
 [sub_resource type="SystemFont" id="SystemFontStation"]
 font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
@@ -382,6 +384,10 @@ active_order_daily_sequence = ExtResource("14_active_order_daily")
 unique_name_in_owner = true
 script = ExtResource("12_order_terminal_controller")
 
+[node name="StationShipLoadoutController" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("16_ship_loadout_controller")
+
 [node name="TutorialUILayer" type="CanvasLayer" parent="."]
 layer = 15
 
@@ -418,4 +424,10 @@ vertical_alignment = 1
 layer = 20
 
 [node name="OrderTerminalUI" parent="OrderTerminalUILayer" instance=ExtResource("11_order_terminal_ui")]
+unique_name_in_owner = true
+
+[node name="ShipLoadoutUILayer" type="CanvasLayer" parent="."]
+layer = 20
+
+[node name="ShipLoadoutUI" parent="ShipLoadoutUILayer" instance=ExtResource("15_ship_loadout_ui")]
 unique_name_in_owner = true

@@ -1,0 +1,607 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/ship_loadout_ui.gd" id="1_loadout_ui"]
+[ext_resource type="Resource" path="res://data/orders/red_sand_m0.tres" id="2_order"]
+
+[sub_resource type="SystemFont" id="SystemFontLoadout"]
+font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
+allow_system_fallback = true
+
+[sub_resource type="Theme" id="ThemeLoadout"]
+default_font = SubResource("SystemFontLoadout")
+
+[sub_resource type="StyleBoxFlat" id="StyleMain"]
+bg_color = Color(0.0313726, 0.0666667, 0.121569, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.905882, 0.658824, 0.356863, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleSection"]
+bg_color = Color(0.0784314, 0.164706, 0.270588, 0.72)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.466667, 0.788235, 0.768627, 0.78)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleSlot"]
+bg_color = Color(0.0431373, 0.0941176, 0.160784, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.603922, 0.654902, 0.709804, 0.62)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxFlat" id="StyleStatus"]
+bg_color = Color(0.905882, 0.658824, 0.356863, 0.16)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.905882, 0.658824, 0.356863, 0.8)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StylePreview"]
+bg_color = Color(0.0196078, 0.0431373, 0.0862745, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.0784314, 0.164706, 0.270588, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="ShipLoadoutUI" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+theme = SubResource("ThemeLoadout")
+script = ExtResource("1_loadout_ui")
+order_definition = ExtResource("2_order")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.00784314, 0.0156863, 0.0313726, 0.82)
+
+[node name="LoadoutPanel" type="PanelContainer" parent="."]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 632.0
+offset_bottom = 352.0
+theme_override_styles/panel = SubResource("StyleMain")
+
+[node name="Margin" type="MarginContainer" parent="LoadoutPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 7
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 7
+
+[node name="Content" type="VBoxContainer" parent="LoadoutPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Header" type="HBoxContainer" parent="LoadoutPanel/Margin/Content"]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TitleGroup" type="VBoxContainer" parent="LoadoutPanel/Margin/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="TitleLabel" type="Label" parent="LoadoutPanel/Margin/Content/Header/TitleGroup"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
+theme_override_font_sizes/font_size = 16
+text = "UI_LOADOUT_TITLE"
+
+[node name="ShipIdentity" type="HBoxContainer" parent="LoadoutPanel/Margin/Content/Header/TitleGroup"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="ShipNameLabel" type="Label" parent="LoadoutPanel/Margin/Content/Header/TitleGroup/ShipIdentity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 12
+text = "SHIP_PLAYER_COURIER_NAME"
+
+[node name="ShipSubtitleLabel" type="Label" parent="LoadoutPanel/Margin/Content/Header/TitleGroup/ShipIdentity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.654902, 0.709804, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_LOADOUT_FIXED_SHIP_SUBTITLE"
+
+[node name="StatusBadge" type="PanelContainer" parent="LoadoutPanel/Margin/Content/Header"]
+custom_minimum_size = Vector2(104, 28)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleStatus")
+
+[node name="StatusBadgeLabel" type="Label" parent="LoadoutPanel/Margin/Content/Header/StatusBadge"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.87451, 0.784314, 1)
+theme_override_font_sizes/font_size = 11
+text = "UI_LOADOUT_STATUS_WAITING_ORDER"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Body" type="HBoxContainer" parent="LoadoutPanel/Margin/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="ShipPanel" type="PanelContainer" parent="LoadoutPanel/Margin/Content/Body"]
+custom_minimum_size = Vector2(216, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleSection")
+
+[node name="Margin" type="MarginContainer" parent="LoadoutPanel/Margin/Content/Body/ShipPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 5
+
+[node name="Content" type="VBoxContainer" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="PreviewPanel" type="PanelContainer" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content"]
+custom_minimum_size = Vector2(0, 82)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StylePreview")
+
+[node name="ShipPreview" type="Control" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content/PreviewPanel"]
+custom_minimum_size = Vector2(0, 82)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="ShipShadow" type="Polygon2D" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content/PreviewPanel/ShipPreview"]
+position = Vector2(103, 44)
+polygon = PackedVector2Array(-70, 8, -48, -18, 28, -20, 63, -8, 75, 0, 54, 12, -38, 21)
+color = Color(0.0156863, 0.0313725, 0.0588235, 0.75)
+
+[node name="ShipBody" type="Polygon2D" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content/PreviewPanel/ShipPreview"]
+position = Vector2(101, 40)
+polygon = PackedVector2Array(-70, 8, -48, -18, 28, -20, 63, -8, 75, 0, 54, 12, -38, 21)
+color = Color(0.466667, 0.788235, 0.768627, 1)
+
+[node name="CargoBody" type="Polygon2D" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content/PreviewPanel/ShipPreview"]
+position = Vector2(99, 42)
+polygon = PackedVector2Array(-35, -13, 20, -14, 37, -4, 30, 8, -28, 13, -44, 4)
+color = Color(0.0784314, 0.164706, 0.270588, 1)
+
+[node name="Cockpit" type="Polygon2D" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content/PreviewPanel/ShipPreview"]
+position = Vector2(143, 32)
+polygon = PackedVector2Array(-8, -8, 14, -3, 22, 4, -7, 7)
+color = Color(0.905882, 0.658824, 0.356863, 1)
+
+[node name="Engine" type="Polygon2D" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content/PreviewPanel/ShipPreview"]
+position = Vector2(43, 45)
+polygon = PackedVector2Array(-20, -6, 0, -8, 4, 8, -18, 10)
+color = Color(0.905882, 0.419608, 0.227451, 1)
+
+[node name="LaserBase" type="ColorRect" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content/PreviewPanel/ShipPreview"]
+offset_left = 127.0
+offset_top = 11.0
+offset_right = 140.0
+offset_bottom = 16.0
+mouse_filter = 2
+color = Color(0.603922, 0.654902, 0.709804, 1)
+
+[node name="LaserMountVisual" type="ColorRect" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content/PreviewPanel/ShipPreview"]
+unique_name_in_owner = true
+offset_left = 136.0
+offset_top = 9.0
+offset_right = 171.0
+offset_bottom = 13.0
+mouse_filter = 2
+color = Color(0.905882, 0.658824, 0.356863, 1)
+
+[node name="CargoAssignmentLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 26)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.87451, 0.784314, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_LOADOUT_CARGO_UNASSIGNED"
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="StatsPanel" type="PanelContainer" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleSlot")
+
+[node name="Margin" type="MarginContainer" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content/StatsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 7
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 7
+theme_override_constants/margin_bottom = 5
+
+[node name="Grid" type="GridContainer" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content/StatsPanel/Margin"]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 2
+columns = 2
+
+[node name="HullHeadingLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content/StatsPanel/Margin/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.654902, 0.709804, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_LOADOUT_STAT_HULL"
+
+[node name="HullValueLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content/StatsPanel/Margin/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 10
+text = "100 / 100"
+horizontal_alignment = 2
+
+[node name="ShieldHeadingLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content/StatsPanel/Margin/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.654902, 0.709804, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_LOADOUT_STAT_SHIELD"
+
+[node name="ShieldValueLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content/StatsPanel/Margin/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 10
+text = "100 / 100"
+horizontal_alignment = 2
+
+[node name="FuelHeadingLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content/StatsPanel/Margin/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.654902, 0.709804, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_LOADOUT_STAT_FUEL"
+
+[node name="FuelValueLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content/StatsPanel/Margin/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 10
+text = "100 / 100"
+horizontal_alignment = 2
+
+[node name="BoostHeadingLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content/StatsPanel/Margin/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.654902, 0.709804, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_LOADOUT_STAT_BOOST"
+
+[node name="BoostValueLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content/StatsPanel/Margin/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 10
+text = "100 / 100"
+horizontal_alignment = 2
+
+[node name="CargoHeadingLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content/StatsPanel/Margin/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.654902, 0.709804, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_LOADOUT_STAT_CARGO"
+
+[node name="CargoValueLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/ShipPanel/Margin/Content/StatsPanel/Margin/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 10
+text = "1 / 1"
+horizontal_alignment = 2
+
+[node name="LoadoutColumn" type="VBoxContainer" parent="LoadoutPanel/Margin/Content/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+
+[node name="SlotsHeadingLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
+theme_override_font_sizes/font_size = 11
+text = "UI_LOADOUT_SLOTS_HEADING"
+
+[node name="PowerSlot" type="PanelContainer" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleSlot")
+
+[node name="Margin" type="MarginContainer" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/PowerSlot"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 3
+theme_override_constants/margin_right = 5
+theme_override_constants/margin_bottom = 3
+
+[node name="Row" type="HBoxContainer" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/PowerSlot/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Info" type="VBoxContainer" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/PowerSlot/Margin/Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="HeadingRow" type="HBoxContainer" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/PowerSlot/Margin/Row/Info"]
+layout_mode = 2
+
+[node name="PowerHeadingLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/PowerSlot/Margin/Row/Info/HeadingRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_LOADOUT_SLOT_POWER"
+
+[node name="PowerStatusLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/PowerSlot/Margin/Row/Info/HeadingRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
+theme_override_font_sizes/font_size = 9
+text = "UI_LOADOUT_ROLE_REQUIRED"
+
+[node name="PowerNameLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/PowerSlot/Margin/Row/Info"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 11
+text = "MODULE_STANDARD_DRIVE_NAME"
+
+[node name="PowerDescriptionLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/PowerSlot/Margin/Row/Info"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+text_overrun_behavior = 3
+theme_override_colors/font_color = Color(0.603922, 0.654902, 0.709804, 1)
+theme_override_font_sizes/font_size = 9
+text = "MODULE_STANDARD_DRIVE_DESCRIPTION"
+
+[node name="PowerToggleButton" type="Button" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/PowerSlot/Margin/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(66, 28)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "UI_LOADOUT_UNINSTALL"
+
+[node name="DefenseSlot" type="PanelContainer" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleSlot")
+
+[node name="Margin" type="MarginContainer" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/DefenseSlot"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 3
+theme_override_constants/margin_right = 5
+theme_override_constants/margin_bottom = 3
+
+[node name="Row" type="HBoxContainer" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/DefenseSlot/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Info" type="VBoxContainer" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/DefenseSlot/Margin/Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="HeadingRow" type="HBoxContainer" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/DefenseSlot/Margin/Row/Info"]
+layout_mode = 2
+
+[node name="DefenseHeadingLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/DefenseSlot/Margin/Row/Info/HeadingRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_LOADOUT_SLOT_DEFENSE"
+
+[node name="DefenseStatusLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/DefenseSlot/Margin/Row/Info/HeadingRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
+theme_override_font_sizes/font_size = 9
+text = "UI_LOADOUT_ROLE_REQUIRED"
+
+[node name="DefenseNameLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/DefenseSlot/Margin/Row/Info"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 11
+text = "MODULE_ATMOSPHERIC_SHIELD_NAME"
+
+[node name="DefenseDescriptionLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/DefenseSlot/Margin/Row/Info"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+text_overrun_behavior = 3
+theme_override_colors/font_color = Color(0.603922, 0.654902, 0.709804, 1)
+theme_override_font_sizes/font_size = 9
+text = "MODULE_ATMOSPHERIC_SHIELD_DESCRIPTION"
+
+[node name="DefenseToggleButton" type="Button" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/DefenseSlot/Margin/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(66, 28)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "UI_LOADOUT_UNINSTALL"
+
+[node name="UtilitySlot" type="PanelContainer" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleSlot")
+
+[node name="Margin" type="MarginContainer" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/UtilitySlot"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 3
+theme_override_constants/margin_right = 5
+theme_override_constants/margin_bottom = 3
+
+[node name="Row" type="HBoxContainer" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/UtilitySlot/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Info" type="VBoxContainer" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/UtilitySlot/Margin/Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="HeadingRow" type="HBoxContainer" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/UtilitySlot/Margin/Row/Info"]
+layout_mode = 2
+
+[node name="UtilityHeadingLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/UtilitySlot/Margin/Row/Info/HeadingRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_LOADOUT_SLOT_UTILITY"
+
+[node name="UtilityStatusLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/UtilitySlot/Margin/Row/Info/HeadingRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
+theme_override_font_sizes/font_size = 9
+text = "UI_LOADOUT_ROLE_RECOMMENDED"
+
+[node name="UtilityNameLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/UtilitySlot/Margin/Row/Info"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 11
+text = "MODULE_ASTEROID_LASER_NAME"
+
+[node name="UtilityDescriptionLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/UtilitySlot/Margin/Row/Info"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+text_overrun_behavior = 3
+theme_override_colors/font_color = Color(0.603922, 0.654902, 0.709804, 1)
+theme_override_font_sizes/font_size = 9
+text = "MODULE_ASTEROID_LASER_DESCRIPTION"
+
+[node name="UtilityToggleButton" type="Button" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/UtilitySlot/Margin/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(66, 28)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "UI_LOADOUT_INSTALL"
+
+[node name="RequirementsPanel" type="PanelContainer" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn"]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleSection")
+
+[node name="Margin" type="MarginContainer" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/RequirementsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 3
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 3
+
+[node name="Content" type="VBoxContainer" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/RequirementsPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 1
+
+[node name="RequirementsHeadingLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/RequirementsPanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_LOADOUT_REQUIREMENTS_HEADING"
+
+[node name="RequirementsLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/RequirementsPanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 9
+text = "UI_LOADOUT_REQUIREMENT_REQUIRED_FORMAT"
+autowrap_mode = 2
+
+[node name="StandardIssueLabel" type="Label" parent="LoadoutPanel/Margin/Content/Body/LoadoutColumn/RequirementsPanel/Margin/Content"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.654902, 0.709804, 1)
+theme_override_font_sizes/font_size = 9
+text = "UI_LOADOUT_STANDARD_ISSUE_NOTE"
+autowrap_mode = 2
+
+[node name="Footer" type="HBoxContainer" parent="LoadoutPanel/Margin/Content"]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="FeedbackLabel" type="Label" parent="LoadoutPanel/Margin/Content/Footer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.905882, 0.87451, 0.784314, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_LOADOUT_FEEDBACK_WAITING_ORDER"
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="ConfirmButton" type="Button" parent="LoadoutPanel/Margin/Content/Footer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 28)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "UI_LOADOUT_CONFIRM_DEPARTURE"
+
+[node name="CloseButton" type="Button" parent="LoadoutPanel/Margin/Content/Footer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(68, 28)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "UI_LOADOUT_CLOSE"

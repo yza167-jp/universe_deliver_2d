@@ -162,6 +162,16 @@ func get_order_terminal_controller() -> StationOrderTerminalController:
 	) as StationOrderTerminalController
 
 
+func get_ship_loadout_ui() -> ShipLoadoutUI:
+	return get_node_or_null("ShipLoadoutUILayer/ShipLoadoutUI") as ShipLoadoutUI
+
+
+func get_ship_loadout_controller() -> StationShipLoadoutController:
+	return get_node_or_null(
+		"StationShipLoadoutController"
+	) as StationShipLoadoutController
+
+
 func get_interactables() -> Array[Interactable2D]:
 	var interactables: Array[Interactable2D] = []
 	var interaction_root: Node = get_node_or_null("Interactables")

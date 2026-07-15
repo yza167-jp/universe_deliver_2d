@@ -121,6 +121,10 @@ run_step \
   "Red Sand order terminal state and content smoke test" \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/order_terminal_smoke_runner.gd
 
+run_step \
+  "Fixed ship loadout and departure readiness smoke test" \
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/ship_loadout_smoke_runner.gd
+
 run_step "Working tree whitespace check" git -C "${PROJECT_ROOT}" diff --check
 run_step "Index whitespace check" git -C "${PROJECT_ROOT}" diff --cached --check
 
