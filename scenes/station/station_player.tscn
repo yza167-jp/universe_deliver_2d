@@ -1,0 +1,98 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/station/station_player.gd" id="1_player"]
+
+[sub_resource type="CapsuleShape2D" id="CapsulePlayer"]
+radius = 7.0
+height = 14.0
+
+[sub_resource type="CircleShape2D" id="CircleInteractionSensor"]
+radius = 44.0
+
+[sub_resource type="SpriteFrames" id="SpriteFramesPlaceholder"]
+
+[sub_resource type="SystemFont" id="SystemFontPrompt"]
+font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
+allow_system_fallback = true
+
+[sub_resource type="Theme" id="ThemePrompt"]
+default_font = SubResource("SystemFontPrompt")
+
+[sub_resource type="StyleBoxFlat" id="StylePromptPanel"]
+bg_color = Color(0.0313726, 0.0666667, 0.121569, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.466667, 0.788235, 0.768627, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 12.0
+content_margin_top = 7.0
+content_margin_right = 12.0
+content_margin_bottom = 7.0
+
+[node name="StationPlayer" type="CharacterBody2D"]
+z_index = 10
+collision_layer = 2
+collision_mask = 1
+script = ExtResource("1_player")
+
+[node name="VisualRoot" type="Node2D" parent="."]
+
+[node name="PlayerSprite" type="AnimatedSprite2D" parent="VisualRoot"]
+unique_name_in_owner = true
+position = Vector2(0, -24)
+sprite_frames = SubResource("SpriteFramesPlaceholder")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -6)
+shape = SubResource("CapsulePlayer")
+
+[node name="InteractionSensor" type="Area2D" parent="."]
+unique_name_in_owner = true
+position = Vector2(0, -12)
+collision_layer = 0
+collision_mask = 8
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="InteractionSensor"]
+shape = SubResource("CircleInteractionSensor")
+
+[node name="InteractionPromptLayer" type="CanvasLayer" parent="."]
+layer = 20
+
+[node name="InteractionPrompt" type="MarginContainer" parent="InteractionPromptLayer"]
+unique_name_in_owner = true
+visible = false
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -190.0
+offset_top = -62.0
+offset_right = 190.0
+offset_bottom = -18.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+theme = SubResource("ThemePrompt")
+
+[node name="Panel" type="PanelContainer" parent="InteractionPromptLayer/InteractionPrompt"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StylePromptPanel")
+
+[node name="InteractionPromptLabel" type="Label" parent="InteractionPromptLayer/InteractionPrompt/Panel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_colors/font_shadow_color = Color(0.0313726, 0.0666667, 0.121569, 1)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 15
+text = "UI_INTERACTION_PROMPT"
+horizontal_alignment = 1
+vertical_alignment = 1

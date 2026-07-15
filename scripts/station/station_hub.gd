@@ -2,6 +2,7 @@ class_name StationHub
 extends Node2D
 
 const BASE_VIEWPORT_SIZE: Vector2 = Vector2(640.0, 360.0)
+const CAMERA_SAFE_MARGIN: Vector2 = Vector2(16.0, 16.0)
 const TILE_SIZE: Vector2i = Vector2i(16, 16)
 const GRID_SIZE: Vector2i = Vector2i(60, 34)
 const STATION_SIZE: Vector2 = Vector2(960.0, 544.0)
@@ -31,12 +32,19 @@ const MUTED_TEXT: Color = Color("9aa7b5")
 
 var _architecture_layer: TileMapLayer
 var _camera: Camera2D
+var _player: StationPlayer
 var _layout_initialized: bool = false
 
 
 func _ready() -> void:
 	if not initialize_layout():
 		push_error("Station hub graybox could not initialize its TileMapLayer.")
+	if not initialize_player():
+		push_error("Station hub could not initialize its player at the entrance spawn.")
+
+
+func _physics_process(_delta: float) -> void:
+	_update_camera_for_player()
 
 
 func _notification(what: int) -> void:
@@ -115,6 +123,36 @@ func get_feature_anchor(feature_id: StringName) -> Marker2D:
 
 func get_player_spawn() -> Marker2D:
 	return get_node_or_null("FeatureAnchors/PlayerSpawn") as Marker2D
+
+
+func initialize_player() -> bool:
+	if _player == null:
+		_player = get_node_or_null("StationPlayer") as StationPlayer
+	var spawn: Marker2D = get_player_spawn()
+	if _player == null or spawn == null:
+		return false
+	_player.position = spawn.position
+	var facing_value: Variant = spawn.get_meta("facing", Vector2.UP)
+	if facing_value is Vector2:
+		_player.set_facing_direction(facing_value as Vector2)
+	return true
+
+
+func get_station_player() -> StationPlayer:
+	if _player == null:
+		_player = get_node_or_null("StationPlayer") as StationPlayer
+	return _player
+
+
+func get_interactables() -> Array[Interactable2D]:
+	var interactables: Array[Interactable2D] = []
+	var interaction_root: Node = get_node_or_null("Interactables")
+	if interaction_root == null:
+		return interactables
+	for child: Node in interaction_root.get_children():
+		if child is Interactable2D:
+			interactables.append(child as Interactable2D)
+	return interactables
 
 
 func get_feature_approach_anchor(feature_id: StringName) -> Marker2D:
@@ -338,3 +376,35 @@ func _set_label_text(label_path: NodePath, localization_key: String) -> void:
 	var feature_label: Label = get_node_or_null(label_path) as Label
 	if feature_label != null:
 		feature_label.text = tr(localization_key)
+
+
+func _update_camera_for_player() -> void:
+	if _camera == null:
+		_camera = get_node_or_null("Camera2D") as Camera2D
+	if _player == null:
+		_player = get_station_player()
+	if _camera == null or _player == null:
+		return
+	var half_viewport: Vector2 = BASE_VIEWPORT_SIZE * 0.5
+	var next_position: Vector2 = _camera.position
+	var safe_min: Vector2 = next_position - half_viewport + CAMERA_SAFE_MARGIN
+	var safe_max: Vector2 = next_position + half_viewport - CAMERA_SAFE_MARGIN
+	if _player.position.x < safe_min.x:
+		next_position.x -= safe_min.x - _player.position.x
+	elif _player.position.x > safe_max.x:
+		next_position.x += _player.position.x - safe_max.x
+	if _player.position.y < safe_min.y:
+		next_position.y -= safe_min.y - _player.position.y
+	elif _player.position.y > safe_max.y:
+		next_position.y += _player.position.y - safe_max.y
+	next_position.x = clampf(
+		next_position.x,
+		half_viewport.x,
+		STATION_SIZE.x - half_viewport.x
+	)
+	next_position.y = clampf(
+		next_position.y,
+		half_viewport.y,
+		STATION_SIZE.y - half_viewport.y
+	)
+	_camera.position = next_position

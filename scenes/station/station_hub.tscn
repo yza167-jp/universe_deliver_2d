@@ -1,6 +1,8 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/station/station_hub.gd" id="1_hub"]
+[ext_resource type="PackedScene" path="res://scenes/station/station_player.tscn" id="2_player"]
+[ext_resource type="Script" path="res://scripts/station/interactable_2d.gd" id="3_interactable"]
 
 [sub_resource type="SystemFont" id="SystemFontStation"]
 font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
@@ -26,6 +28,9 @@ size = Vector2(112, 60)
 
 [sub_resource type="RectangleShape2D" id="ShapeMemorabilia"]
 size = Vector2(112, 24)
+
+[sub_resource type="RectangleShape2D" id="ShapeCockpitEntry"]
+size = Vector2(128, 52)
 
 [node name="Station" type="Node2D"]
 script = ExtResource("1_hub")
@@ -132,6 +137,68 @@ metadata/feature_id = &"lao_pi_rest_area"
 [node name="MemorabiliaApproach" type="Marker2D" parent="ApproachAnchors" groups=["station_approach"]]
 position = Vector2(680, 350)
 metadata/feature_id = &"memorabilia_wall"
+
+[node name="Interactables" type="Node2D" parent="."]
+
+[node name="OrderTerminal" type="Area2D" parent="Interactables" groups=["station_interactable"]]
+position = Vector2(230, 220)
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("3_interactable")
+interaction_id = &"order_terminal"
+prompt_key = &"UI_INTERACTION_ORDER_TERMINAL"
+interaction_priority = 100
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Interactables/OrderTerminal"]
+shape = SubResource("ShapeOrderTerminal")
+
+[node name="ShipWorkbench" type="Area2D" parent="Interactables" groups=["station_interactable"]]
+position = Vector2(730, 220)
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("3_interactable")
+interaction_id = &"ship_workbench"
+prompt_key = &"UI_INTERACTION_WORKBENCH"
+interaction_priority = 80
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Interactables/ShipWorkbench"]
+shape = SubResource("ShapeWorkbench")
+
+[node name="CockpitEntry" type="Area2D" parent="Interactables" groups=["station_interactable"]]
+position = Vector2(480, 120)
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("3_interactable")
+interaction_id = &"cockpit_entry"
+prompt_key = &"UI_INTERACTION_COCKPIT_ENTRY"
+interaction_priority = 90
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Interactables/CockpitEntry"]
+shape = SubResource("ShapeCockpitEntry")
+
+[node name="LaoPiRestArea" type="Area2D" parent="Interactables" groups=["station_interactable"]]
+position = Vector2(280, 388)
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("3_interactable")
+interaction_id = &"lao_pi_rest_area"
+prompt_key = &"UI_INTERACTION_LAO_PI_REST"
+interaction_priority = 60
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Interactables/LaoPiRestArea"]
+shape = SubResource("ShapeLounge")
+
+[node name="MemorabiliaWall" type="Area2D" parent="Interactables" groups=["station_interactable"]]
+position = Vector2(680, 388)
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("3_interactable")
+interaction_id = &"memorabilia_wall"
+prompt_key = &"UI_INTERACTION_MEMORABILIA_WALL"
+interaction_priority = 50
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Interactables/MemorabiliaWall"]
+shape = SubResource("ShapeMemorabilia")
 
 [node name="StateChangeAnchors" type="Node2D" parent="."]
 
@@ -261,3 +328,7 @@ limit_top = 0
 limit_right = 960
 limit_bottom = 544
 position_smoothing_enabled = false
+
+[node name="StationPlayer" parent="." instance=ExtResource("2_player")]
+unique_name_in_owner = true
+position = Vector2(480, 430)
