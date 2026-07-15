@@ -1,0 +1,96 @@
+; Engine configuration file.
+; Edit through Godot Project Settings when possible.
+;
+; Format:
+;   [section]
+;   param=value
+
+config_version=5
+
+[application]
+
+config/name="Universe Deliver"
+config/version="0.1.0-dev"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+run/main_scene="res://scenes/main.tscn"
+run/max_fps=60
+
+[display]
+
+window/size/viewport_width=640
+window/size/viewport_height=360
+window/size/window_width_override=1280
+window/size/window_height_override=720
+window/stretch/mode="viewport"
+window/stretch/aspect="keep"
+window/stretch/scale_mode="integer"
+
+[input]
+
+move_up={
+"deadzone": 0.5,
+"events": []
+}
+move_down={
+"deadzone": 0.5,
+"events": []
+}
+move_left={
+"deadzone": 0.5,
+"events": []
+}
+move_right={
+"deadzone": 0.5,
+"events": []
+}
+interact={
+"deadzone": 0.5,
+"events": []
+}
+flight_throttle={
+"deadzone": 0.5,
+"events": []
+}
+flight_brake={
+"deadzone": 0.5,
+"events": []
+}
+flight_pitch_up={
+"deadzone": 0.5,
+"events": []
+}
+flight_pitch_down={
+"deadzone": 0.5,
+"events": []
+}
+flight_boost={
+"deadzone": 0.5,
+"events": []
+}
+flight_fire={
+"deadzone": 0.5,
+"events": []
+}
+flight_restart={
+"deadzone": 0.5,
+"events": []
+}
+flight_route_hint={
+"deadzone": 0.5,
+"events": []
+}
+pause={
+"deadzone": 0.5,
+"events": []
+}
+
+[internationalization]
+
+locale/fallback="zh_CN"
+locale/translations=PackedStringArray("res://data/localization/bootstrap_zh_cn.translation", "res://data/localization/bootstrap_en.translation")
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/canvas_textures/default_texture_filter=1

@@ -4,6 +4,19 @@
 # Local agent/runtime state
 .omx/
 
+# Godot editor/import state
+.godot/
+.import/
+
+# Godot-generated localization and export metadata
+*.translation
+!data/localization/bootstrap_*.translation
+export.cfg
+export_credentials.cfg
+
+# Local export builds
+/builds/
+
 # Logs and temporary files
 *.log
 *.tmp
