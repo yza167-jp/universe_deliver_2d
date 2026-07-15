@@ -113,6 +113,10 @@ run_step \
   "Station player movement and interaction smoke test" \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/station_player_smoke_runner.gd
 
+run_step \
+  "Lao Pi station tutorial recovery and persistence smoke test" \
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/station_tutorial_smoke_runner.gd
+
 run_step "Working tree whitespace check" git -C "${PROJECT_ROOT}" diff --check
 run_step "Index whitespace check" git -C "${PROJECT_ROOT}" diff --cached --check
 

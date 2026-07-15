@@ -73,6 +73,10 @@ func run() -> Array[String]:
 		"interaction cockpit entry": &"UI_INTERACTION_COCKPIT_ENTRY",
 		"interaction lao pi rest": &"UI_INTERACTION_LAO_PI_REST",
 		"interaction memorabilia wall": &"UI_INTERACTION_MEMORABILIA_WALL",
+		"interaction lao pi": &"UI_INTERACTION_LAO_PI",
+		"tutorial movement objective": &"UI_TUTORIAL_OBJECTIVE_MOVE",
+		"tutorial lao pi objective": &"UI_TUTORIAL_OBJECTIVE_TALK_TO_LAO_PI",
+		"tutorial terminal objective": &"UI_TUTORIAL_OBJECTIVE_ORDER_TERMINAL",
 	}
 	var ui_errors: PackedStringArray = LocalizationValidator.validate_keys(
 		ui_keys,

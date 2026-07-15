@@ -1,8 +1,15 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://scripts/station/station_hub.gd" id="1_hub"]
 [ext_resource type="PackedScene" path="res://scenes/station/station_player.tscn" id="2_player"]
 [ext_resource type="Script" path="res://scripts/station/interactable_2d.gd" id="3_interactable"]
+[ext_resource type="PackedScene" path="res://scenes/station/lao_pi_station.tscn" id="4_lao_pi"]
+[ext_resource type="Script" path="res://scripts/station/station_tutorial_controller.gd" id="5_tutorial"]
+[ext_resource type="Resource" path="res://data/dialogue/lao_pi_tutorial_intro.tres" id="6_intro"]
+[ext_resource type="Resource" path="res://data/dialogue/lao_pi_tutorial_move_ack.tres" id="7_move_ack"]
+[ext_resource type="Resource" path="res://data/dialogue/lao_pi_tutorial_interact_ack.tres" id="8_interact_ack"]
+[ext_resource type="Resource" path="res://data/dialogue/lao_pi_tutorial_complete.tres" id="9_complete"]
+[ext_resource type="Resource" path="res://data/dialogue/lao_pi_station_daily.tres" id="10_daily"]
 
 [sub_resource type="SystemFont" id="SystemFontStation"]
 font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
@@ -31,6 +38,18 @@ size = Vector2(112, 24)
 
 [sub_resource type="RectangleShape2D" id="ShapeCockpitEntry"]
 size = Vector2(128, 52)
+
+[sub_resource type="StyleBoxFlat" id="StyleTutorialObjective"]
+bg_color = Color(0.0313726, 0.0666667, 0.121569, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.905882, 0.658824, 0.356863, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
 
 [node name="Station" type="Node2D"]
 script = ExtResource("1_hub")
@@ -138,6 +157,11 @@ metadata/feature_id = &"lao_pi_rest_area"
 position = Vector2(680, 350)
 metadata/feature_id = &"memorabilia_wall"
 
+[node name="TutorialAnchors" type="Node2D" parent="."]
+
+[node name="LaoPiGuideSpot" type="Marker2D" parent="TutorialAnchors"]
+position = Vector2(372, 350)
+
 [node name="Interactables" type="Node2D" parent="."]
 
 [node name="OrderTerminal" type="Area2D" parent="Interactables" groups=["station_interactable"]]
@@ -199,6 +223,12 @@ interaction_priority = 50
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Interactables/MemorabiliaWall"]
 shape = SubResource("ShapeMemorabilia")
+
+[node name="Characters" type="Node2D" parent="."]
+
+[node name="LaoPi" parent="Characters" instance=ExtResource("4_lao_pi")]
+unique_name_in_owner = true
+position = Vector2(338, 360)
 
 [node name="StateChangeAnchors" type="Node2D" parent="."]
 
@@ -332,3 +362,44 @@ position_smoothing_enabled = false
 [node name="StationPlayer" parent="." instance=ExtResource("2_player")]
 unique_name_in_owner = true
 position = Vector2(480, 430)
+
+[node name="StationTutorialController" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("5_tutorial")
+intro_sequence = ExtResource("6_intro")
+movement_ack_sequence = ExtResource("7_move_ack")
+interaction_ack_sequence = ExtResource("8_interact_ack")
+completion_sequence = ExtResource("9_complete")
+daily_sequence = ExtResource("10_daily")
+
+[node name="TutorialUILayer" type="CanvasLayer" parent="."]
+layer = 15
+
+[node name="TutorialObjective" type="Control" parent="TutorialUILayer"]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 0
+offset_left = 16.0
+offset_top = 44.0
+offset_right = 286.0
+offset_bottom = 82.0
+mouse_filter = 2
+theme = SubResource("ThemeStation")
+
+[node name="Panel" type="PanelContainer" parent="TutorialUILayer/TutorialObjective"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleTutorialObjective")
+
+[node name="TutorialObjectiveLabel" type="Label" parent="TutorialUILayer/TutorialObjective/Panel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 14
+text = "UI_TUTORIAL_OBJECTIVE_MOVE"
+horizontal_alignment = 1
+vertical_alignment = 1

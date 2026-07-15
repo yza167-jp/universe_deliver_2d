@@ -33,7 +33,7 @@ allow_system_fallback = true
 [sub_resource type="Theme" id="ThemeDialogue"]
 default_font = SubResource("SystemFontUI")
 
-[node name="DialogueUI" type="Control"]
+[node name="DialogueUI" type="Control" groups=["dialogue_ui"]]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0

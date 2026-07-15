@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_sequence.gd" id="1_sequence"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_line.gd" id="2_line"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_effect.gd" id="3_effect"]
+[ext_resource type="Resource" path="res://data/characters/lao_pi.tres" id="4_lao_pi"]
+
+[sub_resource type="Resource" id="EffectCompletionFlag"]
+script = ExtResource("3_effect")
+effect_type = 0
+effect_id = &"story_station_tutorial_completed"
+bool_value = true
+
+[sub_resource type="Resource" id="EffectCompletionEvent"]
+script = ExtResource("3_effect")
+effect_type = 1
+effect_id = &"station_tutorial_completed"
+
+[sub_resource type="Resource" id="LineCompleteAck"]
+script = ExtResource("2_line")
+id = &"complete_ack"
+speaker = ExtResource("4_lao_pi")
+text_key = &"DIALOGUE_LAO_PI_TUTORIAL_COMPLETE_01"
+portrait_expression = &"relaxed"
+next_line_id = &"not_alone"
+
+[sub_resource type="Resource" id="LineNotAlone"]
+script = ExtResource("2_line")
+id = &"not_alone"
+speaker = ExtResource("4_lao_pi")
+text_key = &"DIALOGUE_LAO_PI_TUTORIAL_COMPLETE_02"
+portrait_expression = &"friendly"
+next_line_id = &"next_step"
+
+[sub_resource type="Resource" id="LineNextStep"]
+script = ExtResource("2_line")
+id = &"next_step"
+speaker = ExtResource("4_lao_pi")
+text_key = &"DIALOGUE_LAO_PI_TUTORIAL_COMPLETE_03"
+portrait_expression = &"neutral"
+effects = [SubResource("EffectCompletionFlag"), SubResource("EffectCompletionEvent")]
+
+[resource]
+script = ExtResource("1_sequence")
+id = &"dialogue_lao_pi_tutorial_complete"
+start_line_id = &"complete_ack"
+lines = [SubResource("LineCompleteAck"), SubResource("LineNotAlone"), SubResource("LineNextStep")]

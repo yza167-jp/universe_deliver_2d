@@ -30,6 +30,7 @@ var _facing_direction: Vector2 = Vector2.UP
 var _current_interactable: Interactable2D
 var _feedback_time_remaining: float = 0.0
 var _animations_initialized: bool = false
+var _input_enabled: bool = true
 
 
 func _ready() -> void:
@@ -40,12 +41,14 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	var input_direction: Vector2 = Input.get_vector(
-		&"move_left",
-		&"move_right",
-		&"move_up",
-		&"move_down"
-	)
+	var input_direction: Vector2 = Vector2.ZERO
+	if _input_enabled:
+		input_direction = Input.get_vector(
+			&"move_left",
+			&"move_right",
+			&"move_up",
+			&"move_down"
+		)
 	var target_velocity: Vector2 = calculate_target_velocity(input_direction, move_speed)
 	velocity = step_velocity(
 		velocity,
@@ -58,7 +61,7 @@ func _physics_process(delta: float) -> void:
 		set_facing_direction(input_direction)
 	move_and_slide()
 	refresh_interaction_target()
-	if Input.is_action_just_pressed(interaction_action):
+	if _input_enabled and Input.is_action_just_pressed(interaction_action):
 		try_interact()
 	if _feedback_time_remaining > 0.0:
 		_feedback_time_remaining = maxf(_feedback_time_remaining - delta, 0.0)
@@ -123,6 +126,17 @@ func get_current_animation_name() -> StringName:
 	return _sprite.animation
 
 
+func set_input_enabled(enabled: bool) -> void:
+	_input_enabled = enabled
+	if not _input_enabled:
+		velocity = Vector2.ZERO
+	_update_interaction_prompt()
+
+
+func is_input_enabled() -> bool:
+	return _input_enabled
+
+
 func refresh_interaction_target() -> Interactable2D:
 	if _interaction_sensor == null:
 		_interaction_sensor = get_node_or_null("InteractionSensor") as Area2D
@@ -143,7 +157,7 @@ func refresh_interaction_target() -> Interactable2D:
 
 
 func try_interact() -> bool:
-	if _current_interactable == null:
+	if not _input_enabled or _current_interactable == null:
 		return false
 	if not _current_interactable.interact(self):
 		return false

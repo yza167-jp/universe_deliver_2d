@@ -144,6 +144,14 @@ func get_station_player() -> StationPlayer:
 	return _player
 
 
+func get_lao_pi() -> LaoPiStation:
+	return get_node_or_null("Characters/LaoPi") as LaoPiStation
+
+
+func get_tutorial_controller() -> StationTutorialController:
+	return get_node_or_null("StationTutorialController") as StationTutorialController
+
+
 func get_interactables() -> Array[Interactable2D]:
 	var interactables: Array[Interactable2D] = []
 	var interaction_root: Node = get_node_or_null("Interactables")

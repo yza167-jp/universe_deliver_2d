@@ -19,6 +19,10 @@ func _initialize() -> void:
 func _run_smoke() -> void:
 	var original_locale: String = TranslationServer.get_locale()
 	TranslationServer.set_locale("zh_CN")
+	var game_state: GameStateModel = root.get_node_or_null("GameState") as GameStateModel
+	if game_state != null:
+		game_state.reset_runtime_state()
+		game_state.set_story_flag(StationTutorialController.COMPLETION_FLAG)
 	var station_scene: PackedScene = load(STATION_SCENE_PATH) as PackedScene
 	var station: StationHub = station_scene.instantiate() as StationHub
 	root.add_child(station)
@@ -67,6 +71,8 @@ func _run_smoke() -> void:
 	)
 
 	station.queue_free()
+	if game_state != null:
+		game_state.reset_runtime_state()
 	TranslationServer.set_locale(original_locale)
 	await process_frame
 	if _failures.is_empty():

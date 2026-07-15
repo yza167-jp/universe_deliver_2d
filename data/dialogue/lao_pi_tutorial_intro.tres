@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_sequence.gd" id="1_sequence"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_line.gd" id="2_line"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_effect.gd" id="3_effect"]
+[ext_resource type="Resource" path="res://data/characters/lao_pi.tres" id="4_lao_pi"]
+
+[sub_resource type="Resource" id="EffectWaitForMove"]
+script = ExtResource("3_effect")
+effect_type = 1
+effect_id = &"station_tutorial_wait_for_move"
+
+[sub_resource type="Resource" id="LineWelcome"]
+script = ExtResource("2_line")
+id = &"welcome"
+speaker = ExtResource("4_lao_pi")
+text_key = &"DIALOGUE_LAO_PI_TUTORIAL_INTRO_01"
+portrait_expression = &"relaxed"
+next_line_id = &"translator"
+
+[sub_resource type="Resource" id="LineTranslator"]
+script = ExtResource("2_line")
+id = &"translator"
+speaker = ExtResource("4_lao_pi")
+text_key = &"DIALOGUE_LAO_PI_TUTORIAL_INTRO_02"
+portrait_expression = &"friendly"
+next_line_id = &"movement_prompt"
+
+[sub_resource type="Resource" id="LineMovementPrompt"]
+script = ExtResource("2_line")
+id = &"movement_prompt"
+speaker = ExtResource("4_lao_pi")
+text_key = &"DIALOGUE_LAO_PI_TUTORIAL_INTRO_03"
+portrait_expression = &"neutral"
+effects = [SubResource("EffectWaitForMove")]
+
+[resource]
+script = ExtResource("1_sequence")
+id = &"dialogue_lao_pi_tutorial_intro"
+start_line_id = &"welcome"
+lines = [SubResource("LineWelcome"), SubResource("LineTranslator"), SubResource("LineMovementPrompt")]

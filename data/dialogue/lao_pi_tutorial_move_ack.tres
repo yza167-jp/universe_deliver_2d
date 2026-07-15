@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_sequence.gd" id="1_sequence"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_line.gd" id="2_line"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_effect.gd" id="3_effect"]
+[ext_resource type="Resource" path="res://data/characters/lao_pi.tres" id="4_lao_pi"]
+
+[sub_resource type="Resource" id="EffectWaitForLaoPi"]
+script = ExtResource("3_effect")
+effect_type = 1
+effect_id = &"station_tutorial_wait_for_lao_pi"
+
+[sub_resource type="Resource" id="LineMovementAck"]
+script = ExtResource("2_line")
+id = &"movement_ack"
+speaker = ExtResource("4_lao_pi")
+text_key = &"DIALOGUE_LAO_PI_TUTORIAL_MOVE_01"
+portrait_expression = &"relaxed"
+next_line_id = &"interaction_prompt"
+
+[sub_resource type="Resource" id="LineInteractionPrompt"]
+script = ExtResource("2_line")
+id = &"interaction_prompt"
+speaker = ExtResource("4_lao_pi")
+text_key = &"DIALOGUE_LAO_PI_TUTORIAL_MOVE_02"
+portrait_expression = &"friendly"
+effects = [SubResource("EffectWaitForLaoPi")]
+
+[resource]
+script = ExtResource("1_sequence")
+id = &"dialogue_lao_pi_tutorial_move_ack"
+start_line_id = &"movement_ack"
+lines = [SubResource("LineMovementAck"), SubResource("LineInteractionPrompt")]

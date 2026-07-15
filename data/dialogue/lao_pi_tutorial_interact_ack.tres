@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_sequence.gd" id="1_sequence"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_line.gd" id="2_line"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_effect.gd" id="3_effect"]
+[ext_resource type="Resource" path="res://data/characters/lao_pi.tres" id="4_lao_pi"]
+
+[sub_resource type="Resource" id="EffectWaitForTerminal"]
+script = ExtResource("3_effect")
+effect_type = 1
+effect_id = &"station_tutorial_wait_for_order_terminal"
+
+[sub_resource type="Resource" id="LineConversationAck"]
+script = ExtResource("2_line")
+id = &"conversation_ack"
+speaker = ExtResource("4_lao_pi")
+text_key = &"DIALOGUE_LAO_PI_TUTORIAL_INTERACT_01"
+portrait_expression = &"friendly"
+next_line_id = &"company_joke"
+
+[sub_resource type="Resource" id="LineCompanyJoke"]
+script = ExtResource("2_line")
+id = &"company_joke"
+speaker = ExtResource("4_lao_pi")
+text_key = &"DIALOGUE_LAO_PI_TUTORIAL_INTERACT_02"
+portrait_expression = &"relaxed"
+next_line_id = &"terminal_prompt"
+
+[sub_resource type="Resource" id="LineTerminalPrompt"]
+script = ExtResource("2_line")
+id = &"terminal_prompt"
+speaker = ExtResource("4_lao_pi")
+text_key = &"DIALOGUE_LAO_PI_TUTORIAL_INTERACT_03"
+portrait_expression = &"neutral"
+effects = [SubResource("EffectWaitForTerminal")]
+
+[resource]
+script = ExtResource("1_sequence")
+id = &"dialogue_lao_pi_tutorial_interact_ack"
+start_line_id = &"conversation_ack"
+lines = [SubResource("LineConversationAck"), SubResource("LineCompanyJoke"), SubResource("LineTerminalPrompt")]

@@ -1,0 +1,28 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/station/lao_pi_station.gd" id="1_lao_pi"]
+
+[sub_resource type="RectangleShape2D" id="ShapeLaoPiInteraction"]
+size = Vector2(40, 52)
+
+[sub_resource type="SpriteFrames" id="SpriteFramesLaoPiPlaceholder"]
+
+[node name="LaoPi" type="Area2D" groups=["station_character", "station_interactable"]]
+z_index = 11
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("1_lao_pi")
+interaction_id = &"lao_pi"
+prompt_key = &"UI_INTERACTION_LAO_PI"
+interaction_priority = 200
+
+[node name="VisualRoot" type="Node2D" parent="."]
+
+[node name="LaoPiSprite" type="AnimatedSprite2D" parent="VisualRoot"]
+unique_name_in_owner = true
+position = Vector2(0, -28)
+sprite_frames = SubResource("SpriteFramesLaoPiPlaceholder")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -27)
+shape = SubResource("ShapeLaoPiInteraction")
