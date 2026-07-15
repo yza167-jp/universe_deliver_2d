@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ShipModuleDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/definitions/ship_module_definition.gd" id="1_module"]
+
+[resource]
+script = ExtResource("1_module")
+id = &"module_atmospheric_shield"
+display_name_key = &"MODULE_ATMOSPHERIC_SHIELD_NAME"
+description_key = &"MODULE_ATMOSPHERIC_SHIELD_DESCRIPTION"
+slot_type = 1
+stat_modifiers = {
+&"atmospheric_damage_scale": 0.75
+}
+capability_tags = Array[StringName]([&"capability_atmospheric_entry"])
+cost = 0
+story_unlock_flags = Array[StringName]([])

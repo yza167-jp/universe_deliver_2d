@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CargoDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/definitions/cargo_definition.gd" id="1_cargo"]
+
+[resource]
+script = ExtResource("1_cargo")
+id = &"cargo_red_sand_m0"
+display_name_key = &"CARGO_RED_SAND_M0_NAME"
+company_description_key = &"CARGO_RED_SAND_M0_COMPANY_DESCRIPTION"
+story_description_key = &"CARGO_RED_SAND_M0_STORY_DESCRIPTION"
+boost_policy = 1
+collision_tolerance = 0.65
+attraction_risk_tags = Array[StringName]([&"risk_scanner_attention"])

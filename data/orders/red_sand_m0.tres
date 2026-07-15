@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="OrderDefinition" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/definitions/order_definition.gd" id="1_order"]
+[ext_resource type="Resource" path="res://data/characters/company_dispatch.tres" id="2_sender"]
+[ext_resource type="Resource" path="res://data/characters/red_sand_recipient.tres" id="3_recipient"]
+[ext_resource type="Resource" path="res://data/planets/red_sand.tres" id="4_planet"]
+[ext_resource type="Resource" path="res://data/cargo/red_sand_m0.tres" id="5_cargo"]
+[ext_resource type="Resource" path="res://data/modules/standard_drive.tres" id="6_drive"]
+[ext_resource type="Resource" path="res://data/modules/atmospheric_shield.tres" id="7_shield"]
+[ext_resource type="Resource" path="res://data/modules/asteroid_laser.tres" id="8_laser"]
+
+[resource]
+script = ExtResource("1_order")
+id = &"order_red_sand_m0"
+display_name_key = &"ORDER_RED_SAND_M0_NAME"
+order_type = 0
+sender = ExtResource("2_sender")
+recipient = ExtResource("3_recipient")
+destination_planet = ExtResource("4_planet")
+cargo = ExtResource("5_cargo")
+reward_credits = 100
+route_distance = 1.0
+risk_level = 2
+required_modules = [ExtResource("6_drive"), ExtResource("7_shield")]
+recommended_modules = [ExtResource("8_laser")]
+delivery_method = 0
+customer_history_keys = Array[StringName]([&"ORDER_RED_SAND_M0_CUSTOMER_HISTORY_01"])
+story_requirements = Array[StringName]([])
+completion_flags = Array[StringName]([&"story_red_sand_order_completed"])

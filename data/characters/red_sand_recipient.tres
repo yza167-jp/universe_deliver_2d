@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="CharacterDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/definitions/character_definition.gd" id="1_character"]
+
+[resource]
+script = ExtResource("1_character")
+id = &"character_red_sand_recipient"
+display_name_key = &"CHARACTER_RED_SAND_RECIPIENT_NAME"
+role_key = &"CHARACTER_RED_SAND_RECIPIENT_ROLE"
