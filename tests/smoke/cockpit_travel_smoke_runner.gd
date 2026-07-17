@@ -83,6 +83,13 @@ func _run_smoke() -> void:
 	var expected_configuration: Dictionary[StringName, StringName] = (
 		_game_state.ship_configuration.duplicate()
 	)
+	_check(
+		cockpit.focus_hotspot(&"window_view")
+		and cockpit.get_selected_hotspot_id() == &"window_view",
+		"Forward Window could not prepare the residual-focus regression check."
+	)
+	var forward_window: Button = cockpit.get_hotspot_button(&"window_view")
+	var forward_window_rect: Rect2 = cockpit.get_forward_window_rect()
 	_check(cockpit.activate_hotspot(&"navigation_screen"), "Navigation panel could not reopen for the active order.")
 	await process_frame
 	_check(
@@ -112,6 +119,124 @@ func _run_smoke() -> void:
 	_check(controller != null, "Cockpit travel controller is unavailable.")
 	if controller != null:
 		controller.set_process(false)
+	var status_panel: PanelContainer = cockpit.get_node_or_null("StatusPanel") as PanelContainer
+	var travel_progress: ProgressBar = cockpit.get_node_or_null(
+		"StatusPanel/Margin/Content/TravelProgressBar"
+	) as ProgressBar
+	var travel_prompt: Label = cockpit.get_node_or_null(
+		"StatusPanel/Margin/Content/StatusRow/PromptLabel"
+	) as Label
+	_check(
+		cockpit.is_forward_window_passive()
+		and forward_window != null
+		and not forward_window.visible
+		and forward_window.focus_mode == Control.FOCUS_NONE
+		and forward_window.mouse_filter == Control.MOUSE_FILTER_IGNORE
+		and not forward_window.has_focus()
+		and cockpit.get_selected_hotspot_id() != &"window_view",
+		"Active travel must clear and disable all Forward Window interaction state."
+	)
+	var selected_before_hover: StringName = cockpit.get_selected_hotspot_id()
+	if forward_window != null:
+		forward_window.mouse_entered.emit()
+	_check(
+		cockpit.get_selected_hotspot_id() == selected_before_hover
+		and not cockpit.focus_hotspot(&"window_view")
+		and not cockpit.activate_hotspot(&"window_view"),
+		"Forward Window must ignore hover, focus, and activation during travel."
+	)
+	_check(
+		status_panel != null
+		and status_panel.mouse_filter == Control.MOUSE_FILTER_IGNORE
+		and travel_progress != null
+		and travel_progress.mouse_filter == Control.MOUSE_FILTER_IGNORE
+		and travel_prompt != null
+		and travel_prompt.max_lines_visible == 2
+		and not cockpit.get_travel_hud_rect().intersects(forward_window_rect, false),
+		"Travel HUD must remain compact, mouse-passive, and outside the Forward Window."
+	)
+	_check(
+		cockpit.activate_hotspot(&"navigation_screen"),
+		"Navigation should remain inspectable while travel is active."
+	)
+	await process_frame
+	_check(
+		not cockpit.is_navigation_action_enabled()
+		and cockpit.get_device_panel_body().contains(tr("UI_COCKPIT_NAV_ROUTE_ACTIVE")),
+		"Navigation must visibly report that the route is already active."
+	)
+	var phase_before_repeat: GameStateModel.TravelState = _game_state.travel_state
+	if action_button != null:
+		action_button.pressed.emit()
+	_check(
+		_game_state.travel_state == phase_before_repeat
+		and not cockpit.start_configured_travel()
+		and _game_state.last_travel_error == GameStateModel.TRAVEL_ERROR_ALREADY_STARTED,
+		"Navigation must not start a second travel sequence."
+	)
+	cockpit.close_active_modal()
+	await process_frame
+
+	var radio_button: Button = cockpit.get_hotspot_button(&"radio")
+	var radio_player: AudioStreamPlayer = cockpit.get_radio_audio_player()
+	var radio_feedback: CockpitRadioFeedback = cockpit.get_radio_feedback()
+	var radio_player_id: int = 0 if radio_player == null else radio_player.get_instance_id()
+	var radio_stream_id: int = (
+		0
+		if radio_player == null or radio_player.stream == null
+		else radio_player.stream.get_instance_id()
+	)
+	_check(
+		radio_button != null
+		and radio_player != null
+		and radio_player.stream is AudioStreamWAV
+		and radio_feedback != null,
+		"Radio requires one local loop player and one visual feedback control."
+	)
+	if radio_button != null:
+		radio_button.pressed.emit()
+	await process_frame
+	_check(
+		cockpit.is_radio_on()
+		and cockpit.is_radio_audio_playing()
+		and radio_feedback != null
+		and radio_feedback.is_active(),
+		"Mouse activation must start the radio loop and visual waveform."
+	)
+	if radio_feedback != null:
+		var radio_phase_before: float = radio_feedback.get_pulse_phase()
+		radio_feedback.advance_animation(0.2)
+		_check(
+			not is_equal_approx(radio_feedback.get_pulse_phase(), radio_phase_before),
+			"Radio On feedback must visibly animate."
+		)
+	_check(cockpit.focus_hotspot(&"radio"), "Radio must remain keyboard-focusable during travel.")
+	_push_interact_action()
+	await process_frame
+	_check(
+		not cockpit.is_radio_on()
+		and not cockpit.is_radio_audio_playing()
+		and radio_feedback != null
+		and not radio_feedback.is_active(),
+		"Keyboard activation must stop the same radio loop and visual waveform."
+	)
+	if radio_button != null:
+		radio_button.pressed.emit()
+		radio_button.pressed.emit()
+	await process_frame
+	_check(
+		not cockpit.is_radio_on()
+		and radio_player != null
+		and radio_player.get_instance_id() == radio_player_id
+		and radio_player.stream != null
+		and radio_player.stream.get_instance_id() == radio_stream_id,
+		"Repeated Radio toggles must not stack players or replace the loop stream."
+	)
+	_check(
+		cockpit.get_travel_phase_text() == tr("UI_COCKPIT_TRAVEL_PHASE_DEPARTURE"),
+		"Optional Radio interaction must not replace the active travel status."
+	)
+	if controller != null:
 		controller.advance_travel(
 			controller.departure_duration
 			+ controller.cruise_duration
@@ -152,6 +277,10 @@ func _run_smoke() -> void:
 	_check(reopened_cockpit != null, "Completed-state cockpit did not instantiate.")
 	if reopened_cockpit != null:
 		_check(
+			reopened_cockpit.is_forward_window_passive(),
+			"Completed handoff state must keep Forward Window interaction passive."
+		)
+		_check(
 			not reopened_cockpit.start_configured_travel()
 			and _game_state.last_travel_error
 			== GameStateModel.TRAVEL_ERROR_ALREADY_COMPLETED,
@@ -159,6 +288,19 @@ func _run_smoke() -> void:
 		)
 
 	_game_state.reset_runtime_state()
+	await process_frame
+	if reopened_cockpit != null:
+		var restored_window: Button = reopened_cockpit.get_hotspot_button(&"window_view")
+		_check(
+			not reopened_cockpit.is_forward_window_passive()
+			and not reopened_cockpit.is_travel_status_visible()
+			and restored_window != null
+			and restored_window.visible
+			and restored_window.focus_mode == Control.FOCUS_ALL
+			and restored_window.mouse_filter == Control.MOUSE_FILTER_STOP
+			and reopened_cockpit.focus_hotspot(&"window_view"),
+			"Returning to idle must restore Forward Window visuals and input."
+		)
 	_prepare_confirmed_order()
 	_game_state.mark_travel_seen(_order.destination_planet.id)
 	if reopened_cockpit != null:
@@ -182,7 +324,7 @@ func _run_smoke() -> void:
 			"A restored seen-route flag must expose the travel skip control."
 		)
 		var skip_button: Button = reopened_cockpit.get_node_or_null(
-			"SkipTravelButton"
+			"StatusPanel/Margin/Content/StatusRow/SkipTravelButton"
 		) as Button
 		_check(skip_button != null, "Seen-route skip button is missing.")
 		if skip_button != null:
@@ -224,6 +366,16 @@ func _push_accept_key() -> void:
 	root.push_input(input_event)
 
 
+func _push_interact_action() -> void:
+	var input_event: InputEventAction = InputEventAction.new()
+	input_event.action = Cockpit.INTERACT_ACTION
+	input_event.pressed = true
+	root.push_input(input_event)
+	var release_event: InputEventAction = input_event.duplicate() as InputEventAction
+	release_event.pressed = false
+	root.push_input(release_event)
+
+
 func _cleanup() -> void:
 	if _app != null and is_instance_valid(_app):
 		_app.queue_free()
@@ -237,8 +389,8 @@ func _finish_smoke() -> void:
 	TranslationServer.set_locale(_original_locale)
 	if _failures.is_empty():
 		print(
-			"[cockpit-travel] PASS: departure gates, mouse/keyboard confirmation, "
-			+ "three phases, FLIGHT handoff, retained state, and duplicate protection."
+			"[cockpit-travel] PASS: bottom travel HUD, passive Forward Window, "
+			+ "single-player Radio feedback, three phases, and retained FLIGHT handoff."
 		)
 		quit(0)
 		return

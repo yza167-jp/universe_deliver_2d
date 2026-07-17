@@ -1,10 +1,11 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://scripts/cockpit/cockpit.gd" id="1_cockpit"]
 [ext_resource type="Script" path="res://scripts/cockpit/cockpit_starfield.gd" id="2_starfield"]
 [ext_resource type="Resource" path="res://data/m0_data_registry.tres" id="3_registry"]
 [ext_resource type="Resource" path="res://data/dialogue/lao_pi_cockpit_graybox.tres" id="4_lao_pi_dialogue"]
 [ext_resource type="Script" path="res://scripts/cockpit/travel_sequence_controller.gd" id="5_travel_controller"]
+[ext_resource type="Script" path="res://scripts/cockpit/cockpit_radio_feedback.gd" id="6_radio_feedback"]
 
 [sub_resource type="SystemFont" id="SystemFontCockpit"]
 font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
@@ -264,6 +265,16 @@ theme_override_styles/focus = SubResource("StyleHotspotFocus")
 text = "UI_COCKPIT_HOTSPOT_RADIO"
 metadata/hotspot_id = &"radio"
 
+[node name="RadioFeedback" type="Control" parent="Hotspots/Radio"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 6.0
+offset_top = 5.0
+offset_right = 78.0
+offset_bottom = 23.0
+mouse_filter = 2
+script = ExtResource("6_radio_feedback")
+
 [node name="CargoIndicator" type="Button" parent="Hotspots"]
 custom_minimum_size = Vector2(108, 90)
 layout_mode = 0
@@ -312,111 +323,79 @@ text = "UI_COCKPIT_HOTSPOT_LAO_PI"
 vertical_alignment = 2
 metadata/hotspot_id = &"lao_pi_seat"
 
-[node name="TravelStatusPanel" type="PanelContainer" parent="."]
-unique_name_in_owner = true
-visible = false
-layout_mode = 0
-offset_left = 104.0
-offset_top = 42.0
-offset_right = 536.0
-offset_bottom = 104.0
-mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleNotificationPanel")
-
-[node name="Margin" type="MarginContainer" parent="TravelStatusPanel"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 5
-theme_override_constants/margin_right = 92
-theme_override_constants/margin_bottom = 5
-
-[node name="Content" type="VBoxContainer" parent="TravelStatusPanel/Margin"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/separation = 2
-
-[node name="TravelPhaseLabel" type="Label" parent="TravelStatusPanel/Margin/Content"]
-unique_name_in_owner = true
-layout_mode = 2
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
-theme_override_font_sizes/font_size = 12
-text = "UI_COCKPIT_TRAVEL_PHASE_IDLE"
-
-[node name="TravelDetailLabel" type="Label" parent="TravelStatusPanel/Margin/Content"]
-unique_name_in_owner = true
-layout_mode = 2
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
-theme_override_font_sizes/font_size = 10
-text = "UI_COCKPIT_TRAVEL_DETAIL_IDLE"
-text_overrun_behavior = 3
-
-[node name="TravelProgressBar" type="ProgressBar" parent="TravelStatusPanel/Margin/Content"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 7)
-layout_mode = 2
-mouse_filter = 2
-show_percentage = false
-
-[node name="SkipTravelButton" type="Button" parent="."]
-unique_name_in_owner = true
-visible = false
-layout_mode = 0
-offset_left = 448.0
-offset_top = 58.0
-offset_right = 524.0
-offset_bottom = 88.0
-mouse_default_cursor_shape = 2
-theme_override_font_sizes/font_size = 11
-text = "UI_COCKPIT_TRAVEL_SKIP"
-
 [node name="StatusPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
 layout_mode = 0
 offset_left = 16.0
-offset_top = 310.0
+offset_top = 308.0
 offset_right = 624.0
-offset_bottom = 352.0
+offset_bottom = 354.0
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleStatusPanel")
 
 [node name="Margin" type="MarginContainer" parent="StatusPanel"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 5
+theme_override_constants/margin_top = 4
 theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 5
+theme_override_constants/margin_bottom = 4
 
-[node name="Content" type="HBoxContainer" parent="StatusPanel/Margin"]
+[node name="Content" type="VBoxContainer" parent="StatusPanel/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 10
+mouse_filter = 2
+theme_override_constants/separation = 2
 
-[node name="StatusLabel" type="Label" parent="StatusPanel/Margin/Content"]
+[node name="StatusRow" type="HBoxContainer" parent="StatusPanel/Margin/Content"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="StatusLabel" type="Label" parent="StatusPanel/Margin/Content/StatusRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(164, 0)
+custom_minimum_size = Vector2(136, 26)
 layout_mode = 2
+mouse_filter = 2
 theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
 theme_override_font_sizes/font_size = 12
 text = "UI_COCKPIT_STATUS_READY"
 vertical_alignment = 1
 text_overrun_behavior = 3
 
-[node name="Divider" type="VSeparator" parent="StatusPanel/Margin/Content"]
+[node name="Divider" type="VSeparator" parent="StatusPanel/Margin/Content/StatusRow"]
 layout_mode = 2
+mouse_filter = 2
 modulate = Color(0.603922, 0.654902, 0.709804, 0.6)
 
-[node name="PromptLabel" type="Label" parent="StatusPanel/Margin/Content"]
+[node name="PromptLabel" type="Label" parent="StatusPanel/Margin/Content/StatusRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
+mouse_filter = 2
 theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
-theme_override_font_sizes/font_size = 12
+theme_override_font_sizes/font_size = 11
 text = "UI_COCKPIT_SELECT_PROMPT"
 vertical_alignment = 1
 autowrap_mode = 2
 max_lines_visible = 2
 text_overrun_behavior = 3
+
+[node name="SkipTravelButton" type="Button" parent="StatusPanel/Margin/Content/StatusRow"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(86, 26)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+theme_override_font_sizes/font_size = 11
+text = "UI_COCKPIT_TRAVEL_SKIP"
+
+[node name="TravelProgressBar" type="ProgressBar" parent="StatusPanel/Margin/Content"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 6)
+layout_mode = 2
+mouse_filter = 2
+show_percentage = false
 
 [node name="NotificationPanel" type="PanelContainer" parent="."]
 unique_name_in_owner = true
@@ -457,6 +436,10 @@ script = ExtResource("5_travel_controller")
 
 [node name="TravelAudioPlayer" type="AudioStreamPlayer" parent="."]
 unique_name_in_owner = true
+
+[node name="RadioAudioPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+volume_db = -30.0
 
 [node name="ModalLayer" type="Control" parent="."]
 unique_name_in_owner = true

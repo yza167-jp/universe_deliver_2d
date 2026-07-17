@@ -13,6 +13,9 @@ const INITIAL_HOTSPOT_ID: StringName = &"navigation_screen"
 const DIALOGUE_UI_SCENE: PackedScene = preload("res://scenes/narrative/dialogue_ui.tscn")
 const TRAVEL_PHASE_CUE_SECONDS: float = 0.16
 const TRAVEL_PHASE_CUE_VOLUME: float = 0.045
+const RADIO_SAMPLE_RATE: int = 22050
+const RADIO_LOOP_SECONDS: float = 1.2
+const RADIO_VOLUME_DB: float = -30.0
 const TRAVEL_PHASE_SPEEDS: Dictionary[GameStateModel.TravelState, float] = {
 	GameStateModel.TravelState.DEPARTURE: 2.0,
 	GameStateModel.TravelState.CRUISE: 3.4,
@@ -59,6 +62,7 @@ const MUTED_TEXT: Color = Color("9aa7b5")
 @onready var _instruction_label: Label = %InstructionLabel
 @onready var _status_label: Label = %StatusLabel
 @onready var _prompt_label: Label = %PromptLabel
+@onready var _status_panel: PanelContainer = %StatusPanel
 @onready var _hotspots_root: Control = %Hotspots
 @onready var _starfield: CockpitStarfield = %Starfield
 @onready var _notification_panel: PanelContainer = %NotificationPanel
@@ -72,12 +76,11 @@ const MUTED_TEXT: Color = Color("9aa7b5")
 @onready var _device_action_button: Button = %DeviceActionButton
 @onready var _device_close_button: Button = %DeviceCloseButton
 @onready var _travel_controller: TravelSequenceController = %TravelSequenceController
-@onready var _travel_status_panel: PanelContainer = %TravelStatusPanel
-@onready var _travel_phase_label: Label = %TravelPhaseLabel
 @onready var _travel_progress_bar: ProgressBar = %TravelProgressBar
-@onready var _travel_detail_label: Label = %TravelDetailLabel
 @onready var _skip_travel_button: Button = %SkipTravelButton
 @onready var _travel_audio_player: AudioStreamPlayer = %TravelAudioPlayer
+@onready var _radio_audio_player: AudioStreamPlayer = %RadioAudioPlayer
+@onready var _radio_feedback: CockpitRadioFeedback = %RadioFeedback
 
 var _hotspot_buttons: Dictionary[StringName, Button] = {}
 var _selected_hotspot_id: StringName = &""
@@ -93,6 +96,7 @@ var _scene_router: SceneRouterService
 var _active_order: OrderDefinition
 var _dialogue_ui: DialogueUI
 var _fallback_dialogue_layer: CanvasLayer
+var _forward_window_passive: bool = false
 
 
 func _ready() -> void:
@@ -106,6 +110,7 @@ func _ready() -> void:
 	_travel_controller.configure(_game_state, _active_order)
 	_connect_runtime_signals()
 	_configure_travel_audio()
+	_configure_radio_audio()
 	_modal_layer.visible = false
 	_device_panel.visible = false
 	_device_dimmer.visible = false
@@ -140,10 +145,12 @@ func _notification(what: int) -> void:
 
 
 func _exit_tree() -> void:
-	if _travel_audio_player == null:
-		return
-	_travel_audio_player.stop()
-	_travel_audio_player.stream = null
+	if _travel_audio_player != null:
+		_travel_audio_player.stop()
+		_travel_audio_player.stream = null
+	if _radio_audio_player != null:
+		_radio_audio_player.stop()
+		_radio_audio_player.stream = null
 
 
 func _draw() -> void:
@@ -229,15 +236,28 @@ func get_travel_controller() -> TravelSequenceController:
 
 
 func get_travel_phase_text() -> String:
-	return "" if _travel_phase_label == null else _travel_phase_label.text
+	return "" if _status_label == null else _status_label.text
 
 
 func get_travel_detail_text() -> String:
-	return "" if _travel_detail_label == null else _travel_detail_label.text
+	return "" if _prompt_label == null else _prompt_label.text
 
 
 func is_travel_status_visible() -> bool:
-	return _travel_status_panel != null and _travel_status_panel.visible
+	return _travel_progress_bar != null and _travel_progress_bar.visible
+
+
+func get_travel_hud_rect() -> Rect2:
+	return Rect2() if _status_panel == null else _status_panel.get_global_rect()
+
+
+func get_forward_window_rect() -> Rect2:
+	var window_button: Button = _hotspot_buttons.get(&"window_view")
+	return Rect2() if window_button == null else window_button.get_global_rect()
+
+
+func is_forward_window_passive() -> bool:
+	return _forward_window_passive
 
 
 func is_skip_travel_visible() -> bool:
@@ -299,8 +319,20 @@ func is_radio_on() -> bool:
 	return _radio_on
 
 
+func is_radio_audio_playing() -> bool:
+	return _radio_audio_player != null and _radio_audio_player.playing
+
+
+func get_radio_audio_player() -> AudioStreamPlayer:
+	return _radio_audio_player
+
+
+func get_radio_feedback() -> CockpitRadioFeedback:
+	return _radio_feedback
+
+
 func focus_hotspot(hotspot_id: StringName) -> bool:
-	if is_input_locked():
+	if is_input_locked() or _is_passive_window_hotspot(hotspot_id):
 		return false
 	var button: Button = _hotspot_buttons.get(hotspot_id)
 	if button == null:
@@ -311,7 +343,11 @@ func focus_hotspot(hotspot_id: StringName) -> bool:
 
 ## Shared activation entry used by both Button.pressed and the mapped interaction action.
 func activate_hotspot(hotspot_id: StringName) -> bool:
-	if is_input_locked() or not _hotspot_buttons.has(hotspot_id):
+	if (
+		is_input_locked()
+		or not _hotspot_buttons.has(hotspot_id)
+		or _is_passive_window_hotspot(hotspot_id)
+	):
 		return false
 	_select_hotspot(hotspot_id)
 	var behavior_started: bool = false
@@ -386,6 +422,7 @@ func _resolve_required_ui() -> bool:
 		and _instruction_label != null
 		and _status_label != null
 		and _prompt_label != null
+		and _status_panel != null
 		and _notification_panel != null
 		and _notification_label != null
 		and _notification_timer != null
@@ -397,17 +434,21 @@ func _resolve_required_ui() -> bool:
 		and _device_action_button != null
 		and _device_close_button != null
 		and _travel_controller != null
-		and _travel_status_panel != null
-		and _travel_phase_label != null
 		and _travel_progress_bar != null
-		and _travel_detail_label != null
 		and _skip_travel_button != null
 		and _travel_audio_player != null
+		and _radio_audio_player != null
+		and _radio_feedback != null
 		and _dialogue_ui != null
 	)
 
 
 func _connect_runtime_signals() -> void:
+	if (
+		_game_state != null
+		and not _game_state.runtime_state_reset.is_connected(_on_runtime_state_reset)
+	):
+		_game_state.runtime_state_reset.connect(_on_runtime_state_reset)
 	if not _device_action_button.pressed.is_connected(_on_device_action_pressed):
 		_device_action_button.pressed.connect(_on_device_action_pressed)
 	if not _device_close_button.pressed.is_connected(close_active_modal):
@@ -448,7 +489,11 @@ func _localize_content() -> void:
 
 
 func _select_hotspot(hotspot_id: StringName) -> void:
-	if is_input_locked() or not HOTSPOT_IDS.has(hotspot_id):
+	if (
+		is_input_locked()
+		or not HOTSPOT_IDS.has(hotspot_id)
+		or _is_passive_window_hotspot(hotspot_id)
+	):
 		return
 	var changed: bool = _selected_hotspot_id != hotspot_id
 	_selected_hotspot_id = hotspot_id
@@ -458,6 +503,9 @@ func _select_hotspot(hotspot_id: StringName) -> void:
 
 
 func _refresh_focus_prompt() -> void:
+	if _is_travel_window_passive():
+		_refresh_travel_status_text()
+		return
 	if _selected_hotspot_id.is_empty():
 		_status_label.text = tr("UI_COCKPIT_STATUS_READY")
 		_prompt_label.text = tr("UI_COCKPIT_SELECT_PROMPT")
@@ -645,22 +693,34 @@ func _on_travel_completed(destination_id: StringName, _was_skipped: bool) -> voi
 		push_error("Cockpit could not transition to FLIGHT: %s" % _scene_router.last_error)
 
 
+func _on_runtime_state_reset() -> void:
+	_active_order = _resolve_active_order()
+	_travel_controller.configure(_game_state, _active_order)
+	_refresh_travel_display()
+
+
 func _refresh_travel_display() -> void:
-	if _travel_status_panel == null or _travel_controller == null:
+	if _travel_progress_bar == null or _travel_controller == null:
 		return
 	var phase: GameStateModel.TravelState = _travel_controller.get_phase()
-	var should_show: bool = phase in [
-		GameStateModel.TravelState.DEPARTURE,
-		GameStateModel.TravelState.CRUISE,
-		GameStateModel.TravelState.APPROACH,
-		GameStateModel.TravelState.COMPLETED,
-	]
-	_travel_status_panel.visible = should_show
-	_travel_phase_label.text = tr(String(_get_travel_phase_key(phase)))
-	_travel_detail_label.text = tr(String(_get_travel_detail_key(phase)))
+	var should_show: bool = _is_travel_window_passive_phase(phase)
+	_set_forward_window_passive(should_show)
+	_travel_progress_bar.visible = should_show
 	_travel_progress_bar.value = _travel_controller.get_total_progress() * 100.0
-	_skip_travel_button.visible = _travel_controller.can_skip()
+	_skip_travel_button.visible = should_show and _travel_controller.can_skip()
+	if should_show:
+		_refresh_travel_status_text()
+	else:
+		_refresh_focus_prompt()
 	_update_travel_visuals(phase, _travel_controller.get_total_progress())
+
+
+func _refresh_travel_status_text() -> void:
+	if _travel_controller == null:
+		return
+	var phase: GameStateModel.TravelState = _travel_controller.get_phase()
+	_status_label.text = tr(String(_get_travel_phase_key(phase)))
+	_prompt_label.text = tr(String(_get_travel_detail_key(phase)))
 
 
 func _update_travel_visuals(
@@ -670,7 +730,10 @@ func _update_travel_visuals(
 	if _travel_progress_bar != null:
 		_travel_progress_bar.value = total_progress * 100.0
 	if _skip_travel_button != null:
-		_skip_travel_button.visible = _travel_controller.can_skip()
+		_skip_travel_button.visible = (
+			_is_travel_window_passive_phase(phase)
+			and _travel_controller.can_skip()
+		)
 	if _starfield != null:
 		var speed_multiplier: float = TRAVEL_PHASE_SPEEDS.get(phase, 1.0)
 		_starfield.set_travel_visuals(total_progress, speed_multiplier)
@@ -681,6 +744,43 @@ func _configure_travel_audio() -> void:
 	generator.mix_rate = 22050.0
 	generator.buffer_length = 0.25
 	_travel_audio_player.stream = generator
+
+
+func _configure_radio_audio() -> void:
+	_radio_audio_player.stop()
+	_radio_audio_player.volume_db = RADIO_VOLUME_DB
+	_radio_audio_player.stream = _create_radio_loop()
+	_radio_feedback.set_active(false)
+
+
+func _create_radio_loop() -> AudioStreamWAV:
+	var stream: AudioStreamWAV = AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = RADIO_SAMPLE_RATE
+	stream.stereo = false
+	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	var frame_count: int = maxi(int(RADIO_SAMPLE_RATE * RADIO_LOOP_SECONDS), 1)
+	var audio_data: PackedByteArray = PackedByteArray()
+	audio_data.resize(frame_count * 2)
+	for frame_index: int in frame_count:
+		var time_seconds: float = float(frame_index) / float(RADIO_SAMPLE_RATE)
+		var hum: float = (
+			sin(TAU * 55.0 * time_seconds) * 0.28
+			+ sin(TAU * 91.0 * time_seconds) * 0.12
+		)
+		var texture: float = (
+			sin(TAU * 173.0 * time_seconds)
+			* sin(TAU * 29.0 * time_seconds)
+			* 0.11
+		)
+		var sample: float = clampf(hum + texture, -0.72, 0.72)
+		var encoded_sample: int = int(round(sample * 32767.0)) & 0xffff
+		audio_data[frame_index * 2] = encoded_sample & 0xff
+		audio_data[frame_index * 2 + 1] = (encoded_sample >> 8) & 0xff
+	stream.data = audio_data
+	stream.loop_begin = 0
+	stream.loop_end = frame_count
+	return stream
 
 
 func _play_travel_phase_cue(phase: GameStateModel.TravelState) -> void:
@@ -814,12 +914,60 @@ func _on_dialogue_finished() -> void:
 
 func _toggle_radio() -> bool:
 	_radio_on = not _radio_on
+	_radio_feedback.set_active(_radio_on)
+	if _radio_on:
+		if not _radio_audio_player.playing:
+			_radio_audio_player.play()
+	else:
+		_radio_audio_player.stop()
 	var radio_button: Button = _hotspot_buttons.get(&"radio")
 	if radio_button != null:
 		radio_button.text = _get_hotspot_button_text(&"radio")
 	_refresh_focus_prompt()
 	radio_state_changed.emit(_radio_on)
 	return true
+
+
+func _is_passive_window_hotspot(hotspot_id: StringName) -> bool:
+	return hotspot_id == &"window_view" and _forward_window_passive
+
+
+func _is_travel_window_passive() -> bool:
+	return (
+		_travel_controller != null
+		and _is_travel_window_passive_phase(_travel_controller.get_phase())
+	)
+
+
+func _is_travel_window_passive_phase(phase: GameStateModel.TravelState) -> bool:
+	return phase in [
+		GameStateModel.TravelState.DEPARTURE,
+		GameStateModel.TravelState.CRUISE,
+		GameStateModel.TravelState.APPROACH,
+		GameStateModel.TravelState.COMPLETED,
+	]
+
+
+func _set_forward_window_passive(passive: bool) -> void:
+	_forward_window_passive = passive
+	var window_button: Button = _hotspot_buttons.get(&"window_view")
+	if window_button == null:
+		return
+	if passive:
+		if window_button.has_focus():
+			window_button.release_focus()
+		if _selected_hotspot_id == &"window_view":
+			_selected_hotspot_id = &""
+		window_button.focus_mode = Control.FOCUS_NONE
+		window_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		window_button.visible = false
+		return
+	window_button.visible = true
+	var input_enabled: bool = not is_input_locked()
+	window_button.focus_mode = Control.FOCUS_ALL if input_enabled else Control.FOCUS_NONE
+	window_button.mouse_filter = (
+		Control.MOUSE_FILTER_STOP if input_enabled else Control.MOUSE_FILTER_IGNORE
+	)
 
 
 func _observe_window() -> bool:
@@ -880,10 +1028,20 @@ func _set_hotspot_input_enabled(enabled: bool) -> void:
 		var button: Button = _hotspot_buttons.get(hotspot_id)
 		if button == null:
 			continue
-		if not enabled and button.has_focus():
+		var hotspot_enabled: bool = (
+			enabled
+			and not (hotspot_id == &"window_view" and _forward_window_passive)
+		)
+		if not hotspot_enabled and button.has_focus():
 			button.release_focus()
-		button.focus_mode = Control.FOCUS_ALL if enabled else Control.FOCUS_NONE
-		button.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
+		button.focus_mode = Control.FOCUS_ALL if hotspot_enabled else Control.FOCUS_NONE
+		button.mouse_filter = (
+			Control.MOUSE_FILTER_STOP
+			if hotspot_enabled
+			else Control.MOUSE_FILTER_IGNORE
+		)
+		if hotspot_id == &"window_view":
+			button.visible = not _forward_window_passive
 
 
 func _resolve_dialogue_ui() -> DialogueUI:

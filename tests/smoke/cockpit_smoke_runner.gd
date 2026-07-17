@@ -15,6 +15,8 @@ var _original_locale: String = ""
 var _cockpit: Cockpit
 var _game_state: GameStateModel
 var _registry: GameDataRegistry
+var _radio_player_instance_id: int = 0
+var _radio_stream_instance_id: int = 0
 
 
 func _initialize() -> void:
@@ -65,6 +67,13 @@ func _prepare_order_state() -> void:
 
 func _check_layout_and_focus_semantics() -> void:
 	_check(_cockpit.size == Vector2(640.0, 360.0), "Cockpit does not fill the 640x360 viewport.")
+	var radio_players: Array[Node] = _cockpit.find_children(
+		"RadioAudioPlayer",
+		"AudioStreamPlayer",
+		true,
+		false
+	)
+	_check(radio_players.size() == 1, "Cockpit must own exactly one radio audio player.")
 	var hotspot_ids: Array[StringName] = _cockpit.get_hotspot_ids()
 	_check(hotspot_ids.size() == 6, "Cockpit does not expose exactly six hotspots.")
 	var unique_ids: Dictionary[StringName, bool] = {}
@@ -235,6 +244,8 @@ func _check_specific_behavior(hotspot_id: StringName) -> void:
 				)
 		&"radio":
 			var radio_button: Button = _cockpit.get_hotspot_button(&"radio")
+			var radio_player: AudioStreamPlayer = _cockpit.get_radio_audio_player()
+			var radio_feedback: CockpitRadioFeedback = _cockpit.get_radio_feedback()
 			var state_text: String = tr(
 				"UI_COCKPIT_RADIO_ON" if _cockpit.is_radio_on() else "UI_COCKPIT_RADIO_OFF"
 			)
@@ -244,6 +255,49 @@ func _check_specific_behavior(hotspot_id: StringName) -> void:
 				and _cockpit.get_status_text().contains(state_text),
 				"Radio activation did not expose a clear On/Off visual state."
 			)
+			_check(
+				radio_player != null and radio_player.stream is AudioStreamWAV,
+				"Radio must use one configured local loop stream."
+			)
+			_check(
+				radio_feedback != null
+				and radio_feedback.is_active() == _cockpit.is_radio_on(),
+				"Radio visual activity does not match its On/Off state."
+			)
+			_check(
+				radio_player != null
+				and radio_player.playing == _cockpit.is_radio_on(),
+				"Radio audio playback does not match its On/Off state."
+			)
+			if radio_player != null:
+				if _radio_player_instance_id == 0:
+					_radio_player_instance_id = radio_player.get_instance_id()
+				else:
+					_check(
+						radio_player.get_instance_id() == _radio_player_instance_id,
+						"Radio toggles created a second audio player."
+					)
+				if radio_player.stream != null:
+					if _radio_stream_instance_id == 0:
+						_radio_stream_instance_id = radio_player.stream.get_instance_id()
+					else:
+						_check(
+							radio_player.stream.get_instance_id() == _radio_stream_instance_id,
+							"Radio toggles stacked or replaced the loop stream."
+						)
+			if radio_feedback != null:
+				var phase_before: float = radio_feedback.get_pulse_phase()
+				radio_feedback.advance_animation(0.2)
+				if _cockpit.is_radio_on():
+					_check(
+						not is_equal_approx(radio_feedback.get_pulse_phase(), phase_before),
+						"Radio On state did not animate its visual waveform."
+					)
+				else:
+					_check(
+						is_zero_approx(radio_feedback.get_pulse_phase()),
+						"Radio Off state did not stop and reset its visual waveform."
+					)
 			_check(not _cockpit.is_input_locked(), "Radio incorrectly opened a modal.")
 		&"window_view":
 			_check(_cockpit.is_notification_visible(), "Window activation did not show an observation.")

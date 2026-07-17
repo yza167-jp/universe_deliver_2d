@@ -33,13 +33,28 @@ func run() -> Array[String]:
 	var travel_controller: TravelSequenceController = cockpit.get_node_or_null(
 		"TravelSequenceController"
 	) as TravelSequenceController
-	var travel_status: PanelContainer = cockpit.get_node_or_null(
-		"TravelStatusPanel"
-	) as PanelContainer
-	var skip_travel: Button = cockpit.get_node_or_null("SkipTravelButton") as Button
+	var status_panel: PanelContainer = cockpit.get_node_or_null("StatusPanel") as PanelContainer
+	var travel_progress: ProgressBar = cockpit.get_node_or_null(
+		"StatusPanel/Margin/Content/TravelProgressBar"
+	) as ProgressBar
+	var skip_travel: Button = cockpit.get_node_or_null(
+		"StatusPanel/Margin/Content/StatusRow/SkipTravelButton"
+	) as Button
 	var travel_audio: AudioStreamPlayer = cockpit.get_node_or_null(
 		"TravelAudioPlayer"
 	) as AudioStreamPlayer
+	var radio_audio: AudioStreamPlayer = cockpit.get_node_or_null(
+		"RadioAudioPlayer"
+	) as AudioStreamPlayer
+	var radio_feedback: CockpitRadioFeedback = cockpit.get_node_or_null(
+		"Hotspots/Radio/RadioFeedback"
+	) as CockpitRadioFeedback
+	var radio_audio_nodes: Array[Node] = cockpit.find_children(
+		"RadioAudioPlayer",
+		"AudioStreamPlayer",
+		true,
+		false
+	)
 	expect_true(hotspots_root != null, "Cockpit must contain its hotspot layer.", failures)
 	expect_true(starfield != null, "Cockpit must contain its animated starfield.", failures)
 	expect_true(modal_layer != null, "Cockpit must contain a modal input blocker.", failures)
@@ -50,9 +65,39 @@ func run() -> Array[String]:
 		"Cockpit must own a local travel sequence controller.",
 		failures
 	)
-	expect_true(travel_status != null, "Cockpit must contain its travel status panel.", failures)
+	expect_true(status_panel != null, "Cockpit must reuse its bottom status panel for travel.", failures)
+	expect_true(
+		cockpit.get_node_or_null("TravelStatusPanel") == null,
+		"Cockpit travel status must not overlay the forward window.",
+		failures
+	)
+	expect_true(travel_progress != null, "Bottom travel progress is missing.", failures)
 	expect_true(skip_travel != null, "Cockpit must contain its seen-route skip control.", failures)
 	expect_true(travel_audio != null, "Cockpit must contain its travel cue player.", failures)
+	expect_true(
+		radio_audio != null and radio_audio_nodes.size() == 1,
+		"Cockpit must contain exactly one radio loop player.",
+		failures
+	)
+	expect_true(radio_feedback != null, "Radio must expose a visual activity indicator.", failures)
+	if status_panel != null:
+		expect_true(
+			status_panel.mouse_filter == Control.MOUSE_FILTER_IGNORE,
+			"Bottom travel status must not intercept mouse input.",
+			failures
+		)
+	if travel_progress != null:
+		expect_true(
+			travel_progress.mouse_filter == Control.MOUSE_FILTER_IGNORE,
+			"Travel progress must not intercept mouse input.",
+			failures
+		)
+	if radio_feedback != null:
+		expect_true(
+			radio_feedback.mouse_filter == Control.MOUSE_FILTER_IGNORE,
+			"Radio feedback must remain input-passive.",
+			failures
+		)
 	expect_true(cockpit.data_registry != null, "Cockpit must expose M0 order and cargo data.", failures)
 	expect_true(cockpit.lao_pi_dialogue != null, "Cockpit must provide Lao Pi's dialogue sequence.", failures)
 	if starfield != null:
