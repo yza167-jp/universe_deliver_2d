@@ -126,7 +126,11 @@ run_step \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/ship_loadout_smoke_runner.gd
 
 run_step \
-  "Gate A main-menu-to-cockpit-entry playable path smoke test" \
+  "Interactive first-person cockpit layout and input smoke test" \
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/cockpit_smoke_runner.gd
+
+run_step \
+  "Gate A station-to-cockpit playable path smoke test" \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/station_gate_a_smoke_runner.gd
 
 run_step "Working tree whitespace check" git -C "${PROJECT_ROOT}" diff --check

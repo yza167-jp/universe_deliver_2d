@@ -3,6 +3,7 @@ extends Node
 
 signal departure_gate_opened
 signal departure_gate_closed
+signal cockpit_entered
 
 enum FlowState {
 	WAIT_FOR_TUTORIAL,
@@ -16,6 +17,7 @@ const COCKPIT_LABEL_READY_COLOR: Color = Color("77c9c4")
 const MODAL_DEPARTURE_GATE: StringName = &"station_departure_gate"
 
 var _game_state: GameStateModel
+var _scene_router: SceneRouterService
 var _tutorial_controller: StationTutorialController
 var _player: StationPlayer
 var _modal_coordinator: StationModalCoordinator
@@ -28,6 +30,7 @@ var _departure_title_label: Label
 var _departure_summary_label: Label
 var _departure_body_label: Label
 var _close_button: Button
+var _enter_cockpit_button: Button
 var _feedback_timer: Timer
 
 
@@ -88,8 +91,28 @@ func close_departure_gate() -> void:
 	departure_gate_closed.emit()
 
 
+func enter_cockpit() -> bool:
+	if (
+		_scene_router == null
+		or _departure_panel == null
+		or not _departure_panel.visible
+		or get_flow_state() != FlowState.READY_FOR_COCKPIT
+	):
+		return false
+	_departure_panel.visible = false
+	_modal_coordinator.end_modal(MODAL_DEPARTURE_GATE)
+	if _scene_router.request_stage(SceneRouterService.Stage.COCKPIT):
+		cockpit_entered.emit()
+		return true
+	_modal_coordinator.begin_modal(MODAL_DEPARTURE_GATE)
+	_departure_panel.visible = true
+	_enter_cockpit_button.grab_focus()
+	return false
+
+
 func _initialize_controller() -> void:
 	_game_state = get_node_or_null("/root/GameState") as GameStateModel
+	_scene_router = get_node_or_null("/root/SceneRouter") as SceneRouterService
 	_tutorial_controller = get_node_or_null(
 		"../StationTutorialController"
 	) as StationTutorialController
@@ -120,11 +143,15 @@ func _initialize_controller() -> void:
 		"../DepartureUILayer/DepartureReadyPanel/Panel/Margin/Content/BodyLabel"
 	) as Label
 	_close_button = get_node_or_null(
-		"../DepartureUILayer/DepartureReadyPanel/Panel/Margin/Content/CloseButton"
+		"../DepartureUILayer/DepartureReadyPanel/Panel/Margin/Content/ButtonRow/CloseButton"
+	) as Button
+	_enter_cockpit_button = get_node_or_null(
+		"../DepartureUILayer/DepartureReadyPanel/Panel/Margin/Content/ButtonRow/EnterCockpitButton"
 	) as Button
 	_feedback_timer = get_node_or_null("FeedbackTimer") as Timer
 	if (
 		_game_state == null
+		or _scene_router == null
 		or _tutorial_controller == null
 		or _player == null
 		or _modal_coordinator == null
@@ -137,6 +164,7 @@ func _initialize_controller() -> void:
 		or _departure_summary_label == null
 		or _departure_body_label == null
 		or _close_button == null
+		or _enter_cockpit_button == null
 		or _feedback_timer == null
 	):
 		push_error("Station departure flow could not resolve its state, guidance, or UI nodes.")
@@ -168,6 +196,8 @@ func _connect_runtime_signals() -> void:
 		_cockpit_entry.interaction_triggered.connect(_on_cockpit_entry_interacted)
 	if not _close_button.pressed.is_connected(close_departure_gate):
 		_close_button.pressed.connect(close_departure_gate)
+	if not _enter_cockpit_button.pressed.is_connected(_on_enter_cockpit_pressed):
+		_enter_cockpit_button.pressed.connect(_on_enter_cockpit_pressed)
 	if not _feedback_timer.timeout.is_connected(_refresh_route_guidance):
 		_feedback_timer.timeout.connect(_refresh_route_guidance)
 
@@ -213,8 +243,13 @@ func _open_departure_gate() -> void:
 		return
 	_modal_coordinator.begin_modal(MODAL_DEPARTURE_GATE)
 	_departure_panel.visible = true
-	_close_button.grab_focus()
+	_enter_cockpit_button.grab_focus()
 	departure_gate_opened.emit()
+
+
+func _on_enter_cockpit_pressed() -> void:
+	if not enter_cockpit():
+		push_warning("Station departure flow could not enter the cockpit: %s" % _scene_router.last_error)
 
 
 func _show_temporary_objective(localization_key: String) -> void:
@@ -276,3 +311,4 @@ func _localize_departure_panel() -> void:
 	_departure_summary_label.text = tr("UI_DEPARTURE_GATE_SUMMARY")
 	_departure_body_label.text = tr("UI_DEPARTURE_GATE_BODY")
 	_close_button.text = tr("UI_DEPARTURE_GATE_CLOSE")
+	_enter_cockpit_button.text = tr("UI_DEPARTURE_GATE_ENTER_COCKPIT")

@@ -1,14 +1,138 @@
-[gd_scene format=3]
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/cockpit/cockpit.gd" id="1_cockpit"]
+[ext_resource type="Script" path="res://scripts/cockpit/cockpit_starfield.gd" id="2_starfield"]
+
+[sub_resource type="SystemFont" id="SystemFontCockpit"]
+font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
+allow_system_fallback = true
+
+[sub_resource type="Theme" id="ThemeCockpit"]
+default_font = SubResource("SystemFontCockpit")
+
+[sub_resource type="StyleBoxFlat" id="StyleHotspotNormal"]
+bg_color = Color(0.0784314, 0.164706, 0.270588, 0.72)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.603922, 0.654902, 0.709804, 0.7)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleHotspotHover"]
+bg_color = Color(0.0901961, 0.227451, 0.341176, 0.88)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.466667, 0.788235, 0.768627, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleHotspotPressed"]
+bg_color = Color(0.282353, 0.25098, 0.235294, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.905882, 0.658824, 0.356863, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleHotspotFocus"]
+bg_color = Color(0.905882, 0.658824, 0.356863, 0.08)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.905882, 0.658824, 0.356863, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+expand_margin_left = 1.0
+expand_margin_top = 1.0
+expand_margin_right = 1.0
+expand_margin_bottom = 1.0
+
+[sub_resource type="StyleBoxFlat" id="StyleWindowNormal"]
+bg_color = Color(0.0156863, 0.0352941, 0.0745098, 0.12)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.466667, 0.788235, 0.768627, 0.36)
+
+[sub_resource type="StyleBoxFlat" id="StyleStatusPanel"]
+bg_color = Color(0.0392157, 0.0862745, 0.145098, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.466667, 0.788235, 0.768627, 0.72)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
 
 [node name="Cockpit" type="Control"]
+clip_contents = true
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = SubResource("ThemeCockpit")
+script = ExtResource("1_cockpit")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="TitleLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 16.0
+offset_top = 5.0
+offset_right = 250.0
+offset_bottom = 27.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.905882, 0.87451, 0.784314, 1)
+theme_override_font_sizes/font_size = 14
+text = "UI_COCKPIT_TITLE"
+vertical_alignment = 1
+
+[node name="InstructionLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 256.0
+offset_top = 5.0
+offset_right = 624.0
+offset_bottom = 27.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.603922, 0.654902, 0.709804, 1)
+theme_override_font_sizes/font_size = 11
+text = "UI_COCKPIT_INSTRUCTIONS"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="Starfield" type="Control" parent="."]
+unique_name_in_owner = true
+clip_contents = true
+layout_mode = 0
+offset_left = 96.0
+offset_top = 32.0
+offset_right = 544.0
+offset_bottom = 184.0
+mouse_filter = 2
+script = ExtResource("2_starfield")
+
+[node name="Hotspots" type="Control" parent="."]
+unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -16,33 +140,191 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.027451, 0.0352941, 0.0941176, 1)
 
-[node name="Content" type="VBoxContainer" parent="."]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -180.0
-offset_top = -48.0
-offset_right = 180.0
-offset_bottom = 48.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_constants/separation = 10
-alignment = 1
+[node name="WindowView" type="Button" parent="Hotspots"]
+custom_minimum_size = Vector2(448, 152)
+layout_mode = 0
+offset_left = 96.0
+offset_top = 32.0
+offset_right = 544.0
+offset_bottom = 184.0
+focus_neighbor_bottom = NodePath("../NavigationScreen")
+focus_next = NodePath("../NavigationScreen")
+focus_previous = NodePath("../LaoPiSeat")
+mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 0.82)
+theme_override_colors/font_hover_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_colors/font_focus_color = Color(0.905882, 0.87451, 0.784314, 1)
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleWindowNormal")
+theme_override_styles/hover = SubResource("StyleHotspotHover")
+theme_override_styles/pressed = SubResource("StyleHotspotPressed")
+theme_override_styles/focus = SubResource("StyleHotspotFocus")
+text = "UI_COCKPIT_HOTSPOT_WINDOW"
+vertical_alignment = 2
+metadata/hotspot_id = &"window_view"
 
-[node name="StageLabel" type="Label" parent="Content"]
+[node name="NavigationScreen" type="Button" parent="Hotspots"]
+custom_minimum_size = Vector2(148, 100)
+layout_mode = 0
+offset_left = 24.0
+offset_top = 198.0
+offset_right = 172.0
+offset_bottom = 298.0
+focus_neighbor_top = NodePath("../WindowView")
+focus_neighbor_right = NodePath("../CompanyTerminal")
+focus_next = NodePath("../CompanyTerminal")
+focus_previous = NodePath("../WindowView")
+mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_colors/font_hover_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_colors/font_focus_color = Color(0.905882, 0.87451, 0.784314, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleHotspotNormal")
+theme_override_styles/hover = SubResource("StyleHotspotHover")
+theme_override_styles/pressed = SubResource("StyleHotspotPressed")
+theme_override_styles/focus = SubResource("StyleHotspotFocus")
+text = "UI_COCKPIT_HOTSPOT_NAVIGATION"
+metadata/hotspot_id = &"navigation_screen"
+
+[node name="CompanyTerminal" type="Button" parent="Hotspots"]
+custom_minimum_size = Vector2(116, 90)
+layout_mode = 0
+offset_left = 180.0
+offset_top = 208.0
+offset_right = 296.0
+offset_bottom = 298.0
+focus_neighbor_top = NodePath("../WindowView")
+focus_neighbor_left = NodePath("../NavigationScreen")
+focus_neighbor_right = NodePath("../Radio")
+focus_next = NodePath("../Radio")
+focus_previous = NodePath("../NavigationScreen")
+mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_colors/font_hover_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_colors/font_focus_color = Color(0.905882, 0.87451, 0.784314, 1)
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleHotspotNormal")
+theme_override_styles/hover = SubResource("StyleHotspotHover")
+theme_override_styles/pressed = SubResource("StyleHotspotPressed")
+theme_override_styles/focus = SubResource("StyleHotspotFocus")
+text = "UI_COCKPIT_HOTSPOT_COMPANY_TERMINAL"
+metadata/hotspot_id = &"company_terminal"
+
+[node name="Radio" type="Button" parent="Hotspots"]
+custom_minimum_size = Vector2(84, 70)
+layout_mode = 0
+offset_left = 304.0
+offset_top = 228.0
+offset_right = 388.0
+offset_bottom = 298.0
+focus_neighbor_top = NodePath("../WindowView")
+focus_neighbor_left = NodePath("../CompanyTerminal")
+focus_neighbor_right = NodePath("../CargoIndicator")
+focus_next = NodePath("../CargoIndicator")
+focus_previous = NodePath("../CompanyTerminal")
+mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_colors/font_hover_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_colors/font_focus_color = Color(0.905882, 0.87451, 0.784314, 1)
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleHotspotNormal")
+theme_override_styles/hover = SubResource("StyleHotspotHover")
+theme_override_styles/pressed = SubResource("StyleHotspotPressed")
+theme_override_styles/focus = SubResource("StyleHotspotFocus")
+text = "UI_COCKPIT_HOTSPOT_RADIO"
+metadata/hotspot_id = &"radio"
+
+[node name="CargoIndicator" type="Button" parent="Hotspots"]
+custom_minimum_size = Vector2(108, 90)
+layout_mode = 0
+offset_left = 396.0
+offset_top = 208.0
+offset_right = 504.0
+offset_bottom = 298.0
+focus_neighbor_top = NodePath("../WindowView")
+focus_neighbor_left = NodePath("../Radio")
+focus_neighbor_right = NodePath("../LaoPiSeat")
+focus_next = NodePath("../LaoPiSeat")
+focus_previous = NodePath("../Radio")
+mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_colors/font_hover_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_colors/font_focus_color = Color(0.905882, 0.87451, 0.784314, 1)
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleHotspotNormal")
+theme_override_styles/hover = SubResource("StyleHotspotHover")
+theme_override_styles/pressed = SubResource("StyleHotspotPressed")
+theme_override_styles/focus = SubResource("StyleHotspotFocus")
+text = "UI_COCKPIT_HOTSPOT_CARGO"
+metadata/hotspot_id = &"cargo_indicator"
+
+[node name="LaoPiSeat" type="Button" parent="Hotspots"]
+custom_minimum_size = Vector2(112, 108)
+layout_mode = 0
+offset_left = 512.0
+offset_top = 190.0
+offset_right = 624.0
+offset_bottom = 298.0
+focus_neighbor_top = NodePath("../WindowView")
+focus_neighbor_left = NodePath("../CargoIndicator")
+focus_next = NodePath("../WindowView")
+focus_previous = NodePath("../CargoIndicator")
+mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_colors/font_hover_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_colors/font_focus_color = Color(0.905882, 0.87451, 0.784314, 1)
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleWindowNormal")
+theme_override_styles/hover = SubResource("StyleHotspotHover")
+theme_override_styles/pressed = SubResource("StyleHotspotPressed")
+theme_override_styles/focus = SubResource("StyleHotspotFocus")
+text = "UI_COCKPIT_HOTSPOT_LAO_PI"
+vertical_alignment = 2
+metadata/hotspot_id = &"lao_pi_seat"
+
+[node name="StatusPanel" type="PanelContainer" parent="."]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 310.0
+offset_right = 624.0
+offset_bottom = 352.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleStatusPanel")
+
+[node name="Margin" type="MarginContainer" parent="StatusPanel"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.635294, 0.823529, 0.905882, 1)
-theme_override_font_sizes/font_size = 30
-text = "UI_STAGE_COCKPIT"
-horizontal_alignment = 1
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 5
 
-[node name="PlaceholderLabel" type="Label" parent="Content"]
+[node name="Content" type="HBoxContainer" parent="StatusPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="StatusLabel" type="Label" parent="StatusPanel/Margin/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(164, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
-text = "UI_STAGE_PLACEHOLDER"
-horizontal_alignment = 1
+theme_override_font_sizes/font_size = 12
+text = "UI_COCKPIT_STATUS_READY"
+vertical_alignment = 1
+text_overrun_behavior = 3
+
+[node name="Divider" type="VSeparator" parent="StatusPanel/Margin/Content"]
+layout_mode = 2
+modulate = Color(0.603922, 0.654902, 0.709804, 0.6)
+
+[node name="FeedbackLabel" type="Label" parent="StatusPanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 12
+text = "UI_COCKPIT_FEEDBACK_READY"
+vertical_alignment = 1
+autowrap_mode = 2
+max_lines_visible = 2
+text_overrun_behavior = 3

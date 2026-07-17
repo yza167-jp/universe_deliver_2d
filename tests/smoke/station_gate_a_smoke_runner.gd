@@ -278,11 +278,30 @@ func _run_smoke() -> void:
 	)
 	_check(
 		_scene_router.current_stage == SceneRouterService.Stage.STATION,
-		"Gate A must stop before entering the unimplemented cockpit."
+		"Opening departure confirmation must not enter the cockpit automatically."
 	)
 	departure.close_departure_gate()
 	_check(player.is_input_enabled(), "Returning to the station did not restore player input.")
 	_check(not modal_coordinator.is_modal_active(), "Departure gate did not release modal priority.")
+	_check(cockpit_entry.interact(player), "Cockpit entrance could not reopen departure confirmation.")
+	await process_frame
+	await process_frame
+	_check(departure.is_departure_gate_visible(), "Departure confirmation did not reopen.")
+	_check(departure.enter_cockpit(), "Confirmed departure could not enter the cockpit.")
+	await process_frame
+	await process_frame
+	_check(
+		_scene_router.current_stage == SceneRouterService.Stage.COCKPIT,
+		"Station departure did not transition to the cockpit stage."
+	)
+	var cockpit: Cockpit = (
+		scene_container.get_child(0) as Cockpit
+		if scene_container.get_child_count() == 1
+		else null
+	)
+	_check(cockpit != null, "Cockpit stage did not instantiate the interactive graybox.")
+	if cockpit != null:
+		_check(cockpit.get_hotspot_ids().size() == 6, "Cockpit handoff is missing required hotspots.")
 
 	await _cleanup()
 	_finish_smoke()

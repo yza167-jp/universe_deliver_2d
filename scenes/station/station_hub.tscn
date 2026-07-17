@@ -558,10 +558,16 @@ horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 2
 
-[node name="CloseButton" type="Button" parent="DepartureUILayer/DepartureReadyPanel/Panel/Margin/Content"]
+[node name="ButtonRow" type="HBoxContainer" parent="DepartureUILayer/DepartureReadyPanel/Panel/Margin/Content"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="CloseButton" type="Button" parent="DepartureUILayer/DepartureReadyPanel/Panel/Margin/Content/ButtonRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 34)
 layout_mode = 2
+size_flags_horizontal = 3
+focus_neighbor_right = NodePath("../EnterCockpitButton")
 theme_override_colors/font_color = Color(0.0313726, 0.0666667, 0.121569, 1)
 theme_override_colors/font_focus_color = Color(0.0313726, 0.0666667, 0.121569, 1)
 theme_override_font_sizes/font_size = 15
@@ -570,3 +576,18 @@ theme_override_styles/hover = SubResource("StyleDepartureButton")
 theme_override_styles/pressed = SubResource("StyleDepartureButton")
 theme_override_styles/focus = SubResource("StyleDepartureButton")
 text = "UI_DEPARTURE_GATE_CLOSE"
+
+[node name="EnterCockpitButton" type="Button" parent="DepartureUILayer/DepartureReadyPanel/Panel/Margin/Content/ButtonRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_neighbor_left = NodePath("../CloseButton")
+theme_override_colors/font_color = Color(0.0313726, 0.0666667, 0.121569, 1)
+theme_override_colors/font_focus_color = Color(0.0313726, 0.0666667, 0.121569, 1)
+theme_override_font_sizes/font_size = 15
+theme_override_styles/normal = SubResource("StyleDepartureButton")
+theme_override_styles/hover = SubResource("StyleDepartureButton")
+theme_override_styles/pressed = SubResource("StyleDepartureButton")
+theme_override_styles/focus = SubResource("StyleDepartureButton")
+text = "UI_DEPARTURE_GATE_ENTER_COCKPIT"
