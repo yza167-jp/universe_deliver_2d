@@ -6,10 +6,20 @@ signal runtime_state_reset
 signal order_status_changed(order_id: StringName, status: OrderStatus)
 signal ship_configuration_changed
 signal departure_readiness_changed(confirmed: bool)
+signal travel_state_changed(state: TravelState, destination_id: StringName)
 
 enum OrderStatus {
 	NOT_ACCEPTED,
 	ACCEPTED,
+	COMPLETED,
+}
+
+enum TravelState {
+	IDLE,
+	DESTINATION_CONFIRMED,
+	DEPARTURE,
+	CRUISE,
+	APPROACH,
 	COMPLETED,
 }
 
@@ -26,6 +36,14 @@ const LOADOUT_ERROR_MISSING_REQUIRED_MODULES: StringName = &"missing_required_mo
 const LOADOUT_ERROR_INVALID_MODULE: StringName = &"invalid_module"
 const LOADOUT_ERROR_MODULE_NOT_EQUIPPED: StringName = &"module_not_equipped"
 
+const TRAVEL_ERROR_MISSING_DATA: StringName = &"missing_data"
+const TRAVEL_ERROR_ORDER_NOT_ACTIVE: StringName = &"order_not_active"
+const TRAVEL_ERROR_DEPARTURE_NOT_CONFIRMED: StringName = &"departure_not_confirmed"
+const TRAVEL_ERROR_DESTINATION_NOT_ALLOWED: StringName = &"destination_not_allowed"
+const TRAVEL_ERROR_ALREADY_STARTED: StringName = &"already_started"
+const TRAVEL_ERROR_ALREADY_COMPLETED: StringName = &"already_completed"
+const TRAVEL_ERROR_INVALID_TRANSITION: StringName = &"invalid_transition"
+
 var current_order_id: StringName = &""
 var destination_id: StringName = &""
 var cargo_id: StringName = &""
@@ -36,6 +54,9 @@ var completed_order_ids: Dictionary[StringName, bool] = {}
 var last_order_error: StringName = &""
 var departure_confirmed: bool = false
 var last_loadout_error: StringName = &""
+var travel_state: TravelState = TravelState.IDLE
+var travel_destination_id: StringName = &""
+var last_travel_error: StringName = &""
 
 
 func _init() -> void:
@@ -53,6 +74,9 @@ func reset_runtime_state() -> void:
 	last_order_error = &""
 	departure_confirmed = false
 	last_loadout_error = &""
+	travel_state = TravelState.IDLE
+	travel_destination_id = &""
+	last_travel_error = &""
 	runtime_state_reset.emit()
 
 
@@ -92,6 +116,7 @@ func accept_order(order: OrderDefinition) -> bool:
 	cargo_id = order.cargo.id
 	departure_confirmed = false
 	last_loadout_error = &""
+	_reset_travel_state(false)
 	order_status_changed.emit(order.id, OrderStatus.ACCEPTED)
 	departure_readiness_changed.emit(false)
 	return true
@@ -112,6 +137,7 @@ func complete_current_order(order: OrderDefinition) -> bool:
 	current_order_id = &""
 	departure_confirmed = false
 	last_loadout_error = &""
+	_reset_travel_state(false)
 	order_status_changed.emit(order.id, OrderStatus.COMPLETED)
 	departure_readiness_changed.emit(false)
 	return true
@@ -204,6 +230,118 @@ func is_departure_confirmed_for_order(order: OrderDefinition) -> bool:
 	return order != null and current_order_id == order.id and departure_confirmed
 
 
+func get_travel_start_error(
+	order: OrderDefinition,
+	requested_destination_id: StringName
+) -> StringName:
+	if (
+		order == null
+		or order.id.is_empty()
+		or order.destination_planet == null
+		or order.destination_planet.id.is_empty()
+		or requested_destination_id.is_empty()
+	):
+		return TRAVEL_ERROR_MISSING_DATA
+	if current_order_id != order.id:
+		return TRAVEL_ERROR_ORDER_NOT_ACTIVE
+	if not departure_confirmed:
+		return TRAVEL_ERROR_DEPARTURE_NOT_CONFIRMED
+	if (
+		requested_destination_id != order.destination_planet.id
+		or destination_id != order.destination_planet.id
+	):
+		return TRAVEL_ERROR_DESTINATION_NOT_ALLOWED
+	if travel_state == TravelState.COMPLETED:
+		return TRAVEL_ERROR_ALREADY_COMPLETED
+	if travel_state in [TravelState.DEPARTURE, TravelState.CRUISE, TravelState.APPROACH]:
+		return TRAVEL_ERROR_ALREADY_STARTED
+	return &""
+
+
+func confirm_travel_destination(
+	order: OrderDefinition,
+	requested_destination_id: StringName
+) -> bool:
+	last_travel_error = get_travel_start_error(order, requested_destination_id)
+	if not last_travel_error.is_empty():
+		return false
+	if travel_state == TravelState.DESTINATION_CONFIRMED:
+		if travel_destination_id == requested_destination_id:
+			return true
+		last_travel_error = TRAVEL_ERROR_INVALID_TRANSITION
+		return false
+	travel_destination_id = requested_destination_id
+	_set_travel_state(TravelState.DESTINATION_CONFIRMED)
+	return true
+
+
+func begin_travel(order: OrderDefinition, requested_destination_id: StringName) -> bool:
+	last_travel_error = get_travel_start_error(order, requested_destination_id)
+	if not last_travel_error.is_empty():
+		return false
+	if travel_state == TravelState.IDLE:
+		if not confirm_travel_destination(order, requested_destination_id):
+			return false
+	if (
+		travel_state != TravelState.DESTINATION_CONFIRMED
+		or travel_destination_id != requested_destination_id
+	):
+		last_travel_error = TRAVEL_ERROR_INVALID_TRANSITION
+		return false
+	last_travel_error = &""
+	_set_travel_state(TravelState.DEPARTURE)
+	return true
+
+
+func advance_travel_state(next_state: TravelState) -> bool:
+	last_travel_error = &""
+	var expected_state: TravelState = TravelState.IDLE
+	match travel_state:
+		TravelState.DEPARTURE:
+			expected_state = TravelState.CRUISE
+		TravelState.CRUISE:
+			expected_state = TravelState.APPROACH
+		TravelState.APPROACH:
+			expected_state = TravelState.COMPLETED
+		_:
+			last_travel_error = TRAVEL_ERROR_INVALID_TRANSITION
+			return false
+	if next_state != expected_state:
+		last_travel_error = TRAVEL_ERROR_INVALID_TRANSITION
+		return false
+	_set_travel_state(next_state)
+	if travel_state == TravelState.COMPLETED:
+		mark_travel_seen(travel_destination_id)
+	return true
+
+
+func complete_travel() -> bool:
+	last_travel_error = &""
+	if travel_state not in [
+		TravelState.DEPARTURE,
+		TravelState.CRUISE,
+		TravelState.APPROACH,
+	]:
+		last_travel_error = TRAVEL_ERROR_INVALID_TRANSITION
+		return false
+	_set_travel_state(TravelState.COMPLETED)
+	mark_travel_seen(travel_destination_id)
+	return true
+
+
+func mark_travel_seen(travel_destination: StringName) -> void:
+	if travel_destination.is_empty():
+		return
+	set_story_flag(_get_travel_seen_flag(travel_destination))
+
+
+func has_seen_travel(travel_destination: StringName) -> bool:
+	return (
+		not travel_destination.is_empty()
+		and has_story_flag(_get_travel_seen_flag(travel_destination))
+	)
+
+
 func set_story_flag(flag_id: StringName, enabled: bool = true) -> void:
 	story_flags[flag_id] = enabled
 
@@ -222,6 +360,10 @@ func has_read_dialogue_line(sequence_id: StringName, line_id: StringName) -> boo
 
 func _get_dialogue_read_id(sequence_id: StringName, line_id: StringName) -> StringName:
 	return StringName("%s/%s" % [sequence_id, line_id])
+
+
+func _get_travel_seen_flag(travel_destination: StringName) -> StringName:
+	return StringName("travel_seen/%s" % travel_destination)
 
 
 func _has_required_order_data(order: OrderDefinition) -> bool:
@@ -251,4 +393,19 @@ func _invalidate_departure_confirmation() -> void:
 	if not departure_confirmed:
 		return
 	departure_confirmed = false
+	if travel_state in [TravelState.IDLE, TravelState.DESTINATION_CONFIRMED]:
+		_reset_travel_state()
 	departure_readiness_changed.emit(false)
+
+
+func _set_travel_state(next_state: TravelState) -> void:
+	travel_state = next_state
+	travel_state_changed.emit(travel_state, travel_destination_id)
+
+
+func _reset_travel_state(emit_change: bool = true) -> void:
+	travel_state = TravelState.IDLE
+	travel_destination_id = &""
+	last_travel_error = &""
+	if emit_change:
+		travel_state_changed.emit(travel_state, travel_destination_id)

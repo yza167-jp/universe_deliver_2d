@@ -4,11 +4,20 @@ extends Control
 signal hotspot_focused(hotspot_id: StringName)
 signal hotspot_activated(hotspot_id: StringName)
 signal radio_state_changed(is_on: bool)
+signal travel_phase_changed(phase: GameStateModel.TravelState)
+signal travel_finished(destination_id: StringName)
 
 const INTERACT_ACTION: StringName = &"interact"
 const CANCEL_ACTION: StringName = &"ui_cancel"
 const INITIAL_HOTSPOT_ID: StringName = &"navigation_screen"
 const DIALOGUE_UI_SCENE: PackedScene = preload("res://scenes/narrative/dialogue_ui.tscn")
+const TRAVEL_PHASE_CUE_SECONDS: float = 0.16
+const TRAVEL_PHASE_CUE_VOLUME: float = 0.045
+const TRAVEL_PHASE_SPEEDS: Dictionary[GameStateModel.TravelState, float] = {
+	GameStateModel.TravelState.DEPARTURE: 2.0,
+	GameStateModel.TravelState.CRUISE: 3.4,
+	GameStateModel.TravelState.APPROACH: 1.4,
+}
 
 const HOTSPOT_IDS: Array[StringName] = [
 	&"navigation_screen",
@@ -60,7 +69,15 @@ const MUTED_TEXT: Color = Color("9aa7b5")
 @onready var _device_panel: PanelContainer = %DevicePanel
 @onready var _device_panel_title: Label = %DevicePanelTitle
 @onready var _device_panel_body: Label = %DevicePanelBody
+@onready var _device_action_button: Button = %DeviceActionButton
 @onready var _device_close_button: Button = %DeviceCloseButton
+@onready var _travel_controller: TravelSequenceController = %TravelSequenceController
+@onready var _travel_status_panel: PanelContainer = %TravelStatusPanel
+@onready var _travel_phase_label: Label = %TravelPhaseLabel
+@onready var _travel_progress_bar: ProgressBar = %TravelProgressBar
+@onready var _travel_detail_label: Label = %TravelDetailLabel
+@onready var _skip_travel_button: Button = %SkipTravelButton
+@onready var _travel_audio_player: AudioStreamPlayer = %TravelAudioPlayer
 
 var _hotspot_buttons: Dictionary[StringName, Button] = {}
 var _selected_hotspot_id: StringName = &""
@@ -72,22 +89,30 @@ var _radio_on: bool = false
 var _dialogue_active: bool = false
 var _initialized: bool = false
 var _game_state: GameStateModel
+var _scene_router: SceneRouterService
+var _active_order: OrderDefinition
 var _dialogue_ui: DialogueUI
 var _fallback_dialogue_layer: CanvasLayer
 
 
 func _ready() -> void:
 	_game_state = get_node_or_null("/root/GameState") as GameStateModel
+	_scene_router = get_node_or_null("/root/SceneRouter") as SceneRouterService
 	_dialogue_ui = _resolve_dialogue_ui()
 	if not _initialize_hotspots() or not _resolve_required_ui():
 		push_error("Cockpit could not initialize its hotspots, panels, or dialogue UI.")
 		return
+	_active_order = _resolve_active_order()
+	_travel_controller.configure(_game_state, _active_order)
 	_connect_runtime_signals()
+	_configure_travel_audio()
 	_modal_layer.visible = false
 	_device_panel.visible = false
 	_device_dimmer.visible = false
+	_device_action_button.visible = false
 	_notification_panel.visible = false
 	_localize_content()
+	_refresh_travel_display()
 	queue_redraw()
 	call_deferred("focus_hotspot", INITIAL_HOTSPOT_ID)
 
@@ -112,6 +137,13 @@ func _unhandled_input(event: InputEvent) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and _initialized:
 		_localize_content()
+
+
+func _exit_tree() -> void:
+	if _travel_audio_player == null:
+		return
+	_travel_audio_player.stop()
+	_travel_audio_player.stream = null
 
 
 func _draw() -> void:
@@ -190,6 +222,65 @@ func get_dialogue_ui() -> DialogueUI:
 
 func get_starfield() -> CockpitStarfield:
 	return _starfield
+
+
+func get_travel_controller() -> TravelSequenceController:
+	return _travel_controller
+
+
+func get_travel_phase_text() -> String:
+	return "" if _travel_phase_label == null else _travel_phase_label.text
+
+
+func get_travel_detail_text() -> String:
+	return "" if _travel_detail_label == null else _travel_detail_label.text
+
+
+func is_travel_status_visible() -> bool:
+	return _travel_status_panel != null and _travel_status_panel.visible
+
+
+func is_skip_travel_visible() -> bool:
+	return _skip_travel_button != null and _skip_travel_button.visible
+
+
+func is_navigation_action_enabled() -> bool:
+	return (
+		_device_action_button != null
+		and _device_action_button.visible
+		and not _device_action_button.disabled
+	)
+
+
+func get_navigation_action_text() -> String:
+	return "" if _device_action_button == null else _device_action_button.text
+
+
+func start_configured_travel() -> bool:
+	_active_order = _resolve_active_order()
+	if (
+		_active_order == null
+		or _active_order.destination_planet == null
+		or _game_state == null
+	):
+		_show_notification(&"UI_COCKPIT_TRAVEL_ERROR_NO_ORDER")
+		return false
+	var destination: StringName = _active_order.destination_planet.id
+	var travel_error: StringName = _game_state.get_travel_start_error(
+		_active_order,
+		destination
+	)
+	if not travel_error.is_empty():
+		_game_state.last_travel_error = travel_error
+		_show_notification(_get_travel_error_key(travel_error))
+		return false
+	_travel_controller.configure(_game_state, _active_order)
+	if not _travel_controller.start_travel(destination):
+		_show_notification(_get_travel_error_key(_game_state.last_travel_error))
+		return false
+	if not _open_panel_id.is_empty():
+		_finish_modal()
+	return true
 
 
 func is_input_locked() -> bool:
@@ -303,24 +394,46 @@ func _resolve_required_ui() -> bool:
 		and _device_panel != null
 		and _device_panel_title != null
 		and _device_panel_body != null
+		and _device_action_button != null
 		and _device_close_button != null
+		and _travel_controller != null
+		and _travel_status_panel != null
+		and _travel_phase_label != null
+		and _travel_progress_bar != null
+		and _travel_detail_label != null
+		and _skip_travel_button != null
+		and _travel_audio_player != null
 		and _dialogue_ui != null
 	)
 
 
 func _connect_runtime_signals() -> void:
+	if not _device_action_button.pressed.is_connected(_on_device_action_pressed):
+		_device_action_button.pressed.connect(_on_device_action_pressed)
 	if not _device_close_button.pressed.is_connected(close_active_modal):
 		_device_close_button.pressed.connect(close_active_modal)
+	if not _skip_travel_button.pressed.is_connected(_on_skip_travel_pressed):
+		_skip_travel_button.pressed.connect(_on_skip_travel_pressed)
 	if not _notification_timer.timeout.is_connected(_hide_notification):
 		_notification_timer.timeout.connect(_hide_notification)
 	if not _dialogue_ui.dialogue_finished.is_connected(_on_dialogue_finished):
 		_dialogue_ui.dialogue_finished.connect(_on_dialogue_finished)
+	if not _travel_controller.travel_started.is_connected(_on_travel_started):
+		_travel_controller.travel_started.connect(_on_travel_started)
+	if not _travel_controller.phase_changed.is_connected(_on_travel_phase_changed):
+		_travel_controller.phase_changed.connect(_on_travel_phase_changed)
+	if not _travel_controller.progress_changed.is_connected(_on_travel_progress_changed):
+		_travel_controller.progress_changed.connect(_on_travel_progress_changed)
+	if not _travel_controller.travel_completed.is_connected(_on_travel_completed):
+		_travel_controller.travel_completed.connect(_on_travel_completed)
 
 
 func _localize_content() -> void:
 	_title_label.text = tr("UI_COCKPIT_TITLE")
 	_instruction_label.text = tr("UI_COCKPIT_INSTRUCTIONS")
+	_device_action_button.text = tr("UI_COCKPIT_NAV_CONFIRM_AND_DEPART")
 	_device_close_button.text = tr("UI_COCKPIT_PANEL_CLOSE")
+	_skip_travel_button.text = tr("UI_COCKPIT_TRAVEL_SKIP")
 	for hotspot_id: StringName in HOTSPOT_IDS:
 		var button: Button = _hotspot_buttons.get(hotspot_id)
 		if button != null:
@@ -331,6 +444,7 @@ func _localize_content() -> void:
 		_populate_device_panel(_open_panel_id)
 	if not _notification_key.is_empty():
 		_notification_label.text = tr(String(_notification_key))
+	_refresh_travel_display()
 
 
 func _select_hotspot(hotspot_id: StringName) -> void:
@@ -393,15 +507,20 @@ func _open_device_panel(hotspot_id: StringName) -> bool:
 	_device_dimmer.visible = true
 	_device_panel.visible = true
 	_populate_device_panel(hotspot_id)
-	_device_close_button.grab_focus()
+	if hotspot_id == &"navigation_screen" and is_navigation_action_enabled():
+		_device_action_button.grab_focus()
+	else:
+		_device_close_button.grab_focus()
 	return true
 
 
 func _populate_device_panel(hotspot_id: StringName) -> void:
+	_device_action_button.visible = hotspot_id == &"navigation_screen"
 	match hotspot_id:
 		&"navigation_screen":
 			_device_panel_title.text = tr("UI_COCKPIT_NAV_PANEL_TITLE")
 			_device_panel_body.text = _build_navigation_panel_text()
+			_refresh_navigation_action()
 		&"company_terminal":
 			_device_panel_title.text = tr("UI_COCKPIT_COMPANY_PANEL_TITLE")
 			_device_panel_body.text = _build_company_panel_text()
@@ -415,9 +534,9 @@ func _build_navigation_panel_text() -> String:
 		return "\n".join([
 			tr("UI_COCKPIT_NAV_NO_ORDER"),
 			tr("UI_COCKPIT_NAV_DESTINATION_UNSET"),
-			tr("UI_COCKPIT_NAV_ROUTE_PENDING"),
+			tr("UI_COCKPIT_NAV_ROUTE_NO_ORDER"),
 		])
-	var order: OrderDefinition = data_registry.find_order(_game_state.current_order_id)
+	var order: OrderDefinition = _resolve_active_order()
 	var planet: PlanetDefinition = data_registry.find_planet(_game_state.destination_id)
 	var order_name: String = tr("UI_COCKPIT_VALUE_UNAVAILABLE")
 	var planet_name: String = tr("UI_COCKPIT_VALUE_UNAVAILABLE")
@@ -425,10 +544,17 @@ func _build_navigation_panel_text() -> String:
 		order_name = tr(String(order.display_name_key))
 	if planet != null:
 		planet_name = tr(String(planet.display_name_key))
+	var route_status: String = tr("UI_COCKPIT_NAV_ROUTE_PENDING")
+	if order != null:
+		var travel_error: StringName = _game_state.get_travel_start_error(
+			order,
+			order.destination_planet.id
+		)
+		route_status = tr(String(_get_travel_route_status_key(travel_error)))
 	return "\n".join([
 		tr("UI_COCKPIT_NAV_ORDER_FORMAT") % order_name,
 		tr("UI_COCKPIT_NAV_DESTINATION_FORMAT") % planet_name,
-		tr("UI_COCKPIT_NAV_ROUTE_PENDING"),
+		route_status,
 	])
 
 
@@ -440,10 +566,13 @@ func _build_company_panel_text() -> String:
 			order_status = tr("UI_COCKPIT_COMPANY_ACTIVE_ORDER_FORMAT") % tr(
 				String(order.display_name_key)
 			)
+	var travel_status: String = tr("UI_COCKPIT_COMPANY_TRAVEL_NOTICE")
+	if _game_state != null:
+		travel_status = tr(String(_get_company_travel_status_key(_game_state.travel_state)))
 	return "\n".join([
 		tr("UI_COCKPIT_COMPANY_LINK_STATUS"),
 		order_status,
-		tr("UI_COCKPIT_COMPANY_TRAVEL_NOTICE"),
+		travel_status,
 	])
 
 
@@ -462,6 +591,204 @@ func _build_cargo_panel_text() -> String:
 		tr("UI_COCKPIT_CARGO_INTEGRITY_PLACEHOLDER"),
 		tr("UI_COCKPIT_CARGO_LOCK_STATUS"),
 	])
+
+
+func _refresh_navigation_action() -> void:
+	_active_order = _resolve_active_order()
+	_device_action_button.text = tr("UI_COCKPIT_NAV_CONFIRM_AND_DEPART")
+	if _game_state == null or _active_order == null:
+		_device_action_button.disabled = true
+		return
+	var destination: StringName = _active_order.destination_planet.id
+	_device_action_button.disabled = not _game_state.get_travel_start_error(
+		_active_order,
+		destination
+	).is_empty()
+
+
+func _on_device_action_pressed() -> void:
+	if _open_panel_id != &"navigation_screen":
+		return
+	start_configured_travel()
+
+
+func _on_skip_travel_pressed() -> void:
+	if not _travel_controller.skip_travel():
+		_show_notification(&"UI_COCKPIT_TRAVEL_SKIP_LOCKED")
+
+
+func _on_travel_started(_destination_id: StringName) -> void:
+	_refresh_travel_display()
+
+
+func _on_travel_phase_changed(phase: GameStateModel.TravelState) -> void:
+	_refresh_travel_display()
+	_play_travel_phase_cue(phase)
+	travel_phase_changed.emit(phase)
+
+
+func _on_travel_progress_changed(
+	phase: GameStateModel.TravelState,
+	_phase_progress: float,
+	total_progress: float
+) -> void:
+	_update_travel_visuals(phase, total_progress)
+
+
+func _on_travel_completed(destination_id: StringName, _was_skipped: bool) -> void:
+	_refresh_travel_display()
+	travel_finished.emit(destination_id)
+	if _scene_router == null or _scene_router.current_stage != SceneRouterService.Stage.COCKPIT:
+		_show_notification(&"UI_COCKPIT_TRAVEL_READY_FOR_FLIGHT")
+		return
+	if not _scene_router.request_stage(SceneRouterService.Stage.FLIGHT):
+		push_error("Cockpit could not transition to FLIGHT: %s" % _scene_router.last_error)
+
+
+func _refresh_travel_display() -> void:
+	if _travel_status_panel == null or _travel_controller == null:
+		return
+	var phase: GameStateModel.TravelState = _travel_controller.get_phase()
+	var should_show: bool = phase in [
+		GameStateModel.TravelState.DEPARTURE,
+		GameStateModel.TravelState.CRUISE,
+		GameStateModel.TravelState.APPROACH,
+		GameStateModel.TravelState.COMPLETED,
+	]
+	_travel_status_panel.visible = should_show
+	_travel_phase_label.text = tr(String(_get_travel_phase_key(phase)))
+	_travel_detail_label.text = tr(String(_get_travel_detail_key(phase)))
+	_travel_progress_bar.value = _travel_controller.get_total_progress() * 100.0
+	_skip_travel_button.visible = _travel_controller.can_skip()
+	_update_travel_visuals(phase, _travel_controller.get_total_progress())
+
+
+func _update_travel_visuals(
+	phase: GameStateModel.TravelState,
+	total_progress: float
+) -> void:
+	if _travel_progress_bar != null:
+		_travel_progress_bar.value = total_progress * 100.0
+	if _skip_travel_button != null:
+		_skip_travel_button.visible = _travel_controller.can_skip()
+	if _starfield != null:
+		var speed_multiplier: float = TRAVEL_PHASE_SPEEDS.get(phase, 1.0)
+		_starfield.set_travel_visuals(total_progress, speed_multiplier)
+
+
+func _configure_travel_audio() -> void:
+	var generator: AudioStreamGenerator = AudioStreamGenerator.new()
+	generator.mix_rate = 22050.0
+	generator.buffer_length = 0.25
+	_travel_audio_player.stream = generator
+
+
+func _play_travel_phase_cue(phase: GameStateModel.TravelState) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var frequency: float = 0.0
+	match phase:
+		GameStateModel.TravelState.DEPARTURE:
+			frequency = 262.0
+		GameStateModel.TravelState.CRUISE:
+			frequency = 330.0
+		GameStateModel.TravelState.APPROACH:
+			frequency = 440.0
+		_:
+			return
+	_travel_audio_player.play()
+	var playback: AudioStreamGeneratorPlayback = (
+		_travel_audio_player.get_stream_playback() as AudioStreamGeneratorPlayback
+	)
+	if playback == null:
+		return
+	var sample_rate: float = 22050.0
+	var frame_count: int = mini(
+		int(sample_rate * TRAVEL_PHASE_CUE_SECONDS),
+		playback.get_frames_available()
+	)
+	for frame_index: int in frame_count:
+		var progress: float = float(frame_index) / maxf(float(frame_count - 1), 1.0)
+		var envelope: float = sin(progress * PI)
+		var sample: float = (
+			sin(TAU * frequency * float(frame_index) / sample_rate)
+			* TRAVEL_PHASE_CUE_VOLUME
+			* envelope
+		)
+		playback.push_frame(Vector2(sample, sample))
+
+
+func _resolve_active_order() -> OrderDefinition:
+	if _game_state == null or data_registry == null or _game_state.current_order_id.is_empty():
+		return null
+	return data_registry.find_order(_game_state.current_order_id)
+
+
+func _get_travel_phase_key(phase: GameStateModel.TravelState) -> StringName:
+	match phase:
+		GameStateModel.TravelState.DEPARTURE:
+			return &"UI_COCKPIT_TRAVEL_PHASE_DEPARTURE"
+		GameStateModel.TravelState.CRUISE:
+			return &"UI_COCKPIT_TRAVEL_PHASE_CRUISE"
+		GameStateModel.TravelState.APPROACH:
+			return &"UI_COCKPIT_TRAVEL_PHASE_APPROACH"
+		GameStateModel.TravelState.COMPLETED:
+			return &"UI_COCKPIT_TRAVEL_PHASE_COMPLETED"
+	return &"UI_COCKPIT_TRAVEL_PHASE_IDLE"
+
+
+func _get_travel_detail_key(phase: GameStateModel.TravelState) -> StringName:
+	match phase:
+		GameStateModel.TravelState.DEPARTURE:
+			return &"UI_COCKPIT_TRAVEL_DETAIL_DEPARTURE"
+		GameStateModel.TravelState.CRUISE:
+			return &"UI_COCKPIT_TRAVEL_DETAIL_CRUISE"
+		GameStateModel.TravelState.APPROACH:
+			return &"UI_COCKPIT_TRAVEL_DETAIL_APPROACH"
+		GameStateModel.TravelState.COMPLETED:
+			return &"UI_COCKPIT_TRAVEL_DETAIL_COMPLETED"
+	return &"UI_COCKPIT_TRAVEL_DETAIL_IDLE"
+
+
+func _get_travel_route_status_key(error: StringName) -> StringName:
+	if error.is_empty():
+		return &"UI_COCKPIT_NAV_ROUTE_READY"
+	match error:
+		GameStateModel.TRAVEL_ERROR_DEPARTURE_NOT_CONFIRMED:
+			return &"UI_COCKPIT_NAV_ROUTE_PENDING"
+		GameStateModel.TRAVEL_ERROR_ALREADY_STARTED:
+			return &"UI_COCKPIT_NAV_ROUTE_ACTIVE"
+		GameStateModel.TRAVEL_ERROR_ALREADY_COMPLETED:
+			return &"UI_COCKPIT_NAV_ROUTE_COMPLETED"
+		GameStateModel.TRAVEL_ERROR_ORDER_NOT_ACTIVE:
+			return &"UI_COCKPIT_NAV_ROUTE_NO_ORDER"
+	return &"UI_COCKPIT_NAV_ROUTE_UNAVAILABLE"
+
+
+func _get_company_travel_status_key(phase: GameStateModel.TravelState) -> StringName:
+	match phase:
+		GameStateModel.TravelState.DEPARTURE:
+			return &"UI_COCKPIT_COMPANY_TRAVEL_DEPARTURE"
+		GameStateModel.TravelState.CRUISE:
+			return &"UI_COCKPIT_COMPANY_TRAVEL_CRUISE"
+		GameStateModel.TravelState.APPROACH:
+			return &"UI_COCKPIT_COMPANY_TRAVEL_APPROACH"
+		GameStateModel.TravelState.COMPLETED:
+			return &"UI_COCKPIT_COMPANY_TRAVEL_COMPLETED"
+	return &"UI_COCKPIT_COMPANY_TRAVEL_NOTICE"
+
+
+func _get_travel_error_key(error: StringName) -> StringName:
+	match error:
+		GameStateModel.TRAVEL_ERROR_DEPARTURE_NOT_CONFIRMED:
+			return &"UI_COCKPIT_TRAVEL_ERROR_PREFLIGHT"
+		GameStateModel.TRAVEL_ERROR_DESTINATION_NOT_ALLOWED:
+			return &"UI_COCKPIT_TRAVEL_ERROR_DESTINATION"
+		GameStateModel.TRAVEL_ERROR_ALREADY_STARTED:
+			return &"UI_COCKPIT_TRAVEL_ERROR_ACTIVE"
+		GameStateModel.TRAVEL_ERROR_ALREADY_COMPLETED:
+			return &"UI_COCKPIT_TRAVEL_ERROR_COMPLETED"
+	return &"UI_COCKPIT_TRAVEL_ERROR_NO_ORDER"
 
 
 func _start_lao_pi_dialogue() -> bool:
@@ -496,7 +823,16 @@ func _toggle_radio() -> bool:
 
 
 func _observe_window() -> bool:
-	_show_notification(&"UI_COCKPIT_WINDOW_OBSERVATION")
+	var observation_key: StringName = &"UI_COCKPIT_WINDOW_OBSERVATION"
+	if _game_state != null:
+		match _game_state.travel_state:
+			GameStateModel.TravelState.DEPARTURE:
+				observation_key = &"UI_COCKPIT_WINDOW_DEPARTURE"
+			GameStateModel.TravelState.CRUISE:
+				observation_key = &"UI_COCKPIT_WINDOW_CRUISE"
+			GameStateModel.TravelState.APPROACH:
+				observation_key = &"UI_COCKPIT_WINDOW_APPROACH"
+	_show_notification(observation_key)
 	return true
 
 
@@ -530,6 +866,7 @@ func _finish_modal() -> void:
 	_open_panel_id = &""
 	_dialogue_active = false
 	_device_panel.visible = false
+	_device_action_button.visible = false
 	_device_dimmer.visible = false
 	_modal_layer.visible = false
 	_set_hotspot_input_enabled(true)

@@ -260,7 +260,7 @@ func _close_behavior_and_check_focus(hotspot_id: StringName, use_escape: bool) -
 			_push_action(Cockpit.CANCEL_ACTION)
 		else:
 			var close_button: Button = _cockpit.get_node_or_null(
-				"ModalLayer/DevicePanel/Margin/Content/DeviceCloseButton"
+				"ModalLayer/DevicePanel/Margin/Content/Actions/DeviceCloseButton"
 			) as Button
 			if _cockpit.is_dialogue_active():
 				_check(_cockpit.close_active_modal(), "Dialogue modal could not close.")

@@ -13,6 +13,9 @@ func run() -> Array[String]:
 	game_state.mark_dialogue_line_read(&"dialogue_test", &"line_test")
 	game_state.completed_order_ids[&"order_completed_test"] = true
 	game_state.departure_confirmed = true
+	game_state.travel_state = GameStateModel.TravelState.CRUISE
+	game_state.travel_destination_id = &"planet_test"
+	game_state.last_travel_error = GameStateModel.TRAVEL_ERROR_ALREADY_STARTED
 	expect_true(game_state.has_story_flag(&"story_test"), "Story flag must be readable.", failures)
 	expect_true(
 		game_state.has_read_dialogue_line(&"dialogue_test", &"line_test"),
@@ -34,5 +37,20 @@ func run() -> Array[String]:
 	expect_true(game_state.read_dialogue_ids.is_empty(), "Read dialogue IDs must clear on reset.", failures)
 	expect_true(game_state.completed_order_ids.is_empty(), "Completed orders must clear on reset.", failures)
 	expect_true(not game_state.departure_confirmed, "Departure readiness must clear on reset.", failures)
+	expect_true(
+		game_state.travel_state == GameStateModel.TravelState.IDLE,
+		"Travel state must return to idle on reset.",
+		failures
+	)
+	expect_true(
+		game_state.travel_destination_id.is_empty(),
+		"Travel destination must clear on reset.",
+		failures
+	)
+	expect_true(
+		game_state.last_travel_error.is_empty(),
+		"Travel errors must clear on reset.",
+		failures
+	)
 	game_state.free()
 	return failures

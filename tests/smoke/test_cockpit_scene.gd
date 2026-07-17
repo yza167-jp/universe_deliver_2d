@@ -27,10 +27,32 @@ func run() -> Array[String]:
 	var device_panel: PanelContainer = cockpit.get_node_or_null(
 		"ModalLayer/DevicePanel"
 	) as PanelContainer
+	var device_action: Button = cockpit.get_node_or_null(
+		"ModalLayer/DevicePanel/Margin/Content/Actions/DeviceActionButton"
+	) as Button
+	var travel_controller: TravelSequenceController = cockpit.get_node_or_null(
+		"TravelSequenceController"
+	) as TravelSequenceController
+	var travel_status: PanelContainer = cockpit.get_node_or_null(
+		"TravelStatusPanel"
+	) as PanelContainer
+	var skip_travel: Button = cockpit.get_node_or_null("SkipTravelButton") as Button
+	var travel_audio: AudioStreamPlayer = cockpit.get_node_or_null(
+		"TravelAudioPlayer"
+	) as AudioStreamPlayer
 	expect_true(hotspots_root != null, "Cockpit must contain its hotspot layer.", failures)
 	expect_true(starfield != null, "Cockpit must contain its animated starfield.", failures)
 	expect_true(modal_layer != null, "Cockpit must contain a modal input blocker.", failures)
 	expect_true(device_panel != null, "Cockpit must contain its reusable device panel.", failures)
+	expect_true(device_action != null, "Navigation panel must expose destination confirmation.", failures)
+	expect_true(
+		travel_controller != null,
+		"Cockpit must own a local travel sequence controller.",
+		failures
+	)
+	expect_true(travel_status != null, "Cockpit must contain its travel status panel.", failures)
+	expect_true(skip_travel != null, "Cockpit must contain its seen-route skip control.", failures)
+	expect_true(travel_audio != null, "Cockpit must contain its travel cue player.", failures)
 	expect_true(cockpit.data_registry != null, "Cockpit must expose M0 order and cargo data.", failures)
 	expect_true(cockpit.lao_pi_dialogue != null, "Cockpit must provide Lao Pi's dialogue sequence.", failures)
 	if starfield != null:

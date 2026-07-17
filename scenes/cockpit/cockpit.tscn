@@ -1,9 +1,10 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/cockpit/cockpit.gd" id="1_cockpit"]
 [ext_resource type="Script" path="res://scripts/cockpit/cockpit_starfield.gd" id="2_starfield"]
 [ext_resource type="Resource" path="res://data/m0_data_registry.tres" id="3_registry"]
 [ext_resource type="Resource" path="res://data/dialogue/lao_pi_cockpit_graybox.tres" id="4_lao_pi_dialogue"]
+[ext_resource type="Script" path="res://scripts/cockpit/travel_sequence_controller.gd" id="5_travel_controller"]
 
 [sub_resource type="SystemFont" id="SystemFontCockpit"]
 font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
@@ -311,6 +312,66 @@ text = "UI_COCKPIT_HOTSPOT_LAO_PI"
 vertical_alignment = 2
 metadata/hotspot_id = &"lao_pi_seat"
 
+[node name="TravelStatusPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_left = 104.0
+offset_top = 42.0
+offset_right = 536.0
+offset_bottom = 104.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleNotificationPanel")
+
+[node name="Margin" type="MarginContainer" parent="TravelStatusPanel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 92
+theme_override_constants/margin_bottom = 5
+
+[node name="Content" type="VBoxContainer" parent="TravelStatusPanel/Margin"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="TravelPhaseLabel" type="Label" parent="TravelStatusPanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
+theme_override_font_sizes/font_size = 12
+text = "UI_COCKPIT_TRAVEL_PHASE_IDLE"
+
+[node name="TravelDetailLabel" type="Label" parent="TravelStatusPanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_COCKPIT_TRAVEL_DETAIL_IDLE"
+text_overrun_behavior = 3
+
+[node name="TravelProgressBar" type="ProgressBar" parent="TravelStatusPanel/Margin/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 7)
+layout_mode = 2
+mouse_filter = 2
+show_percentage = false
+
+[node name="SkipTravelButton" type="Button" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_left = 448.0
+offset_top = 58.0
+offset_right = 524.0
+offset_bottom = 88.0
+mouse_default_cursor_shape = 2
+theme_override_font_sizes/font_size = 11
+text = "UI_COCKPIT_TRAVEL_SKIP"
+
 [node name="StatusPanel" type="PanelContainer" parent="."]
 layout_mode = 0
 offset_left = 16.0
@@ -390,6 +451,13 @@ unique_name_in_owner = true
 wait_time = 2.6
 one_shot = true
 
+[node name="TravelSequenceController" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("5_travel_controller")
+
+[node name="TravelAudioPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+
 [node name="ModalLayer" type="Control" parent="."]
 unique_name_in_owner = true
 visible = false
@@ -431,9 +499,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -200.0
-offset_top = -96.0
+offset_top = -108.0
 offset_right = 200.0
-offset_bottom = 96.0
+offset_bottom = 108.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleDevicePanel")
@@ -471,9 +539,20 @@ text = "UI_COCKPIT_NAV_NO_ORDER"
 vertical_alignment = 1
 autowrap_mode = 2
 
-[node name="DeviceCloseButton" type="Button" parent="ModalLayer/DevicePanel/Margin/Content"]
+[node name="Actions" type="HBoxContainer" parent="ModalLayer/DevicePanel/Margin/Content"]
+layout_mode = 2
+alignment = 2
+theme_override_constants/separation = 8
+
+[node name="DeviceActionButton" type="Button" parent="ModalLayer/DevicePanel/Margin/Content/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(148, 28)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "UI_COCKPIT_NAV_CONFIRM_AND_DEPART"
+
+[node name="DeviceCloseButton" type="Button" parent="ModalLayer/DevicePanel/Margin/Content/Actions"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(104, 28)
 layout_mode = 2
-size_flags_horizontal = 8
 text = "UI_COCKPIT_PANEL_CLOSE"

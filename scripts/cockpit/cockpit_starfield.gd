@@ -3,6 +3,10 @@ extends Control
 
 const DEEP_SPACE: Color = Color("08111f")
 const DISTANT_GLOW: Color = Color(0.18, 0.31, 0.48, 0.22)
+const RED_SAND_DARK: Color = Color("5e2f28")
+const RED_SAND_SURFACE: Color = Color("b86445")
+const RED_SAND_LIGHT: Color = Color("d99468")
+const RED_SAND_ATMOSPHERE: Color = Color(0.95, 0.57, 0.36, 0.34)
 const FAR_STAR_COLOR: Color = Color("70849a")
 const MID_STAR_COLOR: Color = Color("b7c8d7")
 const NEAR_STAR_COLOR: Color = Color("e8dfc8")
@@ -24,6 +28,8 @@ const NEAR_STARS: Array[Vector2] = [
 ]
 
 var _layer_offsets: PackedFloat32Array = PackedFloat32Array([0.0, 0.0, 0.0])
+var _travel_progress: float = 0.0
+var _speed_multiplier: float = 1.0
 
 
 func _process(delta: float) -> void:
@@ -32,7 +38,7 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), DEEP_SPACE, true)
-	draw_circle(Vector2(size.x * 0.72, size.y * 0.42), 34.0, DISTANT_GLOW)
+	_draw_destination()
 	_draw_layer(FAR_STARS, _layer_offsets[0], FAR_STAR_COLOR, 1.0)
 	_draw_layer(MID_STARS, _layer_offsets[1], MID_STAR_COLOR, 1.0)
 	_draw_layer(NEAR_STARS, _layer_offsets[2], NEAR_STAR_COLOR, 2.0)
@@ -43,9 +49,16 @@ func advance_animation(delta: float) -> void:
 		return
 	for layer_index: int in LAYER_SPEEDS.size():
 		_layer_offsets[layer_index] = fposmod(
-			_layer_offsets[layer_index] + LAYER_SPEEDS[layer_index] * delta,
+			_layer_offsets[layer_index]
+			+ LAYER_SPEEDS[layer_index] * _speed_multiplier * delta,
 			size.x
 		)
+	queue_redraw()
+
+
+func set_travel_visuals(travel_progress: float, speed_multiplier: float) -> void:
+	_travel_progress = clampf(travel_progress, 0.0, 1.0)
+	_speed_multiplier = maxf(speed_multiplier, 0.0)
 	queue_redraw()
 
 
@@ -55,6 +68,42 @@ func get_layer_count() -> int:
 
 func get_layer_offsets() -> PackedFloat32Array:
 	return _layer_offsets.duplicate()
+
+
+func get_travel_progress() -> float:
+	return _travel_progress
+
+
+func get_speed_multiplier() -> float:
+	return _speed_multiplier
+
+
+func _draw_destination() -> void:
+	if _travel_progress <= 0.0:
+		draw_circle(Vector2(size.x * 0.72, size.y * 0.42), 34.0, DISTANT_GLOW)
+		return
+	var eased_progress: float = ease(_travel_progress, 1.7)
+	var planet_center: Vector2 = Vector2(
+		lerpf(size.x * 0.78, size.x * 0.69, eased_progress),
+		lerpf(size.y * 0.43, size.y * 0.52, eased_progress)
+	)
+	var planet_radius: float = lerpf(8.0, 66.0, eased_progress)
+	draw_circle(planet_center, planet_radius + 5.0, RED_SAND_ATMOSPHERE)
+	draw_circle(planet_center, planet_radius, RED_SAND_DARK)
+	draw_circle(
+		planet_center + Vector2(-planet_radius * 0.18, -planet_radius * 0.12),
+		planet_radius * 0.82,
+		RED_SAND_SURFACE
+	)
+	draw_arc(
+		planet_center + Vector2(-planet_radius * 0.12, planet_radius * 0.14),
+		planet_radius * 0.55,
+		0.15,
+		2.55,
+		18,
+		RED_SAND_LIGHT,
+		maxf(1.0, planet_radius * 0.05)
+	)
 
 
 func _draw_layer(

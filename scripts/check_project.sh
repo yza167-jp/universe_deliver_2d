@@ -130,6 +130,10 @@ run_step \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/cockpit_smoke_runner.gd
 
 run_step \
+  "Cockpit destination and three-phase travel smoke test" \
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/cockpit_travel_smoke_runner.gd
+
+run_step \
   "Gate A station-to-cockpit playable path smoke test" \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/station_gate_a_smoke_runner.gd
 
