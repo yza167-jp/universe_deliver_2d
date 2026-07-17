@@ -13,10 +13,12 @@ enum FlowState {
 
 const COCKPIT_LABEL_DEFAULT_COLOR: Color = Color("e7a85b")
 const COCKPIT_LABEL_READY_COLOR: Color = Color("77c9c4")
+const MODAL_DEPARTURE_GATE: StringName = &"station_departure_gate"
 
 var _game_state: GameStateModel
 var _tutorial_controller: StationTutorialController
 var _player: StationPlayer
+var _modal_coordinator: StationModalCoordinator
 var _cockpit_entry: Interactable2D
 var _cockpit_entry_label: Label
 var _objective_root: Control
@@ -81,8 +83,8 @@ func close_departure_gate() -> void:
 	if _departure_panel == null or not _departure_panel.visible:
 		return
 	_departure_panel.visible = false
-	if _player != null:
-		_player.set_input_enabled(true)
+	if _modal_coordinator != null:
+		_modal_coordinator.end_modal(MODAL_DEPARTURE_GATE)
 	departure_gate_closed.emit()
 
 
@@ -92,6 +94,7 @@ func _initialize_controller() -> void:
 		"../StationTutorialController"
 	) as StationTutorialController
 	_player = get_node_or_null("../StationPlayer") as StationPlayer
+	_modal_coordinator = get_node_or_null("../StationModalCoordinator") as StationModalCoordinator
 	_cockpit_entry = get_node_or_null(
 		"../Interactables/CockpitEntry"
 	) as Interactable2D
@@ -124,6 +127,7 @@ func _initialize_controller() -> void:
 		_game_state == null
 		or _tutorial_controller == null
 		or _player == null
+		or _modal_coordinator == null
 		or _cockpit_entry == null
 		or _cockpit_entry_label == null
 		or _objective_root == null
@@ -207,8 +211,8 @@ func _on_cockpit_entry_interacted(_actor: Node) -> void:
 func _open_departure_gate() -> void:
 	if _departure_panel == null or _departure_panel.visible:
 		return
+	_modal_coordinator.begin_modal(MODAL_DEPARTURE_GATE)
 	_departure_panel.visible = true
-	_player.set_input_enabled(false)
 	_close_button.grab_focus()
 	departure_gate_opened.emit()
 

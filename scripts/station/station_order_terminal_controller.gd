@@ -1,7 +1,10 @@
 class_name StationOrderTerminalController
 extends Node
 
+const MODAL_ORDER_TERMINAL: StringName = &"station_order_terminal"
+
 var _player: StationPlayer
+var _modal_coordinator: StationModalCoordinator
 var _terminal_interactable: Interactable2D
 var _tutorial_controller: StationTutorialController
 var _terminal_ui: OrderTerminalUI
@@ -19,6 +22,7 @@ func get_terminal_ui() -> OrderTerminalUI:
 
 func _initialize_controller() -> void:
 	_player = get_node_or_null("../StationPlayer") as StationPlayer
+	_modal_coordinator = get_node_or_null("../StationModalCoordinator") as StationModalCoordinator
 	_terminal_interactable = get_node_or_null(
 		"../Interactables/OrderTerminal"
 	) as Interactable2D
@@ -30,6 +34,7 @@ func _initialize_controller() -> void:
 	) as OrderTerminalUI
 	if (
 		_player == null
+		or _modal_coordinator == null
 		or _terminal_interactable == null
 		or _tutorial_controller == null
 		or _terminal_ui == null
@@ -59,15 +64,16 @@ func _on_tutorial_completed() -> void:
 	if not _open_after_tutorial:
 		return
 	_open_after_tutorial = false
+	_modal_coordinator.begin_modal(MODAL_ORDER_TERMINAL)
 	call_deferred("_open_terminal")
 
 
 func _open_terminal() -> void:
 	if _terminal_ui == null or _terminal_ui.visible:
 		return
-	_player.set_input_enabled(false)
+	_modal_coordinator.begin_modal(MODAL_ORDER_TERMINAL)
 	if not _terminal_ui.open_terminal():
-		_player.set_input_enabled(true)
+		_modal_coordinator.end_modal(MODAL_ORDER_TERMINAL)
 		push_error("Station order terminal UI could not open.")
 
 
@@ -76,7 +82,7 @@ func _on_order_accepted(_order_id: StringName) -> void:
 
 
 func _on_terminal_closed() -> void:
-	_player.set_input_enabled(true)
+	_modal_coordinator.end_modal(MODAL_ORDER_TERMINAL)
 	if not _accepted_feedback_pending:
 		return
 	_accepted_feedback_pending = false

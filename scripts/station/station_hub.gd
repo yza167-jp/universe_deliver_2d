@@ -152,6 +152,10 @@ func get_tutorial_controller() -> StationTutorialController:
 	return get_node_or_null("StationTutorialController") as StationTutorialController
 
 
+func get_modal_coordinator() -> StationModalCoordinator:
+	return get_node_or_null("StationModalCoordinator") as StationModalCoordinator
+
+
 func get_order_terminal_ui() -> OrderTerminalUI:
 	return get_node_or_null("OrderTerminalUILayer/OrderTerminalUI") as OrderTerminalUI
 

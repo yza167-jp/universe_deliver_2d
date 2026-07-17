@@ -18,6 +18,7 @@ const FLOW_WAIT_FOR_MOVE: StringName = &"station_tutorial_wait_for_move"
 const FLOW_WAIT_FOR_LAO_PI: StringName = &"station_tutorial_wait_for_lao_pi"
 const FLOW_WAIT_FOR_ORDER_TERMINAL: StringName = &"station_tutorial_wait_for_order_terminal"
 const FLOW_COMPLETE: StringName = &"station_tutorial_completed"
+const MODAL_DIALOGUE: StringName = &"station_dialogue"
 const DIALOGUE_UI_SCENE: PackedScene = preload("res://scenes/narrative/dialogue_ui.tscn")
 
 @export_range(8.0, 160.0, 1.0) var required_movement_distance: float = 32.0
@@ -37,6 +38,7 @@ var _lao_pi: LaoPiStation
 var _order_terminal: Interactable2D
 var _guide_anchor: Marker2D
 var _dialogue_ui: DialogueUI
+var _modal_coordinator: StationModalCoordinator
 var _objective_root: Control
 var _objective_label: Label
 var _movement_origin: Vector2 = Vector2.ZERO
@@ -114,12 +116,14 @@ func _initialize_tutorial() -> void:
 		"../TutorialUILayer/TutorialObjective/Panel/TutorialObjectiveLabel"
 	) as Label
 	_game_state = get_node_or_null("/root/GameState") as GameStateModel
+	_modal_coordinator = get_node_or_null("../StationModalCoordinator") as StationModalCoordinator
 	_dialogue_ui = _resolve_dialogue_ui()
 	if (
 		_player == null
 		or _lao_pi == null
 		or _order_terminal == null
 		or _game_state == null
+		or _modal_coordinator == null
 		or _dialogue_ui == null
 	):
 		push_error("Station tutorial could not resolve its required player, character, UI, or state.")
@@ -210,13 +214,13 @@ func _start_dialogue(sequence: DialogueSequence) -> bool:
 	_active_dialogue_id = sequence.id
 	_pending_flow_event = StringName()
 	_set_stage(Stage.DIALOGUE)
-	_player.set_input_enabled(false)
+	_modal_coordinator.begin_modal(MODAL_DIALOGUE)
 	_lao_pi.face_toward(_player.global_position)
 	_lao_pi.set_talking(true)
 	if _dialogue_ui.start_dialogue(sequence, _game_state):
 		return true
 	_lao_pi.set_talking(false)
-	_player.set_input_enabled(true)
+	_modal_coordinator.end_modal(MODAL_DIALOGUE)
 	_active_dialogue_id = StringName()
 	push_error("Station tutorial could not start dialogue sequence '%s'." % sequence.id)
 	return false
@@ -236,7 +240,6 @@ func _on_dialogue_finished() -> void:
 	var finished_dialogue_id: StringName = _active_dialogue_id
 	_active_dialogue_id = StringName()
 	_lao_pi.set_talking(false)
-	_player.set_input_enabled(true)
 	match _pending_flow_event:
 		FLOW_WAIT_FOR_MOVE:
 			_movement_origin = _player.global_position
@@ -255,6 +258,7 @@ func _on_dialogue_finished() -> void:
 			else:
 				_apply_safe_fallback_for_sequence(finished_dialogue_id)
 	_pending_flow_event = StringName()
+	_modal_coordinator.end_modal(MODAL_DIALOGUE)
 	call_deferred("_resume_progression")
 
 

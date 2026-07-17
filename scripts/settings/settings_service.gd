@@ -19,6 +19,7 @@ const SUPPORTED_ACTIONS: Array[StringName] = [
 	&"move_left",
 	&"move_right",
 	&"interact",
+	&"toggle_fullscreen",
 	&"flight_throttle",
 	&"flight_brake",
 	&"flight_pitch_up",
@@ -317,6 +318,8 @@ static func _build_default_events(action: StringName) -> Array[InputEvent]:
 			events.append(_create_key_event(KEY_D, true))
 		&"interact":
 			events.append(_create_key_event(KEY_E, true))
+		&"toggle_fullscreen":
+			events.append(_create_key_event(KEY_F11))
 		&"flight_pitch_up":
 			events.append(_create_key_event(KEY_UP))
 		&"flight_pitch_down":

@@ -4,6 +4,8 @@ Independent 2D version prototype of Universe Deliver.
 
 This repository is intentionally separate from the original 3D Unreal project so the 2D direction can evolve with a lighter structure while preserving the 3D project's history in `/Users/dionysus/proj/universe_deliver`.
 
+Display uses a 640×360 16:9 viewport with nearest filtering. Exact-multiple windows retain integer scale naturally; actual fullscreen uses the largest uncropped, unstretched fractional 16:9 fit.
+
 ## Run locally
 
 Use Godot `4.7.1-stable`. If Godot is not available on `PATH`, set its executable path first:
@@ -24,5 +26,7 @@ From the repository root:
 # Run the current main scene
 "${GODOT_BIN:-godot}" --path .
 ```
+
+Press `F11` in game to toggle actual fullscreen.
 
 The check script tries `GODOT_BIN`, `godot`, `godot4`, and the default macOS application path in that order.

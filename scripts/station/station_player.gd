@@ -31,6 +31,7 @@ var _current_interactable: Interactable2D
 var _feedback_time_remaining: float = 0.0
 var _animations_initialized: bool = false
 var _input_enabled: bool = true
+var _interaction_prompt_suppressed: bool = false
 
 
 func _ready() -> void:
@@ -137,6 +138,18 @@ func is_input_enabled() -> bool:
 	return _input_enabled
 
 
+## Keeps the current target intact while a modal UI takes visual priority.
+func set_interaction_prompt_suppressed(suppressed: bool) -> void:
+	_interaction_prompt_suppressed = suppressed
+	if not suppressed:
+		refresh_interaction_target()
+	_update_interaction_prompt()
+
+
+func is_interaction_prompt_suppressed() -> bool:
+	return _interaction_prompt_suppressed
+
+
 func refresh_interaction_target() -> Interactable2D:
 	if _interaction_sensor == null:
 		_interaction_sensor = get_node_or_null("InteractionSensor") as Area2D
@@ -219,9 +232,10 @@ func _update_interaction_prompt() -> void:
 		) as Label
 	if _prompt_root == null or _prompt_label == null:
 		return
-	if _current_interactable == null:
+	if _interaction_prompt_suppressed or not _input_enabled or _current_interactable == null:
 		_prompt_root.visible = false
-		_prompt_label.text = ""
+		if _current_interactable == null:
+			_prompt_label.text = ""
 		return
 	_prompt_root.visible = true
 	var prompt_text: String = _current_interactable.get_interaction_prompt()

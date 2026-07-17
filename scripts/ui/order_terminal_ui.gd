@@ -8,6 +8,7 @@ signal order_accepted(order_id: StringName)
 
 @onready var _terminal_title_label: Label = %TerminalTitleLabel
 @onready var _status_badge_label: Label = %StatusBadgeLabel
+@onready var _body_scroll: ScrollContainer = %BodyScroll
 @onready var _order_name_label: Label = %OrderNameLabel
 @onready var _parties_label: Label = %PartiesLabel
 @onready var _route_label: Label = %RouteLabel
@@ -72,6 +73,7 @@ func open_terminal() -> bool:
 	_bind_game_state()
 	visible = true
 	_refresh_content()
+	_body_scroll.scroll_vertical = 0
 	if _accept_button.disabled:
 		_close_button.grab_focus()
 	else:
@@ -150,11 +152,16 @@ func get_panel_rect() -> Rect2:
 	return panel.get_global_rect()
 
 
+func get_body_scroll_value() -> int:
+	return 0 if _body_scroll == null else _body_scroll.scroll_vertical
+
+
 func _initialize_controls() -> bool:
 	if _controls_initialized:
 		return true
 	_terminal_title_label = get_node_or_null("%TerminalTitleLabel") as Label
 	_status_badge_label = get_node_or_null("%StatusBadgeLabel") as Label
+	_body_scroll = get_node_or_null("%BodyScroll") as ScrollContainer
 	_order_name_label = get_node_or_null("%OrderNameLabel") as Label
 	_parties_label = get_node_or_null("%PartiesLabel") as Label
 	_route_label = get_node_or_null("%RouteLabel") as Label
@@ -176,6 +183,7 @@ func _initialize_controls() -> bool:
 	if (
 		_terminal_title_label == null
 		or _status_badge_label == null
+		or _body_scroll == null
 		or _order_name_label == null
 		or _parties_label == null
 		or _route_label == null

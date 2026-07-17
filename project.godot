@@ -29,7 +29,7 @@ window/size/window_width_override=1280
 window/size/window_height_override=720
 window/stretch/mode="viewport"
 window/stretch/aspect="keep"
-window/stretch/scale_mode="integer"
+window/stretch/scale_mode="fractional"
 
 [input]
 
@@ -50,6 +50,10 @@ move_right={
 "events": []
 }
 interact={
+"deadzone": 0.5,
+"events": []
+}
+toggle_fullscreen={
 "deadzone": 0.5,
 "events": []
 }

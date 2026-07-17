@@ -1,7 +1,10 @@
 class_name StationShipLoadoutController
 extends Node
 
+const MODAL_SHIP_LOADOUT: StringName = &"station_ship_loadout"
+
 var _player: StationPlayer
+var _modal_coordinator: StationModalCoordinator
 var _workbench_interactable: Interactable2D
 var _loadout_ui: ShipLoadoutUI
 
@@ -16,13 +19,19 @@ func get_loadout_ui() -> ShipLoadoutUI:
 
 func _initialize_controller() -> void:
 	_player = get_node_or_null("../StationPlayer") as StationPlayer
+	_modal_coordinator = get_node_or_null("../StationModalCoordinator") as StationModalCoordinator
 	_workbench_interactable = get_node_or_null(
 		"../Interactables/ShipWorkbench"
 	) as Interactable2D
 	_loadout_ui = get_node_or_null(
 		"../ShipLoadoutUILayer/ShipLoadoutUI"
 	) as ShipLoadoutUI
-	if _player == null or _workbench_interactable == null or _loadout_ui == null:
+	if (
+		_player == null
+		or _modal_coordinator == null
+		or _workbench_interactable == null
+		or _loadout_ui == null
+	):
 		push_error("Station ship loadout could not resolve its player, workbench, or UI.")
 		return
 	if not _workbench_interactable.interaction_triggered.is_connected(_on_workbench_interacted):
@@ -34,11 +43,11 @@ func _initialize_controller() -> void:
 func _on_workbench_interacted(_actor: Node) -> void:
 	if _loadout_ui == null or _loadout_ui.visible:
 		return
-	_player.set_input_enabled(false)
+	_modal_coordinator.begin_modal(MODAL_SHIP_LOADOUT)
 	if not _loadout_ui.open_loadout():
-		_player.set_input_enabled(true)
+		_modal_coordinator.end_modal(MODAL_SHIP_LOADOUT)
 		push_error("Station ship loadout UI could not open.")
 
 
 func _on_loadout_closed() -> void:
-	_player.set_input_enabled(true)
+	_modal_coordinator.end_modal(MODAL_SHIP_LOADOUT)

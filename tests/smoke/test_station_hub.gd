@@ -5,6 +5,7 @@ const MAX_FEATURE_DISTANCE_FROM_SPAWN: float = 340.0
 const CENTRAL_CLEARANCE: Rect2 = Rect2(376.0, 160.0, 208.0, 240.0)
 const PLAYER_CLEARANCE: float = 10.0
 const CONNECTIVITY_STEP: float = 16.0
+const OBJECTIVE_MAX_SAFE_WIDTH: float = (640.0 - 32.0) * 0.4
 
 
 func run() -> Array[String]:
@@ -32,6 +33,35 @@ func run() -> Array[String]:
 		"Station must occupy roughly 2-3 base viewports, got %.2f." % map_area_in_viewports,
 		failures
 	)
+
+	var modal_coordinator: StationModalCoordinator = station.get_modal_coordinator()
+	expect_true(modal_coordinator != null, "Station must own one modal priority coordinator.", failures)
+	var objective: Control = station.get_node_or_null(
+		"TutorialUILayer/TutorialObjective"
+	) as Control
+	var objective_label: Label = station.get_node_or_null(
+		"TutorialUILayer/TutorialObjective/Panel/TutorialObjectiveLabel"
+	) as Label
+	expect_true(objective != null, "Station objective HUD is missing.", failures)
+	expect_true(objective_label != null, "Station objective label is missing.", failures)
+	if objective != null:
+		expect_true(
+			objective.size.x <= OBJECTIVE_MAX_SAFE_WIDTH
+			and objective.size.y <= 40.0,
+			"Objective HUD must stay compact and within 40 percent of safe width.",
+			failures
+		)
+		expect_true(
+			objective.position.x + objective.size.x < 320.0,
+			"Objective HUD must not cover the central station route.",
+			failures
+		)
+	if objective_label != null:
+		expect_true(
+			objective_label.max_lines_visible == 2,
+			"Objective HUD must use at most two lines.",
+			failures
+		)
 
 	var spawn: Marker2D = station.get_player_spawn()
 	expect_true(spawn != null, "Station entrance spawn must exist.", failures)

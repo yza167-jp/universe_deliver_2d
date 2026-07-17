@@ -95,11 +95,15 @@ func _run_smoke() -> void:
 	await process_frame
 
 	var tutorial: StationTutorialController = station.get_tutorial_controller()
+	var modal_coordinator: StationModalCoordinator = station.get_modal_coordinator()
 	var departure: StationDepartureController = station.get_departure_controller()
 	var player: StationPlayer = station.get_station_player()
 	var lao_pi: LaoPiStation = station.get_lao_pi()
 	var terminal_ui: OrderTerminalUI = station.get_order_terminal_ui()
 	var loadout_ui: ShipLoadoutUI = station.get_ship_loadout_ui()
+	var objective: Control = station.get_node_or_null(
+		"TutorialUILayer/TutorialObjective"
+	) as Control
 	var order_terminal: Interactable2D = station.get_node_or_null(
 		"Interactables/OrderTerminal"
 	) as Interactable2D
@@ -110,21 +114,25 @@ func _run_smoke() -> void:
 		"Interactables/CockpitEntry"
 	) as Interactable2D
 	_check(tutorial != null, "Station tutorial controller is missing.")
+	_check(modal_coordinator != null, "Station modal coordinator is missing.")
 	_check(departure != null, "Station departure controller is missing.")
 	_check(player != null, "Station player is missing.")
 	_check(lao_pi != null, "Lao Pi is missing.")
 	_check(terminal_ui != null, "Order terminal UI is missing.")
 	_check(loadout_ui != null, "Ship loadout UI is missing.")
+	_check(objective != null, "Station objective HUD is missing.")
 	_check(order_terminal != null, "Order terminal interaction is missing.")
 	_check(workbench != null, "Ship workbench interaction is missing.")
 	_check(cockpit_entry != null, "Cockpit entrance interaction is missing.")
 	if (
 		tutorial == null
+		or modal_coordinator == null
 		or departure == null
 		or player == null
 		or lao_pi == null
 		or terminal_ui == null
 		or loadout_ui == null
+		or objective == null
 		or order_terminal == null
 		or workbench == null
 		or cockpit_entry == null
@@ -139,7 +147,17 @@ func _run_smoke() -> void:
 		await _cleanup()
 		_finish_smoke()
 		return
+	_check(
+		modal_coordinator.has_modal(StationTutorialController.MODAL_DIALOGUE),
+		"Opening tutorial dialogue did not acquire the dialogue modal lock."
+	)
+	_check(player.is_interaction_prompt_suppressed(), "Dialogue did not suppress interaction prompts.")
+	_check(
+		not objective.visible,
+		"Tutorial objective remained visible over dialogue."
+	)
 	await _finish_dialogue(tutorial, dialogue_ui, &"dialogue_lao_pi_tutorial_intro")
+	_check(not modal_coordinator.is_modal_active(), "Tutorial dialogue did not release its modal lock.")
 	player.position += Vector2(48.0, 0.0)
 	await process_frame
 	await process_frame
@@ -153,12 +171,25 @@ func _run_smoke() -> void:
 	_check(tutorial.is_tutorial_complete(), "Tutorial did not complete through the player path.")
 	_check(terminal_ui.visible, "Tutorial completion did not open the order terminal.")
 	_check(
+		modal_coordinator.has_modal(StationOrderTerminalController.MODAL_ORDER_TERMINAL),
+		"Order terminal did not retain modal priority after the tutorial handoff."
+	)
+	_check(
+		not objective.visible,
+		"Route objective remained visible over the order terminal."
+	)
+	_check(
 		departure.get_flow_state() == StationDepartureController.FlowState.WAIT_FOR_ORDER,
 		"Post-tutorial flow did not wait for order acceptance."
 	)
 
 	terminal_ui.close_terminal()
 	await process_frame
+	_check(not modal_coordinator.is_modal_active(), "Closing the terminal did not release modal priority.")
+	_check(
+		objective.visible,
+		"Closing the terminal did not restore route guidance."
+	)
 	_check(cockpit_entry.interact(player), "Locked cockpit entrance did not provide feedback.")
 	_check(
 		departure.get_objective_text().contains("先在订单终端"),
@@ -188,12 +219,21 @@ func _run_smoke() -> void:
 	await process_frame
 	_check(loadout_ui.visible, "Ship loadout did not open.")
 	_check(
+		modal_coordinator.has_modal(StationShipLoadoutController.MODAL_SHIP_LOADOUT),
+		"Ship loadout did not acquire modal priority."
+	)
+	_check(
+		not objective.visible,
+		"Route objective remained visible over the ship loadout."
+	)
+	_check(
 		loadout_ui.toggle_module_for_slot(ShipModuleDefinition.SlotType.UTILITY),
 		"Optional asteroid laser could not be selected during Gate A."
 	)
 	_check(loadout_ui.confirm_departure(), "Valid Gate A loadout could not confirm departure.")
 	loadout_ui.close_loadout()
 	await process_frame
+	_check(not modal_coordinator.is_modal_active(), "Closing ship loadout did not release modal priority.")
 	_check(
 		departure.get_flow_state()
 		== StationDepartureController.FlowState.READY_FOR_COCKPIT,
@@ -215,6 +255,14 @@ func _run_smoke() -> void:
 	_check(departure.is_departure_gate_visible(), "Cockpit entrance did not open the Gate A endpoint.")
 	_check(not player.is_input_enabled(), "Station input remained active behind the endpoint panel.")
 	_check(
+		modal_coordinator.has_modal(StationDepartureController.MODAL_DEPARTURE_GATE),
+		"Departure gate did not acquire modal priority."
+	)
+	_check(
+		not objective.visible,
+		"Route objective remained visible over the departure gate."
+	)
+	_check(
 		departure.get_departure_gate_text().contains("出发准备完成")
 		and departure.get_departure_gate_text().contains("赤砂星")
 		and departure.get_departure_gate_text().contains("老皮"),
@@ -234,6 +282,7 @@ func _run_smoke() -> void:
 	)
 	departure.close_departure_gate()
 	_check(player.is_input_enabled(), "Returning to the station did not restore player input.")
+	_check(not modal_coordinator.is_modal_active(), "Departure gate did not release modal priority.")
 
 	await _cleanup()
 	_finish_smoke()

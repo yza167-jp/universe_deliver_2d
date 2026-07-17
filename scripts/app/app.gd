@@ -2,12 +2,15 @@ class_name UniverseDeliverApp
 extends Control
 
 const DEBUG_UI_ARGUMENT: String = "--show-debug-ui"
+const FULLSCREEN_ACTION: StringName = &"toggle_fullscreen"
 
 @onready var scene_container: Control = %SceneContainer
 @onready var debug_layer: CanvasLayer = %DebugLayer
 @onready var current_stage_label: Label = %CurrentStageLabel
 @onready var stage_buttons: HBoxContainer = %StageButtons
 @onready var scene_router: SceneRouterService = get_node("/root/SceneRouter") as SceneRouterService
+
+var _windowed_mode_before_fullscreen: int = DisplayServer.WINDOW_MODE_WINDOWED
 
 
 func _ready() -> void:
@@ -26,6 +29,12 @@ func _ready() -> void:
 		return
 	if not scene_router.start():
 		push_error("App could not start scene flow: %s" % scene_router.last_error)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed(FULLSCREEN_ACTION):
+		toggle_fullscreen()
+		get_viewport().set_input_as_handled()
 
 
 func _exit_tree() -> void:
@@ -52,6 +61,24 @@ func _on_debug_stage_requested(stage: int) -> void:
 
 func _on_stage_changed(_previous_stage: int, current_stage: int) -> void:
 	current_stage_label.text = "STAGE: %s" % SceneRouterService.get_stage_name(current_stage)
+
+
+func toggle_fullscreen() -> bool:
+	var current_mode: int = DisplayServer.window_get_mode()
+	if is_fullscreen_mode(current_mode):
+		DisplayServer.window_set_mode(_windowed_mode_before_fullscreen)
+		return false
+	if current_mode != DisplayServer.WINDOW_MODE_MINIMIZED:
+		_windowed_mode_before_fullscreen = current_mode
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	return true
+
+
+static func is_fullscreen_mode(window_mode: int) -> bool:
+	return window_mode in [
+		DisplayServer.WINDOW_MODE_FULLSCREEN,
+		DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN,
+	]
 
 
 static func should_show_debug_ui(

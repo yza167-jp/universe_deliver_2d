@@ -60,6 +60,32 @@ func _run_smoke() -> void:
 		VIEWPORT_RECT.encloses(terminal_ui.get_panel_rect()),
 		"Order terminal panel leaves the 640x360 viewport."
 	)
+	var body_scroll: ScrollContainer = terminal_ui.get_node_or_null("%BodyScroll") as ScrollContainer
+	var order_name_label: Label = terminal_ui.get_node_or_null("%OrderNameLabel") as Label
+	var reward_label: Label = terminal_ui.get_node_or_null("%RewardLabel") as Label
+	var required_label: Label = terminal_ui.get_node_or_null("%RequiredModulesLabel") as Label
+	var environment_label: Label = terminal_ui.get_node_or_null("%EnvironmentLabel") as Label
+	var accept_button: Button = terminal_ui.get_node_or_null("%AcceptButton") as Button
+	_check(body_scroll != null, "Order terminal is missing its single-column detail scroll.")
+	_check(order_name_label != null and order_name_label.get_theme_font_size("font_size") >= 20, "Order name is not visually primary.")
+	_check(reward_label != null and reward_label.get_theme_font_size("font_size") >= 16, "Reward is not readable at the primary level.")
+	_check(required_label != null and required_label.get_theme_font_size("font_size") >= 14, "Required modules are not readable at the primary level.")
+	_check(environment_label != null and environment_label.get_theme_font_size("font_size") >= 13, "Secondary order detail text is too small.")
+	_check(
+		order_name_label != null
+		and reward_label != null
+		and required_label != null
+		and environment_label != null
+		and order_name_label.global_position.y < reward_label.global_position.y
+		and reward_label.global_position.y < required_label.global_position.y
+		and required_label.global_position.y < environment_label.global_position.y,
+		"Order summary hierarchy must lead with name, reward, and required modules before details."
+	)
+	_check(terminal_ui.get_body_scroll_value() == 0, "Order terminal did not open at its primary summary.")
+	_check(
+		accept_button != null and VIEWPORT_RECT.encloses(accept_button.get_global_rect()),
+		"Accept action must remain visible outside the scroll area."
+	)
 	_check(terminal_ui.get_status_text() == "未接取", "Initial order state is not clear.")
 	_check(terminal_ui.is_accept_enabled(), "Valid Red Sand order cannot be accepted.")
 	_check(

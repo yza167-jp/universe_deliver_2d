@@ -28,6 +28,7 @@ func _run_smoke() -> void:
 	if player != null:
 		await _check_live_movement(player)
 		await _check_live_interaction(station, player)
+		await _check_single_press_dialogue_modal(station, player)
 		await process_frame
 
 	Input.action_release(&"move_up")
@@ -100,12 +101,100 @@ func _check_live_interaction(station: StationHub, player: StationPlayer) -> void
 	selected.interaction_triggered.connect(_on_interaction_triggered)
 	_check(player.try_interact(), "Selected interaction could not be triggered.")
 	_check(_interaction_signal_received, "Interactable did not emit its interaction signal.")
+	var coordinator: StationModalCoordinator = station.get_modal_coordinator()
+	var terminal_ui: OrderTerminalUI = station.get_order_terminal_ui()
+	var objective: Control = station.get_node(
+		"TutorialUILayer/TutorialObjective"
+	) as Control
 	_check(
-		player.get_interaction_prompt_text().contains("已确认"),
-		"Interaction did not provide visible confirmation feedback."
+		coordinator != null and coordinator.is_modal_active(),
+		"Opening the order terminal did not acquire the shared modal lock."
 	)
+	if coordinator != null:
+		_check(
+			not coordinator.begin_modal(StationOrderTerminalController.MODAL_ORDER_TERMINAL)
+			and coordinator.get_active_modal_count() == 1,
+			"Repeated modal open created a duplicate world lock."
+		)
+	_check(not player.is_input_enabled(), "World input remained active behind the order terminal.")
+	_check(
+		not player.is_interaction_prompt_visible(),
+		"Interaction prompt remained visible over the order terminal."
+	)
+	_check(objective != null and not objective.visible, "Objective HUD remained visible over the order terminal.")
+	if terminal_ui != null:
+		terminal_ui.close_terminal()
 	await process_frame
 	await process_frame
+	_check(player.is_input_enabled(), "Closing the order terminal did not restore world input.")
+	_check(
+		player.is_interaction_prompt_visible(),
+		"Closing the order terminal did not restore the in-range interaction prompt."
+	)
+	_check(objective != null and objective.visible, "Closing the order terminal did not restore the objective HUD.")
+
+
+func _check_single_press_dialogue_modal(station: StationHub, player: StationPlayer) -> void:
+	var lao_pi: LaoPiStation = station.get_lao_pi()
+	var tutorial: StationTutorialController = station.get_tutorial_controller()
+	var coordinator: StationModalCoordinator = station.get_modal_coordinator()
+	var objective: Control = station.get_node(
+		"TutorialUILayer/TutorialObjective"
+	) as Control
+	_check(lao_pi != null and tutorial != null and coordinator != null, "Dialogue modal fixture is incomplete.")
+	if lao_pi == null or tutorial == null or coordinator == null:
+		return
+	player.position = lao_pi.position + Vector2(0.0, 44.0)
+	player.velocity = Vector2.ZERO
+	player.set_facing_direction(lao_pi.position - player.position)
+	await physics_frame
+	await physics_frame
+	var selected: Interactable2D = player.refresh_interaction_target()
+	_check(selected == lao_pi, "Lao Pi was not selected for the single-press dialogue check.")
+	if selected != lao_pi:
+		return
+
+	Input.action_press(&"interact")
+	_check(player.try_interact(), "One E press did not open Lao Pi's daily dialogue.")
+	var dialogue_ui: DialogueUI = tutorial.get_dialogue_ui()
+	_check(
+		tutorial.get_active_dialogue_id() == &"dialogue_lao_pi_station_daily",
+		"The interaction press did not select Lao Pi's daily dialogue."
+	)
+	_check(dialogue_ui != null, "Daily dialogue UI is unavailable.")
+	if dialogue_ui == null:
+		Input.action_release(&"interact")
+		return
+	var expected_first_line: String = tr("DIALOGUE_LAO_PI_DAILY_01")
+	_check(
+		dialogue_ui.get_full_text() == expected_first_line,
+		"The E press that opened dialogue also advanced past its first line."
+	)
+	await physics_frame
+	Input.action_release(&"interact")
+	_check(
+		dialogue_ui.get_full_text() == expected_first_line,
+		"Holding the opening E press advanced the dialogue."
+	)
+	_check(coordinator.is_modal_active(), "Dialogue did not keep the shared modal lock.")
+	_check(not player.is_input_enabled(), "World input remained active during dialogue.")
+	_check(not player.is_interaction_prompt_visible(), "Interaction prompt remained visible over dialogue.")
+	_check(objective != null and not objective.visible, "Objective HUD remained visible over dialogue.")
+
+	var remaining_lines: int = 4
+	while not tutorial.get_active_dialogue_id().is_empty() and remaining_lines > 0:
+		dialogue_ui.quick_show_current_line()
+		dialogue_ui.continue_dialogue()
+		remaining_lines -= 1
+		await process_frame
+	_check(remaining_lines > 0, "Daily dialogue did not finish within its authored line count.")
+	_check(not coordinator.is_modal_active(), "Dialogue modal lock remained after closing.")
+	_check(player.is_input_enabled(), "Dialogue close did not restore world input.")
+	_check(
+		player.is_interaction_prompt_visible(),
+		"Dialogue close did not restore Lao Pi's in-range interaction prompt."
+	)
+	_check(objective != null and objective.visible, "Dialogue close did not restore the objective HUD.")
 
 
 func _on_interaction_triggered(_actor: Node) -> void:

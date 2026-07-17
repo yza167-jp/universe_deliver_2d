@@ -109,6 +109,11 @@ func _expect_default_input_map(failures: Array[String]) -> void:
 		"Flight fire must include the left mouse button.",
 		failures
 	)
+	expect_true(
+		_has_key(InputMap.action_get_events(&"toggle_fullscreen"), KEY_F11),
+		"Actual fullscreen must default to F11.",
+		failures
+	)
 
 
 func _has_physical_key(events: Array[InputEvent], expected_key: Key) -> bool:
@@ -116,6 +121,15 @@ func _has_physical_key(events: Array[InputEvent], expected_key: Key) -> bool:
 		if input_event is InputEventKey:
 			var key_event: InputEventKey = input_event as InputEventKey
 			if key_event.physical_keycode == expected_key:
+				return true
+	return false
+
+
+func _has_key(events: Array[InputEvent], expected_key: Key) -> bool:
+	for input_event: InputEvent in events:
+		if input_event is InputEventKey:
+			var key_event: InputEventKey = input_event as InputEventKey
+			if key_event.keycode == expected_key or key_event.physical_keycode == expected_key:
 				return true
 	return false
 
