@@ -61,7 +61,8 @@
 | Date | Gate | Decision | Changed values/scope | Notes |
 |---|---|---|---|---|
 | 2026-07-17 | Gate A Round 1 | Rework required | 模态 HUD 优先级、真全屏缩放、订单终端可读性、紧凑目标条 | 对话上仍显示 `[E]` 提示；最大化窗口黑边过大且终端文字过密；下一目标条遮挡大厅。T-015 回退 In Progress，返工后进入 Round 2。 |
-| 2026-07-17 | Gate A Round 2 | Human Check | 四类模态统一协调；F11 真全屏 fractional fit；订单终端单列滚动；232 px 双行目标条 | 自动检查与 1280×720/真全屏可见预检通过，等待玩家复测 Round 1 的三个问题。 |
+| 2026-07-17 | Gate A Round 2 预检 | Human Check | 四类模态统一协调；F11 真全屏 fractional fit；订单终端单列滚动；232 px 双行目标条 | 自动检查与 1280×720/真全屏可见预检通过，等待玩家复测 Round 1 的三个问题。 |
+| 2026-07-17 | Gate A Round 2 | Passed | 接受模态 HUD 优先级、真全屏适配、订单终端层级与紧凑目标条 | 玩家确认模态 HUD 隐藏/恢复正确，同一次 `E` 不会连带推进；当前 Mac 真全屏与 1280×720 订单终端可读，目标栏尺寸和遮挡可接受。T-015 标记 `Done`，解锁 T-020。 |
 
 ## 开放问题
 
