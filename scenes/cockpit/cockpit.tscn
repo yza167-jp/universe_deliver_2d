@@ -1,7 +1,9 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/cockpit/cockpit.gd" id="1_cockpit"]
 [ext_resource type="Script" path="res://scripts/cockpit/cockpit_starfield.gd" id="2_starfield"]
+[ext_resource type="Resource" path="res://data/m0_data_registry.tres" id="3_registry"]
+[ext_resource type="Resource" path="res://data/dialogue/lao_pi_cockpit_graybox.tres" id="4_lao_pi_dialogue"]
 
 [sub_resource type="SystemFont" id="SystemFontCockpit"]
 font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
@@ -82,6 +84,30 @@ corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
+[sub_resource type="StyleBoxFlat" id="StyleNotificationPanel"]
+bg_color = Color(0.0313726, 0.0666667, 0.121569, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.466667, 0.788235, 0.768627, 0.9)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleDevicePanel"]
+bg_color = Color(0.054902, 0.0901961, 0.145098, 0.99)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.905882, 0.658824, 0.356863, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
 [node name="Cockpit" type="Control"]
 clip_contents = true
 layout_mode = 3
@@ -92,6 +118,8 @@ grow_horizontal = 2
 grow_vertical = 2
 theme = SubResource("ThemeCockpit")
 script = ExtResource("1_cockpit")
+data_registry = ExtResource("3_registry")
+lao_pi_dialogue = ExtResource("4_lao_pi_dialogue")
 
 [node name="TitleLabel" type="Label" parent="."]
 unique_name_in_owner = true
@@ -317,14 +345,135 @@ text_overrun_behavior = 3
 layout_mode = 2
 modulate = Color(0.603922, 0.654902, 0.709804, 0.6)
 
-[node name="FeedbackLabel" type="Label" parent="StatusPanel/Margin/Content"]
+[node name="PromptLabel" type="Label" parent="StatusPanel/Margin/Content"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
 theme_override_font_sizes/font_size = 12
-text = "UI_COCKPIT_FEEDBACK_READY"
+text = "UI_COCKPIT_SELECT_PROMPT"
 vertical_alignment = 1
 autowrap_mode = 2
 max_lines_visible = 2
 text_overrun_behavior = 3
+
+[node name="NotificationPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_left = 104.0
+offset_top = 58.0
+offset_right = 536.0
+offset_bottom = 104.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleNotificationPanel")
+
+[node name="Margin" type="MarginContainer" parent="NotificationPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 6
+
+[node name="NotificationLabel" type="Label" parent="NotificationPanel/Margin"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 12
+text = "UI_COCKPIT_WINDOW_OBSERVATION"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="NotificationTimer" type="Timer" parent="."]
+unique_name_in_owner = true
+wait_time = 2.6
+one_shot = true
+
+[node name="ModalLayer" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="InputBlocker" type="ColorRect" parent="ModalLayer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0, 0, 0, 0)
+
+[node name="DeviceDimmer" type="ColorRect" parent="ModalLayer"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.0156863, 0.027451, 0.0470588, 0.6)
+
+[node name="DevicePanel" type="PanelContainer" parent="ModalLayer"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -96.0
+offset_right = 200.0
+offset_bottom = 96.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleDevicePanel")
+
+[node name="Margin" type="MarginContainer" parent="ModalLayer/DevicePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 10
+
+[node name="Content" type="VBoxContainer" parent="ModalLayer/DevicePanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="DevicePanelTitle" type="Label" parent="ModalLayer/DevicePanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
+theme_override_font_sizes/font_size = 17
+text = "UI_COCKPIT_NAV_PANEL_TITLE"
+
+[node name="Divider" type="HSeparator" parent="ModalLayer/DevicePanel/Margin/Content"]
+layout_mode = 2
+modulate = Color(0.603922, 0.654902, 0.709804, 0.7)
+
+[node name="DevicePanelBody" type="Label" parent="ModalLayer/DevicePanel/Margin/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 102)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 13
+text = "UI_COCKPIT_NAV_NO_ORDER"
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="DeviceCloseButton" type="Button" parent="ModalLayer/DevicePanel/Margin/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(104, 28)
+layout_mode = 2
+size_flags_horizontal = 8
+text = "UI_COCKPIT_PANEL_CLOSE"

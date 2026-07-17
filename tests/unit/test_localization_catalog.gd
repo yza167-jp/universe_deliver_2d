@@ -3,6 +3,7 @@ extends ProjectTestSuite
 const CATALOG_PATH: String = "res://data/localization/game_text.csv"
 const REGISTRY_PATH: String = "res://data/m0_data_registry.tres"
 const DIALOGUE_PATH: String = "res://data/dialogue/lao_pi_system_test.tres"
+const COCKPIT_DIALOGUE_PATH: String = "res://data/dialogue/lao_pi_cockpit_graybox.tres"
 const REQUIRED_LOCALES: PackedStringArray = ["zh_CN", "en"]
 
 
@@ -113,6 +114,37 @@ func run() -> Array[String]:
 		"cockpit company description": &"UI_COCKPIT_DESC_COMPANY_TERMINAL",
 		"cockpit radio description": &"UI_COCKPIT_DESC_RADIO",
 		"cockpit cargo description": &"UI_COCKPIT_DESC_CARGO",
+		"cockpit select prompt": &"UI_COCKPIT_SELECT_PROMPT",
+		"cockpit focus prompt": &"UI_COCKPIT_FOCUS_PROMPT_FORMAT",
+		"cockpit navigation action": &"UI_COCKPIT_ACTION_NAVIGATION",
+		"cockpit window action": &"UI_COCKPIT_ACTION_WINDOW",
+		"cockpit lao pi action": &"UI_COCKPIT_ACTION_LAO_PI",
+		"cockpit company action": &"UI_COCKPIT_ACTION_COMPANY_TERMINAL",
+		"cockpit radio action": &"UI_COCKPIT_ACTION_RADIO",
+		"cockpit cargo action": &"UI_COCKPIT_ACTION_CARGO",
+		"cockpit radio on": &"UI_COCKPIT_RADIO_ON",
+		"cockpit radio off": &"UI_COCKPIT_RADIO_OFF",
+		"cockpit radio status": &"UI_COCKPIT_RADIO_STATUS_FORMAT",
+		"cockpit radio button": &"UI_COCKPIT_RADIO_BUTTON_FORMAT",
+		"cockpit panel close": &"UI_COCKPIT_PANEL_CLOSE",
+		"cockpit unavailable value": &"UI_COCKPIT_VALUE_UNAVAILABLE",
+		"cockpit navigation panel title": &"UI_COCKPIT_NAV_PANEL_TITLE",
+		"cockpit navigation no order": &"UI_COCKPIT_NAV_NO_ORDER",
+		"cockpit navigation order": &"UI_COCKPIT_NAV_ORDER_FORMAT",
+		"cockpit destination unset": &"UI_COCKPIT_NAV_DESTINATION_UNSET",
+		"cockpit destination": &"UI_COCKPIT_NAV_DESTINATION_FORMAT",
+		"cockpit route pending": &"UI_COCKPIT_NAV_ROUTE_PENDING",
+		"cockpit company panel title": &"UI_COCKPIT_COMPANY_PANEL_TITLE",
+		"cockpit company link": &"UI_COCKPIT_COMPANY_LINK_STATUS",
+		"cockpit company no order": &"UI_COCKPIT_COMPANY_NO_ACTIVE_ORDER",
+		"cockpit company active order": &"UI_COCKPIT_COMPANY_ACTIVE_ORDER_FORMAT",
+		"cockpit company travel notice": &"UI_COCKPIT_COMPANY_TRAVEL_NOTICE",
+		"cockpit cargo panel title": &"UI_COCKPIT_CARGO_PANEL_TITLE",
+		"cockpit cargo empty": &"UI_COCKPIT_CARGO_EMPTY",
+		"cockpit cargo loaded": &"UI_COCKPIT_CARGO_LOADED_FORMAT",
+		"cockpit cargo integrity": &"UI_COCKPIT_CARGO_INTEGRITY_PLACEHOLDER",
+		"cockpit cargo lock": &"UI_COCKPIT_CARGO_LOCK_STATUS",
+		"cockpit window observation": &"UI_COCKPIT_WINDOW_OBSERVATION",
 		"order terminal title": &"UI_ORDER_TERMINAL_TITLE",
 		"order not accepted status": &"UI_ORDER_STATUS_NOT_ACCEPTED",
 		"order accepted status": &"UI_ORDER_STATUS_ACCEPTED",
@@ -211,6 +243,17 @@ func run() -> Array[String]:
 	expect_true(
 		dialogue_errors.is_empty(),
 		"Lao Pi test dialogue must validate: %s" % "; ".join(dialogue_errors),
+		failures
+	)
+	var cockpit_sequence: DialogueSequence = load(COCKPIT_DIALOGUE_PATH) as DialogueSequence
+	var cockpit_dialogue_errors: PackedStringArray = DialogueValidator.validate(
+		cockpit_sequence,
+		catalog,
+		REQUIRED_LOCALES
+	)
+	expect_true(
+		cockpit_dialogue_errors.is_empty(),
+		"Lao Pi cockpit dialogue must validate: %s" % "; ".join(cockpit_dialogue_errors),
 		failures
 	)
 

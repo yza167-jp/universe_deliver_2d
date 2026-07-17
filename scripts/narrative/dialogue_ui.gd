@@ -80,6 +80,13 @@ func continue_dialogue() -> bool:
 	return _runtime.advance()
 
 
+## Closes the current dialogue without marking the visible line as read.
+func cancel_dialogue() -> bool:
+	if _runtime == null:
+		return false
+	return _runtime.cancel()
+
+
 func select_choice(choice_id: StringName) -> bool:
 	if _runtime == null or _is_revealing:
 		return false

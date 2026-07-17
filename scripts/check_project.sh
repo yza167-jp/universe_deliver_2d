@@ -126,7 +126,7 @@ run_step \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/ship_loadout_smoke_runner.gd
 
 run_step \
-  "Interactive first-person cockpit layout and input smoke test" \
+  "Cockpit focus, activation, modal, and hotspot behavior smoke test" \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/cockpit_smoke_runner.gd
 
 run_step \

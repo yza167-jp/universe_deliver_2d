@@ -66,6 +66,18 @@ func run() -> Array[String]:
 	)
 	expect_true(runtime.current_line.id == &"prompt", "Skip-read must stop on the prompt.", failures)
 
+	var cancel_state: GameStateModel = GameStateModel.new()
+	var cancel_runtime: DialogueRuntime = DialogueRuntime.new()
+	expect_true(cancel_runtime.start(sequence, cancel_state), "Cancelable dialogue must start.", failures)
+	expect_true(cancel_runtime.cancel(), "Active dialogue must support modal cancellation.", failures)
+	expect_true(not cancel_runtime.is_running(), "Canceled dialogue must stop running.", failures)
+	expect_true(
+		not cancel_state.has_read_dialogue_line(sequence.id, &"intro"),
+		"Canceling must not mark the visible line as completed.",
+		failures
+	)
+	cancel_state.free()
+
 	game_state.reset_runtime_state()
 	expect_true(
 		not game_state.has_read_dialogue_line(sequence.id, &"intro"),

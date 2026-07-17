@@ -58,6 +58,15 @@ func advance() -> bool:
 	return _move_to_line(next_line_id)
 
 
+## Ends an active sequence without completing the current line or applying its effects.
+func cancel() -> bool:
+	last_error = ""
+	if not _is_running:
+		return _fail("No dialogue is active to cancel.")
+	_finish_dialogue()
+	return true
+
+
 func select_choice(choice_id: StringName) -> bool:
 	last_error = ""
 	if not _is_running or current_line == null:
