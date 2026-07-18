@@ -38,7 +38,7 @@ M0 的强制 Human Check 任务只有：
 | A | 项目、测试与数据基础 | Done |
 | B | 快递站、老皮与接单闭环 | Done |
 | C | 第一人称驾驶舱与旅行 | Done |
-| D | 飞行实验室与核心手感 | In Progress（T-030 Done；T-031 Ready） |
+| D | 飞行实验室与核心手感 | In Progress（T-031 Done；T-032 Ready） |
 | E | 赤砂星完整飞行路线 | Blocked |
 | F | 落地剧情、结算、存档与 M0 打磨 | Blocked |
 
@@ -862,7 +862,7 @@ T-003、T-006。
 
 ## T-031 — 油门、刹车、俯仰与显式惯性模型
 
-**State:** `Ready`\
+**State:** `Done`\
 **Priority:** P0\
 **Goal:** 飞船从低速悬停到高速飞行都具有重量，但仍可被玩家理解和掌控。
 
@@ -893,6 +893,15 @@ T-003、T-006。
 
 T-030。
 
+### 自动验收（2026-07-18）
+
+- `FlightLabShip` 继续使用 `CharacterBody2D`，通过 `flight_throttle`、`flight_brake`、`flight_pitch_up` 和 `flight_pitch_down` Input Map action 读取控制，并在 `_physics_process()` 中显式积分线速度、角速度和旋转后调用 `move_and_slide()`。
+- 新增独立 `FlightMotionModel` 纯计算层：主推力沿船头方向，轻微空间阻力保留滑行惯性，制动沿当前速度逐步趋零且不会自动倒飞，同时应用可调前向速度、总速度和最大俯仰保护。
+- 推力、制动、空间阻力、前向/总速度上限、制动死区、角速度、角加速度、角阻尼与俯仰范围均集中在 `FlightTuning` Resource；替换调参资源即可改变结果，无需修改运动公式。
+- Flight Lab 增加世界空间速度参照、推进器亮度反馈和角速度 HUD；`R` 重置同步清除线速度、角速度和全部当前输入状态。
+- Godot 4.7.1 自动验证通过：30 个单元/场景测试套件全部通过；纯数学测试覆盖推力方向、长时加速、惯性、制动不越零、速度限制、俯仰响应/阻尼和资源替换；Flight Lab 专项烟雾实际驱动四个 Input action；完整 `./scripts/check_project.sh` 通过。
+- 本任务未实现 Boost、重力、大气、伤害、武器或天气；飞行手感继续按约定集中在 T-036 人工验收，因此本任务标记 `Done`。
+
 ### 建议提交
 
 `实现可调的横版飞船推力与惯性模型`
@@ -901,7 +910,7 @@ T-030。
 
 ## T-032 — 大气层重力、阻力与辅助驾驶
 
-**State:** `Blocked`\
+**State:** `Ready`\
 **Priority:** P0\
 **Goal:** 松手后飞船会因星球引力下降，下降速度先增加后趋近终端速度，同时玩家可以调节辅助程度。
 

@@ -41,6 +41,11 @@ func run() -> Array[String]:
 	expect_true(flight_camera != null and flight_camera.enabled, "Flight Lab camera must be enabled.", failures)
 	expect_true(debug_hud != null and debug_hud.visible, "Flight debug HUD must start visible.", failures)
 	expect_true(
+		flight_ship != null and flight_ship.tuning is FlightTuning,
+		"Flight Lab ship must use a FlightTuning resource.",
+		failures
+	)
+	expect_true(
 		flight_lab.get_node_or_null("Backdrop/Space") is ColorRect,
 		"Flight Lab must contain a space backdrop.",
 		failures
@@ -49,6 +54,11 @@ func run() -> Array[String]:
 		flight_lab.get_node_or_null("World/Terrain/Floor") is StaticBody2D
 		and flight_lab.get_node_or_null("World/Terrain/Pillar") is StaticBody2D,
 		"Flight Lab must contain simple collision terrain.",
+		failures
+	)
+	expect_true(
+		flight_lab.get_node_or_null("World/SpeedMarkers") is Node2D,
+		"Flight Lab must contain world-space motion references.",
 		failures
 	)
 
@@ -64,6 +74,10 @@ func run() -> Array[String]:
 		flight_ship.position = Vector2(780.0, 92.0)
 		flight_ship.velocity = Vector2(184.0, -73.0)
 		flight_ship.rotation = 0.7
+		flight_ship.angular_velocity = 1.4
+		flight_ship.throttle_input = 1.0
+		flight_ship.brake_input = 0.5
+		flight_ship.pitch_input = -1.0
 		flight_ship.fuel = 13.0
 		flight_ship.boost_energy = 27.0
 		flight_ship.gravity_acceleration = 88.0
@@ -73,8 +87,12 @@ func run() -> Array[String]:
 		expect_true(
 			flight_ship.position == flight_ship.stable_start_position
 			and flight_ship.velocity == Vector2.ZERO
-			and is_zero_approx(flight_ship.rotation),
-			"Flight Lab reset must clear position, velocity, and pitch drift.",
+			and is_zero_approx(flight_ship.rotation)
+			and is_zero_approx(flight_ship.angular_velocity)
+			and is_zero_approx(flight_ship.throttle_input)
+			and is_zero_approx(flight_ship.brake_input)
+			and is_zero_approx(flight_ship.pitch_input),
+			"Flight Lab reset must clear linear, angular, and input drift.",
 			failures
 		)
 		expect_true(

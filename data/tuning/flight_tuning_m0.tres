@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="FlightTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/flight/flight_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+thrust_acceleration = 240.0
+brake_acceleration = 300.0
+space_drag = 0.045
+max_forward_speed = 440.0
+max_total_speed = 520.0
+brake_deadzone = 4.0
+max_pitch_rate = 2.4
+pitch_acceleration = 7.0
+angular_damping = 5.0
+max_pitch_degrees = 70.0

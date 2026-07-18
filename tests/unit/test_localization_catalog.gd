@@ -72,6 +72,7 @@ func run() -> Array[String]:
 		"flight debug speed": &"UI_FLIGHT_DEBUG_SPEED",
 		"flight debug vertical speed": &"UI_FLIGHT_DEBUG_VERTICAL_SPEED",
 		"flight debug pitch": &"UI_FLIGHT_DEBUG_PITCH",
+		"flight debug angular velocity": &"UI_FLIGHT_DEBUG_ANGULAR_VELOCITY",
 		"flight debug zone": &"UI_FLIGHT_DEBUG_ZONE",
 		"flight debug gravity": &"UI_FLIGHT_DEBUG_GRAVITY",
 		"flight debug fuel": &"UI_FLIGHT_DEBUG_FUEL",

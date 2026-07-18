@@ -1,15 +1,16 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/flight/flight_lab.gd" id="1_lab"]
 [ext_resource type="Script" path="res://scripts/flight/flight_lab_ship.gd" id="2_ship"]
 [ext_resource type="PackedScene" path="res://scenes/ui/flight_debug_hud.tscn" id="3_hud"]
 [ext_resource type="Texture2D" path="res://assets/flight_lab_ship_placeholder.svg" id="4_ship_texture"]
+[ext_resource type="Resource" path="res://data/tuning/flight_tuning_m0.tres" id="5_tuning"]
 
 [sub_resource type="RectangleShape2D" id="ShapeShip"]
 size = Vector2(38, 16)
 
 [sub_resource type="RectangleShape2D" id="ShapeFloor"]
-size = Vector2(1600, 140)
+size = Vector2(3200, 140)
 
 [sub_resource type="RectangleShape2D" id="ShapePillar"]
 size = Vector2(64, 78)
@@ -64,21 +65,83 @@ color = Color(0.905882, 0.658824, 0.356863, 0.85)
 [node name="World" type="Node2D" parent="."]
 
 [node name="HorizonGuide" type="Line2D" parent="World"]
-points = PackedVector2Array(-480, 234, 1260, 234)
+points = PackedVector2Array(-160, 234, 3040, 234)
 width = 1.0
 default_color = Color(0.352941, 0.737255, 0.760784, 0.25)
+
+[node name="SpeedMarkers" type="Node2D" parent="World"]
+
+[node name="MarkerA" type="Line2D" parent="World/SpeedMarkers"]
+position = Vector2(80, 0)
+points = PackedVector2Array(0, 74, 0, 274)
+width = 1.0
+default_color = Color(0.352941, 0.737255, 0.760784, 0.2)
+
+[node name="MarkerB" type="Line2D" parent="World/SpeedMarkers"]
+position = Vector2(320, 0)
+points = PackedVector2Array(0, 74, 0, 274)
+width = 1.0
+default_color = Color(0.352941, 0.737255, 0.760784, 0.2)
+
+[node name="MarkerC" type="Line2D" parent="World/SpeedMarkers"]
+position = Vector2(560, 0)
+points = PackedVector2Array(0, 74, 0, 274)
+width = 1.0
+default_color = Color(0.352941, 0.737255, 0.760784, 0.2)
+
+[node name="MarkerD" type="Line2D" parent="World/SpeedMarkers"]
+position = Vector2(800, 0)
+points = PackedVector2Array(0, 74, 0, 274)
+width = 1.0
+default_color = Color(0.352941, 0.737255, 0.760784, 0.2)
+
+[node name="MarkerE" type="Line2D" parent="World/SpeedMarkers"]
+position = Vector2(1040, 0)
+points = PackedVector2Array(0, 74, 0, 274)
+width = 1.0
+default_color = Color(0.352941, 0.737255, 0.760784, 0.2)
+
+[node name="MarkerF" type="Line2D" parent="World/SpeedMarkers"]
+position = Vector2(1280, 0)
+points = PackedVector2Array(0, 74, 0, 274)
+width = 1.0
+default_color = Color(0.352941, 0.737255, 0.760784, 0.2)
+
+[node name="MarkerG" type="Line2D" parent="World/SpeedMarkers"]
+position = Vector2(1520, 0)
+points = PackedVector2Array(0, 74, 0, 274)
+width = 1.0
+default_color = Color(0.352941, 0.737255, 0.760784, 0.2)
+
+[node name="MarkerH" type="Line2D" parent="World/SpeedMarkers"]
+position = Vector2(1760, 0)
+points = PackedVector2Array(0, 74, 0, 274)
+width = 1.0
+default_color = Color(0.352941, 0.737255, 0.760784, 0.2)
+
+[node name="MarkerI" type="Line2D" parent="World/SpeedMarkers"]
+position = Vector2(2000, 0)
+points = PackedVector2Array(0, 74, 0, 274)
+width = 1.0
+default_color = Color(0.352941, 0.737255, 0.760784, 0.2)
+
+[node name="MarkerJ" type="Line2D" parent="World/SpeedMarkers"]
+position = Vector2(2240, 0)
+points = PackedVector2Array(0, 74, 0, 274)
+width = 1.0
+default_color = Color(0.352941, 0.737255, 0.760784, 0.2)
 
 [node name="Terrain" type="Node2D" parent="World"]
 
 [node name="Floor" type="StaticBody2D" parent="World/Terrain"]
-position = Vector2(560, 350)
+position = Vector2(1440, 350)
 
 [node name="Visual" type="Polygon2D" parent="World/Terrain/Floor"]
-polygon = PackedVector2Array(-800, -70, 800, -70, 800, 70, -800, 70)
+polygon = PackedVector2Array(-1600, -70, 1600, -70, 1600, 70, -1600, 70)
 color = Color(0.090196, 0.137255, 0.180392, 1)
 
 [node name="TopEdge" type="Line2D" parent="World/Terrain/Floor"]
-points = PackedVector2Array(-800, -70, 800, -70)
+points = PackedVector2Array(-1600, -70, 1600, -70)
 width = 3.0
 default_color = Color(0.352941, 0.737255, 0.760784, 0.8)
 
@@ -107,6 +170,7 @@ shape = SubResource("ShapePillar")
 unique_name_in_owner = true
 position = Vector2(320, 190)
 script = ExtResource("2_ship")
+tuning = ExtResource("5_tuning")
 
 [node name="ShipSprite" type="Sprite2D" parent="World/FlightShip"]
 texture_filter = 1

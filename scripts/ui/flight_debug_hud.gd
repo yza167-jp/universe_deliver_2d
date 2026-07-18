@@ -6,6 +6,7 @@ extends CanvasLayer
 @onready var _speed_label: Label = %SpeedLabel
 @onready var _vertical_speed_label: Label = %VerticalSpeedLabel
 @onready var _pitch_label: Label = %PitchLabel
+@onready var _angular_velocity_label: Label = %AngularVelocityLabel
 @onready var _zone_label: Label = %ZoneLabel
 @onready var _gravity_label: Label = %GravityLabel
 @onready var _fuel_label: Label = %FuelLabel
@@ -42,6 +43,10 @@ func refresh() -> void:
 		tr("UI_FLIGHT_DEBUG_VERTICAL_SPEED") % _flight_ship.get_vertical_speed()
 	)
 	_pitch_label.text = tr("UI_FLIGHT_DEBUG_PITCH") % _flight_ship.get_pitch_degrees()
+	_angular_velocity_label.text = (
+		tr("UI_FLIGHT_DEBUG_ANGULAR_VELOCITY")
+		% _flight_ship.get_angular_velocity()
+	)
 	_zone_label.text = tr("UI_FLIGHT_DEBUG_ZONE") % tr(_flight_ship.environment_zone_key)
 	_gravity_label.text = (
 		tr("UI_FLIGHT_DEBUG_GRAVITY") % _flight_ship.gravity_acceleration
@@ -78,6 +83,10 @@ func get_speed_text() -> String:
 
 func get_status_text() -> String:
 	return "" if _status_label == null else _status_label.text
+
+
+func get_angular_velocity_text() -> String:
+	return "" if _angular_velocity_label == null else _angular_velocity_label.text
 
 
 func _localize_static_content() -> void:

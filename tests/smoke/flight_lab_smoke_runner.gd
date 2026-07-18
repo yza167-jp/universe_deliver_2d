@@ -58,9 +58,48 @@ func _run_smoke() -> void:
 	_check(debug_hud != null and debug_hud.visible, "F3 action did not restore the debug HUD.")
 
 	if flight_ship != null:
+		var start_position: Vector2 = flight_ship.position
+		await _hold_action_for_physics_frames(FlightLabShip.THROTTLE_ACTION, 12)
+		var accelerated_speed: float = flight_ship.get_speed()
+		_check(
+			accelerated_speed > 20.0 and flight_ship.position.x > start_position.x,
+			"Throttle action did not accelerate the ship forward."
+		)
+		for _frame_index: int in 6:
+			await physics_frame
+		_check(
+			flight_ship.get_speed() > accelerated_speed * 0.9,
+			"Released throttle removed space inertia too quickly."
+		)
+		var speed_before_brake: float = flight_ship.get_speed()
+		await _hold_action_for_physics_frames(FlightLabShip.BRAKE_ACTION, 3)
+		_check(
+			flight_ship.get_speed() < speed_before_brake
+			and flight_ship.get_speed() > 0.0,
+			"Brake action must decelerate without instantly reversing or stopping."
+		)
+		await _hold_action_for_physics_frames(FlightLabShip.PITCH_DOWN_ACTION, 6)
+		_check(
+			flight_ship.rotation > 0.0 and flight_ship.angular_velocity > 0.0,
+			"Pitch-down action did not build positive angular motion."
+		)
+		if debug_hud != null:
+			await process_frame
+			_check(
+				not debug_hud.get_angular_velocity_text().is_empty()
+				and debug_hud.get_angular_velocity_text()
+				!= "UI_FLIGHT_DEBUG_ANGULAR_VELOCITY",
+				"Flight debug HUD did not display angular velocity."
+			)
+
+	if flight_ship != null:
 		flight_ship.position = Vector2(812.0, 54.0)
 		flight_ship.velocity = Vector2(220.0, 96.0)
 		flight_ship.rotation = -0.55
+		flight_ship.angular_velocity = -1.25
+		flight_ship.throttle_input = 1.0
+		flight_ship.brake_input = 1.0
+		flight_ship.pitch_input = -1.0
 		flight_ship.fuel = 4.0
 		flight_ship.boost_energy = 8.0
 	var restart_event: InputEventAction = InputEventAction.new()
@@ -71,8 +110,12 @@ func _run_smoke() -> void:
 		_check(
 			flight_ship.position == flight_ship.stable_start_position
 			and flight_ship.velocity == Vector2.ZERO
-			and is_zero_approx(flight_ship.rotation),
-			"R action left position, velocity, or pitch drift after reset."
+			and is_zero_approx(flight_ship.rotation)
+			and is_zero_approx(flight_ship.angular_velocity)
+			and is_zero_approx(flight_ship.throttle_input)
+			and is_zero_approx(flight_ship.brake_input)
+			and is_zero_approx(flight_ship.pitch_input),
+			"R action left linear, angular, or input drift after reset."
 		)
 		_check(
 			is_equal_approx(flight_ship.fuel, FlightLabShip.DEFAULT_RESOURCE_VALUE)
@@ -93,6 +136,13 @@ func _run_smoke() -> void:
 	_finish()
 
 
+func _hold_action_for_physics_frames(action: StringName, frame_count: int) -> void:
+	Input.action_press(action)
+	for _frame_index: int in frame_count:
+		await physics_frame
+	Input.action_release(action)
+
+
 func _check(condition: bool, message: String) -> void:
 	if not condition:
 		_failures.append(message)
@@ -101,8 +151,8 @@ func _check(condition: bool, message: String) -> void:
 func _finish() -> void:
 	if _failures.is_empty():
 		print(
-			"[flight-lab] PASS: direct route, scene scaffold, debug HUD toggle, "
-			+ "and deterministic reset."
+			"[flight-lab] PASS: explicit thrust, inertia, brake, pitch, HUD, "
+			+ "direct route, and deterministic reset."
 		)
 		quit(0)
 		return

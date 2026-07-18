@@ -105,6 +105,17 @@ func _expect_default_input_map(failures: Array[String]) -> void:
 		failures
 	)
 	expect_true(
+		_has_physical_key(InputMap.action_get_events(&"flight_brake"), KEY_S),
+		"Flight brake must default to S.",
+		failures
+	)
+	expect_true(
+		_has_key(InputMap.action_get_events(&"flight_pitch_up"), KEY_UP)
+		and _has_key(InputMap.action_get_events(&"flight_pitch_down"), KEY_DOWN),
+		"Flight pitch must default to the up and down arrow keys.",
+		failures
+	)
+	expect_true(
 		_has_mouse_button(InputMap.action_get_events(&"flight_fire"), MOUSE_BUTTON_LEFT),
 		"Flight fire must include the left mouse button.",
 		failures
