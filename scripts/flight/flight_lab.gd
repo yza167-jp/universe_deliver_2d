@@ -5,6 +5,7 @@ const RESTART_ACTION: StringName = &"flight_restart"
 const HUD_TOGGLE_ACTION: StringName = &"flight_debug_toggle"
 const ENVIRONMENT_CYCLE_ACTION: StringName = &"flight_environment_cycle"
 const ASSIST_CYCLE_ACTION: StringName = &"flight_assist_cycle"
+const LASER_TOGGLE_ACTION: StringName = &"flight_laser_toggle"
 const ASSIST_PRESETS: Array[float] = [0.0, 0.75, 1.0]
 const LAB_CHECKPOINT_ID: StringName = &"checkpoint_flight_lab_start"
 const NO_RETRY_PENDING: float = -1.0
@@ -13,8 +14,10 @@ const NO_RETRY_PENDING: float = -1.0
 @onready var flight_camera: Camera2D = %FlightCamera
 @onready var debug_hud: FlightDebugHUD = %FlightDebugHUD
 @onready var atmosphere_tint: ColorRect = %AtmosphereTint
+@onready var destructible_asteroids: Node2D = %DestructibleAsteroids
 
 @export var environment_profiles: Array[FlightEnvironmentProfile] = []
+@export var data_registry: GameDataRegistry
 
 var settings_service_override: SettingsServiceModel
 var _active_environment_index: int = 0
@@ -32,6 +35,7 @@ func _ready() -> void:
 	_active_assist_index = _find_nearest_assist_index(_active_assist_strength)
 	_active_environment_index = _find_environment_index(flight_ship.environment_profile)
 	_connect_ship_signals()
+	flight_ship.set_laser_enabled(_resolve_laser_enabled_from_loadout())
 	debug_hud.bind_ship(flight_ship)
 	reset_lab()
 
@@ -57,6 +61,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		cycle_assist_preset()
 		get_viewport().set_input_as_handled()
 		return
+	if event.is_action_pressed(LASER_TOGGLE_ACTION):
+		toggle_debug_laser_loadout()
+		get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed(RESTART_ACTION):
 		restart_from_checkpoint(false)
 		get_viewport().set_input_as_handled()
@@ -79,6 +87,7 @@ func restart_from_checkpoint(is_automatic: bool = false) -> bool:
 		return false
 	if not flight_ship.restore_checkpoint():
 		return false
+	_reset_destructible_asteroids()
 	_auto_retry_remaining = NO_RETRY_PENDING
 	_clear_camera_shake()
 	_sync_camera_to_ship()
@@ -120,6 +129,16 @@ func toggle_debug_hud() -> bool:
 		return false
 	debug_hud.visible = not debug_hud.visible
 	return debug_hud.visible
+
+
+func toggle_debug_laser_loadout() -> bool:
+	if not OS.is_debug_build() or flight_ship == null:
+		return false
+	var enabled: bool = not flight_ship.is_laser_enabled()
+	flight_ship.set_laser_enabled(enabled)
+	if debug_hud != null:
+		debug_hud.show_laser_loadout_feedback(enabled)
+	return enabled
 
 
 func get_flight_ship() -> FlightLabShip:
@@ -237,6 +256,12 @@ func _connect_ship_signals() -> void:
 		_on_company_warning_requested
 	):
 		flight_ship.company_warning_requested.connect(_on_company_warning_requested)
+	if not flight_ship.laser_fired.is_connected(_on_laser_fired):
+		flight_ship.laser_fired.connect(_on_laser_fired)
+	if not flight_ship.laser_fire_rejected.is_connected(_on_laser_fire_rejected):
+		flight_ship.laser_fire_rejected.connect(_on_laser_fire_rejected)
+	if not flight_ship.laser_target_hit.is_connected(_on_laser_target_hit):
+		flight_ship.laser_target_hit.connect(_on_laser_target_hit)
 
 
 func _refresh_lab_checkpoint() -> void:
@@ -270,6 +295,25 @@ func _on_company_warning_requested(
 ) -> void:
 	if debug_hud != null:
 		debug_hud.show_company_warning(warning_key, cargo_integrity)
+
+
+func _on_laser_fired(hit_target: bool) -> void:
+	if not hit_target and debug_hud != null:
+		debug_hud.show_laser_miss_feedback()
+
+
+func _on_laser_fire_rejected(reason_key: StringName) -> void:
+	if debug_hud != null:
+		debug_hud.show_laser_rejected_feedback(reason_key)
+
+
+func _on_laser_target_hit(
+	_target_id: StringName,
+	remaining_durability: int,
+	target_destroyed: bool
+) -> void:
+	if debug_hud != null:
+		debug_hud.show_laser_hit_feedback(remaining_durability, target_destroyed)
 
 
 func _update_auto_retry(delta: float) -> void:
@@ -310,3 +354,23 @@ func _clear_camera_shake() -> void:
 	_camera_shake_amplitude = 0.0
 	if flight_camera != null:
 		flight_camera.offset = Vector2.ZERO
+
+
+func _resolve_laser_enabled_from_loadout() -> bool:
+	if data_registry == null:
+		return false
+	var game_state: GameStateModel = get_node_or_null("/root/GameState") as GameStateModel
+	if game_state == null:
+		return false
+	return FlightWeaponRules.has_asteroid_laser(
+		game_state.ship_configuration,
+		data_registry.modules
+	)
+
+
+func _reset_destructible_asteroids() -> void:
+	if destructible_asteroids == null:
+		return
+	for child: Node in destructible_asteroids.get_children():
+		if child is DestructibleAsteroid:
+			(child as DestructibleAsteroid).reset_asteroid()

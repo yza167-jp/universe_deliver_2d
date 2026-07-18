@@ -15,6 +15,7 @@ extends CanvasLayer
 @onready var _fuel_label: Label = %FuelLabel
 @onready var _boost_label: Label = %BoostLabel
 @onready var _assist_label: Label = %AssistLabel
+@onready var _laser_label: Label = %LaserLabel
 @onready var _collision_label: Label = %CollisionLabel
 @onready var _checkpoint_label: Label = %CheckpointLabel
 @onready var _status_label: Label = %StatusLabel
@@ -81,6 +82,20 @@ func refresh() -> void:
 		roundi(_flight_ship.assist_strength * 100.0),
 		roundi(_flight_ship.effective_assist_strength * 100.0),
 	]
+	var laser_loadout_key: StringName = &"UI_FLIGHT_LASER_LOADOUT_UNINSTALLED"
+	var laser_state_text: String = tr("UI_FLIGHT_LASER_STATE_UNAVAILABLE")
+	if _flight_ship.is_laser_enabled():
+		laser_loadout_key = &"UI_FLIGHT_LASER_LOADOUT_INSTALLED"
+		if _flight_ship.is_laser_ready():
+			laser_state_text = tr("UI_FLIGHT_LASER_STATE_READY")
+		else:
+			laser_state_text = tr("UI_FLIGHT_LASER_STATE_COOLDOWN") % (
+				_flight_ship.get_laser_cooldown_remaining()
+			)
+	_laser_label.text = tr("UI_FLIGHT_DEBUG_LASER") % [
+		tr(laser_loadout_key),
+		laser_state_text,
+	]
 	_collision_label.text = (
 		tr("UI_FLIGHT_DEBUG_COLLISION") % [
 			tr(_flight_ship.collision_state_key),
@@ -116,6 +131,45 @@ func show_assist_feedback(assist_strength: float) -> void:
 	_status_label.text = (
 		tr("UI_FLIGHT_LAB_STATUS_ASSIST")
 		% roundi(clampf(assist_strength, 0.0, 1.0) * 100.0)
+	)
+
+
+func show_laser_loadout_feedback(enabled: bool) -> void:
+	if not is_node_ready():
+		return
+	var status_key: StringName = (
+		&"UI_FLIGHT_LAB_STATUS_LASER_EQUIPPED"
+		if enabled
+		else &"UI_FLIGHT_LAB_STATUS_LASER_UNEQUIPPED"
+	)
+	_status_label.text = tr(status_key)
+	refresh()
+
+
+func show_laser_miss_feedback() -> void:
+	if not is_node_ready():
+		return
+	_status_label.text = tr("UI_FLIGHT_LAB_STATUS_LASER_MISS")
+
+
+func show_laser_rejected_feedback(reason_key: StringName) -> void:
+	if not is_node_ready():
+		return
+	if reason_key == FlightLaserWeapon.FIRE_COOLDOWN_KEY and _flight_ship != null:
+		_status_label.text = tr(reason_key) % _flight_ship.get_laser_cooldown_remaining()
+		return
+	_status_label.text = tr(reason_key)
+
+
+func show_laser_hit_feedback(remaining_durability: int, target_destroyed: bool) -> void:
+	if not is_node_ready():
+		return
+	if target_destroyed:
+		_status_label.text = tr("UI_FLIGHT_LAB_STATUS_LASER_DESTROYED")
+		return
+	_status_label.text = tr("UI_FLIGHT_LAB_STATUS_LASER_HIT") % maxi(
+		remaining_durability,
+		0
 	)
 
 
@@ -188,6 +242,10 @@ func get_terminal_text() -> String:
 
 func get_durability_text() -> String:
 	return "" if _durability_label == null else _durability_label.text
+
+
+func get_laser_text() -> String:
+	return "" if _laser_label == null else _laser_label.text
 
 
 func get_checkpoint_text() -> String:

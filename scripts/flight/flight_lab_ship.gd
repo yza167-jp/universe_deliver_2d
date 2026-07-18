@@ -4,12 +4,20 @@ extends CharacterBody2D
 signal impact_resolved(severity: int, impact_speed: float)
 signal flight_failed(reason_key: StringName)
 signal company_warning_requested(warning_key: StringName, cargo_integrity: float)
+signal laser_fired(hit_target: bool)
+signal laser_fire_rejected(reason_key: StringName)
+signal laser_target_hit(
+	target_id: StringName,
+	remaining_durability: int,
+	target_destroyed: bool
+)
 
 const THROTTLE_ACTION: StringName = &"flight_throttle"
 const BRAKE_ACTION: StringName = &"flight_brake"
 const PITCH_UP_ACTION: StringName = &"flight_pitch_up"
 const PITCH_DOWN_ACTION: StringName = &"flight_pitch_down"
 const BOOST_ACTION: StringName = &"flight_boost"
+const FIRE_ACTION: StringName = &"flight_fire"
 const DEFAULT_RESOURCE_VALUE: float = FlightResources.MAX_RESOURCE_VALUE
 const DEFAULT_ASSIST_STRENGTH: float = 0.75
 const DEFAULT_ZONE_KEY: StringName = &"UI_FLIGHT_LAB_ZONE_DEEP_SPACE"
@@ -75,10 +83,23 @@ var effective_boost_input: float = 0.0
 @onready var _engine_glow: Polygon2D = $EngineGlow
 @onready var _boost_glow: Polygon2D = $BoostGlow
 @onready var _impact_sparks: CPUParticles2D = $ImpactSparks
+@onready var _laser_weapon: FlightLaserWeapon = %LaserWeapon
 
 var _checkpoint_state: FlightCheckpointState
 var _collision_feedback_cooldown_remaining: float = 0.0
 var _triggered_cargo_warning_keys: Dictionary[StringName, bool] = {}
+
+
+func _ready() -> void:
+	if _laser_weapon == null:
+		return
+	_laser_weapon.tuning = tuning
+	if not _laser_weapon.fired.is_connected(_on_laser_fired):
+		_laser_weapon.fired.connect(_on_laser_fired)
+	if not _laser_weapon.fire_rejected.is_connected(_on_laser_fire_rejected):
+		_laser_weapon.fire_rejected.connect(_on_laser_fire_rejected)
+	if not _laser_weapon.target_hit.is_connected(_on_laser_target_hit):
+		_laser_weapon.target_hit.connect(_on_laser_target_hit)
 
 
 func _physics_process(delta: float) -> void:
@@ -90,6 +111,8 @@ func _physics_process(delta: float) -> void:
 		_clear_control_inputs()
 		_update_engine_feedback()
 		return
+	if Input.is_action_just_pressed(FIRE_ACTION):
+		request_laser_fire()
 	var requested_pitch: float = Input.get_axis(PITCH_UP_ACTION, PITCH_DOWN_ACTION)
 	integrate_motion(
 		Input.get_action_strength(THROTTLE_ACTION),
@@ -218,6 +241,8 @@ func reset_to_start(
 	_clear_collision_state()
 	is_failed = false
 	_triggered_cargo_warning_keys.clear()
+	if _laser_weapon != null:
+		_laser_weapon.reset_weapon()
 	_update_engine_feedback()
 
 
@@ -258,6 +283,8 @@ func restore_checkpoint() -> bool:
 	_clear_collision_state()
 	is_failed = false
 	_triggered_cargo_warning_keys.clear()
+	if _laser_weapon != null:
+		_laser_weapon.reset_weapon()
 	if environment_profile == null:
 		_clear_environment_telemetry()
 	else:
@@ -361,6 +388,34 @@ func get_terminal_fall_speed_safety() -> float:
 
 func get_checkpoint_id() -> StringName:
 	return checkpoint_id
+
+
+func set_laser_enabled(enabled: bool) -> void:
+	if _laser_weapon != null:
+		_laser_weapon.set_laser_enabled(enabled)
+
+
+func is_laser_enabled() -> bool:
+	return _laser_weapon != null and _laser_weapon.is_laser_enabled()
+
+
+func is_laser_ready() -> bool:
+	return _laser_weapon != null and _laser_weapon.is_ready_to_fire()
+
+
+func get_laser_cooldown_remaining() -> float:
+	return 0.0 if _laser_weapon == null else _laser_weapon.get_cooldown_remaining()
+
+
+func get_laser_weapon() -> FlightLaserWeapon:
+	return _laser_weapon
+
+
+func request_laser_fire() -> FlightLaserWeapon.FireResult:
+	if _laser_weapon == null:
+		return FlightLaserWeapon.FireResult.UNAVAILABLE
+	_laser_weapon.tuning = tuning
+	return _laser_weapon.request_fire()
 
 
 func _update_environment_state(delta: float) -> void:
@@ -561,3 +616,19 @@ func _clear_collision_state() -> void:
 	collision_state_key = DEFAULT_COLLISION_KEY
 	last_impact_speed = 0.0
 	_collision_feedback_cooldown_remaining = 0.0
+
+
+func _on_laser_fired(hit_target: bool) -> void:
+	laser_fired.emit(hit_target)
+
+
+func _on_laser_fire_rejected(reason_key: StringName) -> void:
+	laser_fire_rejected.emit(reason_key)
+
+
+func _on_laser_target_hit(
+	target_id: StringName,
+	remaining_durability: int,
+	target_destroyed: bool
+) -> void:
+	laser_target_hit.emit(target_id, remaining_durability, target_destroyed)

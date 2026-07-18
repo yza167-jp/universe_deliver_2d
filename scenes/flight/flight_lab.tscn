@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://scripts/flight/flight_lab.gd" id="1_lab"]
 [ext_resource type="Script" path="res://scripts/flight/flight_lab_ship.gd" id="2_ship"]
@@ -8,6 +8,9 @@
 [ext_resource type="Resource" path="res://data/tuning/flight_environment_deep_space.tres" id="6_deep_space"]
 [ext_resource type="Resource" path="res://data/tuning/flight_environment_red_sand_atmosphere.tres" id="7_red_sand"]
 [ext_resource type="Resource" path="res://data/cargo/red_sand_m0.tres" id="8_cargo"]
+[ext_resource type="Script" path="res://scripts/flight/flight_laser_weapon.gd" id="9_laser_weapon"]
+[ext_resource type="PackedScene" path="res://scenes/flight/destructible_asteroid.tscn" id="10_asteroid"]
+[ext_resource type="Resource" path="res://data/m0_data_registry.tres" id="11_registry"]
 
 [sub_resource type="RectangleShape2D" id="ShapeShip"]
 size = Vector2(38, 16)
@@ -32,6 +35,7 @@ color = Color(1, 0.72549, 0.286275, 1)
 [node name="FlightLab" type="Node2D"]
 script = ExtResource("1_lab")
 environment_profiles = [ExtResource("6_deep_space"), ExtResource("7_red_sand")]
+data_registry = ExtResource("11_registry")
 
 [node name="Backdrop" type="CanvasLayer" parent="."]
 layer = -10
@@ -88,6 +92,33 @@ polygon = PackedVector2Array(0, -2, 2, 0, 0, 2, -2, 0)
 color = Color(0.905882, 0.658824, 0.356863, 0.85)
 
 [node name="World" type="Node2D" parent="."]
+
+[node name="AsteroidBackdrop" type="Node2D" parent="World"]
+z_index = -2
+
+[node name="BackgroundAsteroidA" type="Polygon2D" parent="World/AsteroidBackdrop"]
+position = Vector2(456, 104)
+polygon = PackedVector2Array(-13, -5, -7, -13, 5, -15, 14, -8, 16, 4, 8, 13, -5, 14, -15, 6)
+color = Color(0.25098, 0.203922, 0.223529, 0.52)
+
+[node name="BackgroundAsteroidB" type="Polygon2D" parent="World/AsteroidBackdrop"]
+position = Vector2(612, 78)
+polygon = PackedVector2Array(-8, -3, -3, -9, 6, -8, 10, -1, 6, 8, -3, 10, -10, 4)
+color = Color(0.309804, 0.235294, 0.239216, 0.42)
+
+[node name="DestructibleAsteroids" type="Node2D" parent="World"]
+unique_name_in_owner = true
+
+[node name="SmallAsteroid" parent="World/DestructibleAsteroids" instance=ExtResource("10_asteroid")]
+position = Vector2(500, 190)
+target_id = &"asteroid_lab_small"
+max_durability = 1
+
+[node name="LargeAsteroid" parent="World/DestructibleAsteroids" instance=ExtResource("10_asteroid")]
+position = Vector2(655, 190)
+scale = Vector2(1.25, 1.25)
+target_id = &"asteroid_lab_large"
+max_durability = 3
 
 [node name="HorizonGuide" type="Line2D" parent="World"]
 points = PackedVector2Array(-160, 234, 3040, 234)
@@ -194,6 +225,7 @@ shape = SubResource("ShapePillar")
 [node name="FlightShip" type="CharacterBody2D" parent="World"]
 unique_name_in_owner = true
 position = Vector2(320, 190)
+collision_mask = 3
 script = ExtResource("2_ship")
 tuning = ExtResource("5_tuning")
 environment_profile = ExtResource("6_deep_space")
@@ -219,6 +251,32 @@ lifetime = 0.28
 one_shot = true
 explosiveness = 0.92
 process_material = SubResource("ParticlesImpactSparks")
+
+[node name="LaserWeapon" type="Node2D" parent="World/FlightShip"]
+unique_name_in_owner = true
+position = Vector2(22, 0)
+script = ExtResource("9_laser_weapon")
+tuning = ExtResource("5_tuning")
+
+[node name="Beam" type="Line2D" parent="World/FlightShip/LaserWeapon"]
+unique_name_in_owner = true
+visible = false
+z_index = 6
+points = PackedVector2Array(0, 0, 120, 0)
+width = 2.0
+default_color = Color(0.462745, 0.945098, 1, 0.96)
+
+[node name="MuzzleFlash" type="Polygon2D" parent="World/FlightShip/LaserWeapon"]
+unique_name_in_owner = true
+visible = false
+z_index = 7
+polygon = PackedVector2Array(0, -4, 10, 0, 0, 4, 3, 0)
+color = Color(0.811765, 0.984314, 1, 0.96)
+
+[node name="ShotAudio" type="AudioStreamPlayer2D" parent="World/FlightShip/LaserWeapon"]
+unique_name_in_owner = true
+volume_db = -7.0
+max_distance = 720.0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="World/FlightShip"]
 shape = SubResource("ShapeShip")

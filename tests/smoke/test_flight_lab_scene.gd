@@ -45,6 +45,22 @@ func run() -> Array[String]:
 		"Flight Lab must expose minimum Boost and impact visual feedback.",
 		failures
 	)
+	expect_true(
+		flight_lab.data_registry is GameDataRegistry,
+		"Flight Lab must read the existing M0 module catalog for laser gating.",
+		failures
+	)
+	var laser_weapon: FlightLaserWeapon = flight_lab.get_node_or_null(
+		"World/FlightShip/LaserWeapon"
+	) as FlightLaserWeapon
+	expect_true(
+		laser_weapon != null
+		and laser_weapon.get_node_or_null("Beam") is Line2D
+		and laser_weapon.get_node_or_null("MuzzleFlash") is Polygon2D
+		and laser_weapon.get_node_or_null("ShotAudio") is AudioStreamPlayer2D,
+		"Flight Lab ship must expose laser beam, muzzle flash, and audio feedback.",
+		failures
+	)
 	expect_true(flight_camera != null and flight_camera.enabled, "Flight Lab camera must be enabled.", failures)
 	expect_true(debug_hud != null and debug_hud.visible, "Flight debug HUD must start visible.", failures)
 	expect_true(
@@ -94,11 +110,54 @@ func run() -> Array[String]:
 		"Flight Lab must provide minimal atmosphere transition feedback.",
 		failures
 	)
+	var background_asteroid: Node = flight_lab.get_node_or_null(
+		"World/AsteroidBackdrop/BackgroundAsteroidA"
+	)
+	var small_asteroid: DestructibleAsteroid = flight_lab.get_node_or_null(
+		"World/DestructibleAsteroids/SmallAsteroid"
+	) as DestructibleAsteroid
+	var large_asteroid: DestructibleAsteroid = flight_lab.get_node_or_null(
+		"World/DestructibleAsteroids/LargeAsteroid"
+	) as DestructibleAsteroid
+	var floor: StaticBody2D = flight_lab.get_node_or_null(
+		"World/Terrain/Floor"
+	) as StaticBody2D
+	expect_true(
+		background_asteroid is Polygon2D
+		and not (background_asteroid is CollisionObject2D),
+		"Background asteroids must remain visual-only and non-destructible.",
+		failures
+	)
+	expect_true(
+		small_asteroid != null
+		and small_asteroid.max_durability == 1
+		and small_asteroid.collision_layer
+		== FlightWeaponRules.DESTRUCTIBLE_ASTEROID_LAYER,
+		"The small asteroid must be a one-hit explicit laser target.",
+		failures
+	)
+	expect_true(
+		large_asteroid != null
+		and large_asteroid.max_durability == 3
+		and large_asteroid.collision_layer
+		== FlightWeaponRules.DESTRUCTIBLE_ASTEROID_LAYER,
+		"The large asteroid must be a durable explicit laser target.",
+		failures
+	)
+	expect_true(
+		flight_ship != null
+		and flight_ship.collision_mask == FlightWeaponRules.SHIP_COLLISION_MASK
+		and floor != null
+		and floor.collision_layer == FlightWeaponRules.WORLD_COLLISION_LAYER,
+		"Ship and terrain collision layers must stay separate from laser targeting.",
+		failures
+	)
 
 	if debug_hud != null:
 		expect_true(
 			debug_hud.get_node_or_null("HeaderPanel") is PanelContainer
-			and debug_hud.get_node_or_null("StatsPanel") is PanelContainer,
+			and debug_hud.get_node_or_null("StatsPanel") is PanelContainer
+			and debug_hud.get_node_or_null("StatsPanel/Margin/Stats/LaserLabel") is Label,
 			"Flight debug HUD must contain separate header and telemetry panels.",
 			failures
 		)

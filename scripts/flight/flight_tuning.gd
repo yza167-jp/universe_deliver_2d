@@ -49,6 +49,16 @@ var limited_cargo_boost_cap: float = 0.75
 @export_range(0.0, 1.0, 0.05)
 var emergency_thrust_multiplier: float = 0.3
 
+@export_group("Asteroid Laser")
+@export_range(0.0, 1600.0, 1.0, "or_greater")
+var laser_range: float = 560.0
+@export_range(0.0, 2.0, 0.01, "or_greater")
+var laser_cooldown_seconds: float = 0.22
+@export_range(0.0, 1.0, 0.01, "or_greater")
+var laser_beam_duration_seconds: float = 0.07
+@export_range(0, 20, 1, "or_greater")
+var laser_damage: int = 1
+
 @export_group("Collision")
 @export_range(0.0, 200.0, 1.0, "or_greater")
 var minimum_impact_speed: float = 20.0

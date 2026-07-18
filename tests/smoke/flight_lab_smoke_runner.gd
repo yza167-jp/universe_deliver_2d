@@ -6,6 +6,11 @@ var _failures: Array[String] = []
 var _failure_count: int = 0
 var _company_warning_count: int = 0
 var _last_company_warning_key: StringName = &""
+var _laser_fired_count: int = 0
+var _laser_rejected_count: int = 0
+var _laser_hit_count: int = 0
+var _last_laser_rejection_key: StringName = &""
+var _last_laser_target_id: StringName = &""
 var _original_locale: String = ""
 
 
@@ -40,6 +45,9 @@ func _run_smoke() -> void:
 	if flight_ship != null:
 		flight_ship.flight_failed.connect(_on_flight_failed)
 		flight_ship.company_warning_requested.connect(_on_company_warning_requested)
+		flight_ship.laser_fired.connect(_on_laser_fired)
+		flight_ship.laser_fire_rejected.connect(_on_laser_fire_rejected)
+		flight_ship.laser_target_hit.connect(_on_laser_target_hit)
 	if debug_hud != null:
 		var stats_rect: Rect2 = debug_hud.get_stats_rect()
 		var status_rect: Rect2 = debug_hud.get_status_rect()
@@ -69,6 +77,15 @@ func _run_smoke() -> void:
 			),
 			"Flight debug HUD did not render five-resource and checkpoint telemetry."
 		)
+		_check(
+			debug_hud.get_laser_text().contains(
+				tr("UI_FLIGHT_LASER_LOADOUT_UNINSTALLED")
+			)
+			and debug_hud.get_laser_text().contains(
+				tr("UI_FLIGHT_LASER_STATE_UNAVAILABLE")
+			),
+			"Flight debug HUD did not render the unavailable default laser loadout."
+		)
 	_check(
 		flight_lab.environment_profiles.size() == 2
 		and flight_lab.get_active_environment_profile() != null
@@ -82,6 +99,144 @@ func _run_smoke() -> void:
 		),
 		"The direct Flight Lab debug route is unavailable."
 	)
+
+	var small_asteroid: DestructibleAsteroid = flight_lab.get_node_or_null(
+		"World/DestructibleAsteroids/SmallAsteroid"
+	) as DestructibleAsteroid
+	var large_asteroid: DestructibleAsteroid = flight_lab.get_node_or_null(
+		"World/DestructibleAsteroids/LargeAsteroid"
+	) as DestructibleAsteroid
+	_check(
+		flight_ship != null
+		and not flight_ship.is_laser_enabled()
+		and small_asteroid != null
+		and large_asteroid != null,
+		"Flight Lab did not start with the default uninstalled laser and both targets."
+	)
+	if flight_ship != null and small_asteroid != null and large_asteroid != null:
+		await _tap_action_for_physics_frames(FlightLabShip.FIRE_ACTION)
+		_check(
+			_laser_fired_count == 0
+			and _laser_rejected_count == 1
+			and _last_laser_rejection_key == FlightLaserWeapon.FIRE_UNAVAILABLE_KEY
+			and not flight_ship.is_failed,
+			"Uninstalled laser input did not give non-blocking rejection feedback."
+		)
+		if debug_hud != null:
+			_check(
+				debug_hud.get_status_text()
+				== tr("UI_FLIGHT_LAB_STATUS_LASER_UNAVAILABLE"),
+				"Uninstalled laser feedback was not localized in the status panel."
+			)
+
+		var laser_toggle_event: InputEventAction = InputEventAction.new()
+		laser_toggle_event.action = FlightLab.LASER_TOGGLE_ACTION
+		laser_toggle_event.pressed = true
+		flight_lab._unhandled_input(laser_toggle_event)
+		_check(
+			flight_ship.is_laser_enabled()
+			and flight_ship.is_laser_ready()
+			and debug_hud != null
+			and debug_hud.get_laser_text().contains(
+				tr("UI_FLIGHT_LASER_LOADOUT_INSTALLED")
+			),
+			"F6 did not expose the isolated Flight Lab laser loadout toggle."
+		)
+
+		await _tap_action_for_physics_frames(FlightLabShip.FIRE_ACTION)
+		var laser_weapon: FlightLaserWeapon = flight_ship.get_laser_weapon()
+		var laser_stream: AudioStreamWAV = (
+			laser_weapon.get_shot_audio().stream as AudioStreamWAV
+			if laser_weapon != null and laser_weapon.get_shot_audio() != null
+			else null
+		)
+		_check(
+			_laser_fired_count == 1
+			and _laser_hit_count == 1
+			and _last_laser_target_id == small_asteroid.target_id
+			and small_asteroid.is_destroyed()
+			and small_asteroid.collision_layer == 0,
+			"Installed laser input did not destroy the one-hit small asteroid."
+		)
+		_check(
+			laser_weapon != null
+			and laser_weapon.get_beam() != null
+			and laser_weapon.get_beam().visible
+			and laser_weapon.get_shot_audio() != null
+			and laser_stream != null
+			and not laser_stream.data.is_empty()
+			and small_asteroid.get_destruction_fragments() != null
+			and small_asteroid.get_destruction_fragments().emitting,
+			"Laser hit did not expose beam, synthesized sound, and fragment feedback."
+		)
+
+		var large_durability_before_cooldown: int = large_asteroid.get_current_durability()
+		var immediate_result: FlightLaserWeapon.FireResult = flight_ship.request_laser_fire()
+		_check(
+			immediate_result == FlightLaserWeapon.FireResult.COOLDOWN
+			and _laser_rejected_count == 2
+			and _last_laser_rejection_key == FlightLaserWeapon.FIRE_COOLDOWN_KEY
+			and large_asteroid.get_current_durability()
+			== large_durability_before_cooldown,
+			"Laser cooldown did not reject repeated fire without damaging the next target."
+		)
+		if debug_hud != null:
+			_check(
+				debug_hud.get_status_text().contains("冷却"),
+				"Laser cooldown did not provide concise Chinese status feedback."
+			)
+
+		var expected_large_durability: Array[int] = [2, 1, 0]
+		for expected_durability: int in expected_large_durability:
+			await _wait_for_laser_ready(flight_ship)
+			var fire_result: FlightLaserWeapon.FireResult = flight_ship.request_laser_fire()
+			_check(
+				fire_result == FlightLaserWeapon.FireResult.FIRED
+				and large_asteroid.get_current_durability() == expected_durability,
+				"Large asteroid did not consume exactly one durability per laser hit."
+			)
+		_check(
+			large_asteroid.is_destroyed()
+			and large_asteroid.collision_layer == 0
+			and large_asteroid.get_visual_root() != null
+			and not large_asteroid.get_visual_root().visible
+			and large_asteroid.get_destruction_fragments() != null
+			and large_asteroid.get_destruction_fragments().emitting,
+			"The durable asteroid did not open the route with fragment feedback."
+		)
+		if debug_hud != null:
+			_check(
+				debug_hud.get_status_text()
+				== tr("UI_FLIGHT_LAB_STATUS_LASER_DESTROYED"),
+				"Destroyed asteroid feedback was not retained in the status panel."
+			)
+
+		await _wait_for_laser_ready(flight_ship)
+		var hits_before_miss: int = _laser_hit_count
+		_check(
+			flight_ship.request_laser_fire() == FlightLaserWeapon.FireResult.FIRED
+			and _laser_hit_count == hits_before_miss,
+			"A clear route should produce a harmless laser miss, not another target hit."
+		)
+		if debug_hud != null:
+			_check(
+				debug_hud.get_status_text() == tr("UI_FLIGHT_LAB_STATUS_LASER_MISS"),
+				"Laser miss did not provide localized feedback."
+			)
+
+		_check(
+			flight_lab.restart_from_checkpoint(false)
+			and not small_asteroid.is_destroyed()
+			and small_asteroid.get_current_durability() == small_asteroid.max_durability
+			and not large_asteroid.is_destroyed()
+			and large_asteroid.get_current_durability() == large_asteroid.max_durability,
+			"Checkpoint restart did not restore destructible asteroid state."
+		)
+		flight_lab._unhandled_input(laser_toggle_event)
+		_check(
+			not flight_ship.is_laser_enabled(),
+			"Second F6 action did not return to the uninstalled laser loadout."
+		)
 
 	var toggle_event: InputEventAction = InputEventAction.new()
 	toggle_event.action = FlightLab.HUD_TOGGLE_ACTION
@@ -385,6 +540,21 @@ func _hold_action_for_physics_frames(action: StringName, frame_count: int) -> vo
 	Input.action_release(action)
 
 
+func _tap_action_for_physics_frames(action: StringName) -> void:
+	Input.action_press(action)
+	await physics_frame
+	Input.action_release(action)
+	await physics_frame
+
+
+func _wait_for_laser_ready(flight_ship: FlightLabShip) -> void:
+	for _frame_index: int in 30:
+		if flight_ship.is_laser_ready():
+			return
+		await physics_frame
+	_check(flight_ship.is_laser_ready(), "Laser cooldown exceeded 30 physics frames.")
+
+
 func _check(condition: bool, message: String) -> void:
 	if not condition:
 		_failures.append(message)
@@ -394,8 +564,9 @@ func _finish() -> void:
 	TranslationServer.set_locale(_original_locale)
 	if _failures.is_empty():
 		print(
-			"[flight-lab] PASS: controls, Boost resources, environment, collision "
-			+ "bands, cargo warning, rapid retry, HUD, and checkpoint reset."
+			"[flight-lab] PASS: laser gate and asteroids, controls, Boost resources, "
+			+ "environment, collision bands, cargo warning, rapid retry, HUD, "
+			+ "and checkpoint reset."
 		)
 		quit(0)
 		return
@@ -414,3 +585,21 @@ func _on_company_warning_requested(
 ) -> void:
 	_company_warning_count += 1
 	_last_company_warning_key = warning_key
+
+
+func _on_laser_fired(_hit_target: bool) -> void:
+	_laser_fired_count += 1
+
+
+func _on_laser_fire_rejected(reason_key: StringName) -> void:
+	_laser_rejected_count += 1
+	_last_laser_rejection_key = reason_key
+
+
+func _on_laser_target_hit(
+	target_id: StringName,
+	_remaining_durability: int,
+	_target_destroyed: bool
+) -> void:
+	_laser_hit_count += 1
+	_last_laser_target_id = target_id

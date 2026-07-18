@@ -1,0 +1,73 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/flight/destructible_asteroid.gd" id="1_asteroid"]
+
+[sub_resource type="CircleShape2D" id="ShapeAsteroid"]
+radius = 21.0
+
+[sub_resource type="ParticleProcessMaterial" id="ParticlesFragments"]
+particle_flag_disable_z = true
+emission_shape = 1
+emission_sphere_radius = 12.0
+direction = Vector3(1, 0, 0)
+spread = 180.0
+gravity = Vector3(0, 46, 0)
+initial_velocity_min = 54.0
+initial_velocity_max = 112.0
+scale_min = 1.5
+scale_max = 3.5
+color = Color(0.913725, 0.654902, 0.364706, 1)
+
+[node name="DestructibleAsteroid" type="StaticBody2D"]
+collision_layer = 2
+collision_mask = 0
+script = ExtResource("1_asteroid")
+
+[node name="VisualRoot" type="Node2D" parent="."]
+unique_name_in_owner = true
+
+[node name="Core" type="Polygon2D" parent="VisualRoot"]
+polygon = PackedVector2Array(-20, -7, -12, -18, 3, -22, 17, -14, 22, 0, 15, 17, 1, 21, -14, 15, -22, 3)
+color = Color(0.423529, 0.286275, 0.254902, 1)
+
+[node name="LitFace" type="Polygon2D" parent="VisualRoot"]
+polygon = PackedVector2Array(-12, -17, 3, -21, 16, -13, 7, -8, -5, -10)
+color = Color(0.737255, 0.454902, 0.294118, 0.92)
+
+[node name="CraterA" type="Polygon2D" parent="VisualRoot"]
+position = Vector2(-8, 4)
+polygon = PackedVector2Array(-5, -2, -2, -5, 4, -4, 6, 1, 2, 5, -4, 4)
+color = Color(0.223529, 0.168627, 0.180392, 0.9)
+
+[node name="CraterB" type="Polygon2D" parent="VisualRoot"]
+position = Vector2(10, 6)
+polygon = PackedVector2Array(-3, -1, -1, -4, 4, -2, 4, 2, 0, 4, -4, 2)
+color = Color(0.266667, 0.192157, 0.196078, 0.84)
+
+[node name="TargetRing" type="Line2D" parent="VisualRoot"]
+points = PackedVector2Array(-22, -5, -15, -17, -3, -23, 11, -19, 21, -9, 23, 5, 16, 18, 3, 23, -11, 19, -21, 8, -22, -5)
+width = 1.0
+default_color = Color(0.905882, 0.658824, 0.356863, 0.68)
+
+[node name="HitFlash" type="Polygon2D" parent="."]
+unique_name_in_owner = true
+visible = false
+polygon = PackedVector2Array(-22, -8, -14, -20, 3, -24, 19, -16, 24, 0, 17, 19, 1, 23, -16, 17, -24, 3)
+color = Color(0.65098, 0.941176, 1, 0.8)
+
+[node name="DestructionFragments" type="CPUParticles2D" parent="."]
+unique_name_in_owner = true
+emitting = false
+amount = 16
+lifetime = 0.42
+one_shot = true
+explosiveness = 0.9
+process_material = SubResource("ParticlesFragments")
+
+[node name="DestructionAudio" type="AudioStreamPlayer2D" parent="."]
+unique_name_in_owner = true
+volume_db = -8.0
+max_distance = 720.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("ShapeAsteroid")

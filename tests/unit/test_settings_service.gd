@@ -116,8 +116,12 @@ func _expect_default_input_map(failures: Array[String]) -> void:
 		failures
 	)
 	expect_true(
-		_has_mouse_button(InputMap.action_get_events(&"flight_fire"), MOUSE_BUTTON_LEFT),
-		"Flight fire must include the left mouse button.",
+		_has_physical_key(InputMap.action_get_events(&"flight_fire"), KEY_F)
+		and _has_mouse_button(
+			InputMap.action_get_events(&"flight_fire"),
+			MOUSE_BUTTON_LEFT
+		),
+		"Flight fire must include physical F and the left mouse button.",
 		failures
 	)
 	expect_true(
@@ -138,6 +142,11 @@ func _expect_default_input_map(failures: Array[String]) -> void:
 	expect_true(
 		_has_key(InputMap.action_get_events(&"flight_assist_cycle"), KEY_F5),
 		"Flight Lab assist preset cycle must default to F5.",
+		failures
+	)
+	expect_true(
+		_has_key(InputMap.action_get_events(&"flight_laser_toggle"), KEY_F6),
+		"Flight Lab laser loadout toggle must default to F6.",
 		failures
 	)
 
