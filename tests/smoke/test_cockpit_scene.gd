@@ -100,6 +100,16 @@ func run() -> Array[String]:
 		)
 	expect_true(cockpit.data_registry != null, "Cockpit must expose M0 order and cargo data.", failures)
 	expect_true(cockpit.lao_pi_dialogue != null, "Cockpit must provide Lao Pi's dialogue sequence.", failures)
+	expect_true(
+		cockpit.travel_main_dialogue != null,
+		"Cockpit must provide the required travel dialogue.",
+		failures
+	)
+	expect_true(
+		cockpit.travel_radio_dialogue != null and cockpit.travel_cargo_dialogue != null,
+		"Cockpit must provide both optional travel hotspot dialogues.",
+		failures
+	)
 	if starfield != null:
 		expect_true(starfield.get_layer_count() >= 3, "Starfield must expose at least three layers.", failures)
 	if hotspots_root != null:

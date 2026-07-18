@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://scripts/cockpit/cockpit.gd" id="1_cockpit"]
 [ext_resource type="Script" path="res://scripts/cockpit/cockpit_starfield.gd" id="2_starfield"]
@@ -6,6 +6,9 @@
 [ext_resource type="Resource" path="res://data/dialogue/lao_pi_cockpit_graybox.tres" id="4_lao_pi_dialogue"]
 [ext_resource type="Script" path="res://scripts/cockpit/travel_sequence_controller.gd" id="5_travel_controller"]
 [ext_resource type="Script" path="res://scripts/cockpit/cockpit_radio_feedback.gd" id="6_radio_feedback"]
+[ext_resource type="Resource" path="res://data/dialogue/lao_pi_travel_main.tres" id="7_travel_main"]
+[ext_resource type="Resource" path="res://data/dialogue/lao_pi_travel_radio.tres" id="8_travel_radio"]
+[ext_resource type="Resource" path="res://data/dialogue/lao_pi_travel_cargo.tres" id="9_travel_cargo"]
 
 [sub_resource type="SystemFont" id="SystemFontCockpit"]
 font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
@@ -122,6 +125,9 @@ theme = SubResource("ThemeCockpit")
 script = ExtResource("1_cockpit")
 data_registry = ExtResource("3_registry")
 lao_pi_dialogue = ExtResource("4_lao_pi_dialogue")
+travel_main_dialogue = ExtResource("7_travel_main")
+travel_radio_dialogue = ExtResource("8_travel_radio")
+travel_cargo_dialogue = ExtResource("9_travel_cargo")
 
 [node name="TitleLabel" type="Label" parent="."]
 unique_name_in_owner = true

@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_sequence.gd" id="1_sequence"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_line.gd" id="2_line"]
+[ext_resource type="Resource" path="res://data/characters/lao_pi.tres" id="3_lao_pi"]
+
+[sub_resource type="Resource" id="LineCargoReading"]
+script = ExtResource("2_line")
+id = &"cargo_reading"
+speaker = ExtResource("3_lao_pi")
+text_key = &"DIALOGUE_LAO_PI_TRAVEL_CARGO_01"
+portrait_expression = &"neutral"
+next_line_id = &"cargo_people"
+
+[sub_resource type="Resource" id="LineCargoPeople"]
+script = ExtResource("2_line")
+id = &"cargo_people"
+speaker = ExtResource("3_lao_pi")
+text_key = &"DIALOGUE_LAO_PI_TRAVEL_CARGO_02"
+portrait_expression = &"friendly"
+
+[resource]
+script = ExtResource("1_sequence")
+id = &"dialogue_lao_pi_travel_cargo"
+start_line_id = &"cargo_reading"
+lines = [SubResource("LineCargoReading"), SubResource("LineCargoPeople")]

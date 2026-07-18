@@ -115,11 +115,17 @@ static func _validate_conditions(
 			continue
 		if (
 			condition.condition_type < DialogueCondition.ConditionType.STORY_FLAG_EQUALS
-			or condition.condition_type > DialogueCondition.ConditionType.STORY_FLAG_EQUALS
+			or condition.condition_type > DialogueCondition.ConditionType.SHIP_MODULE_EQUIPPED
 		):
 			errors.append("%s condition %d has an unsupported type." % [label, index])
-		if condition.flag_id.is_empty():
-			errors.append("%s condition %d flag_id is empty." % [label, index])
+			continue
+		match condition.condition_type:
+			DialogueCondition.ConditionType.STORY_FLAG_EQUALS:
+				if condition.flag_id.is_empty():
+					errors.append("%s condition %d flag_id is empty." % [label, index])
+			DialogueCondition.ConditionType.SHIP_MODULE_EQUIPPED:
+				if condition.module_id.is_empty():
+					errors.append("%s condition %d module_id is empty." % [label, index])
 
 
 static func _validate_effects(

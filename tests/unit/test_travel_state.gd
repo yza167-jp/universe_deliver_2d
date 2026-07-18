@@ -134,6 +134,22 @@ func _test_sequence_controller(
 		"The controller must advance from departure to cruise.",
 		failures
 	)
+	var held_progress: float = controller.get_phase_progress()
+	controller.set_narrative_hold(true)
+	controller.advance_travel(1.0)
+	expect_true(
+		controller.is_narrative_held()
+		and controller.get_phase() == GameStateModel.TravelState.CRUISE
+		and is_equal_approx(controller.get_phase_progress(), held_progress),
+		"A narrative hold must preserve the current travel phase and elapsed time.",
+		failures
+	)
+	controller.set_narrative_hold(false)
+	expect_true(
+		not controller.is_narrative_held(),
+		"Releasing narrative hold must resume the same travel controller.",
+		failures
+	)
 	controller.advance_travel(0.21)
 	expect_true(
 		controller.get_phase() == GameStateModel.TravelState.APPROACH,

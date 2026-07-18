@@ -180,6 +180,7 @@ func _run_smoke() -> void:
 	var radio_button: Button = cockpit.get_hotspot_button(&"radio")
 	var radio_player: AudioStreamPlayer = cockpit.get_radio_audio_player()
 	var radio_feedback: CockpitRadioFeedback = cockpit.get_radio_feedback()
+	var dialogue_ui: DialogueUI = cockpit.get_dialogue_ui()
 	var radio_player_id: int = 0 if radio_player == null else radio_player.get_instance_id()
 	var radio_stream_id: int = (
 		0
@@ -200,8 +201,40 @@ func _run_smoke() -> void:
 		cockpit.is_radio_on()
 		and cockpit.is_radio_audio_playing()
 		and radio_feedback != null
-		and radio_feedback.is_active(),
-		"Mouse activation must start the radio loop and visual waveform."
+		and radio_feedback.is_active()
+		and dialogue_ui != null
+		and cockpit.is_dialogue_active()
+		and cockpit.get_active_dialogue_id() == &"dialogue_lao_pi_travel_radio"
+		and controller != null
+		and controller.is_narrative_held(),
+		"First travel Radio activation must start its optional dialogue and hold the route."
+	)
+	_check(
+		not cockpit.activate_hotspot(&"cargo_indicator"),
+		"Cargo dialogue must not overlap an active Radio dialogue."
+	)
+	if controller != null:
+		controller.advance_travel(controller.departure_duration * 2.0)
+	_check(
+		_game_state.travel_state == GameStateModel.TravelState.DEPARTURE,
+		"Travel time must remain stable while an optional dialogue owns attention."
+	)
+	if dialogue_ui != null:
+		_check(
+			dialogue_ui.skip_dialogue_sequence()
+			== DialogueRuntime.SequenceSkipResult.FINISHED,
+			"Radio dialogue must support the common whole-sequence skip."
+		)
+	await process_frame
+	_check(
+		not cockpit.is_dialogue_active()
+		and controller != null
+		and not controller.is_narrative_held()
+		and _game_state.has_read_dialogue_line(
+			&"dialogue_lao_pi_travel_radio",
+			&"radio_company"
+		),
+		"Finishing Radio dialogue must record read state and resume travel."
 	)
 	if radio_feedback != null:
 		var radio_phase_before: float = radio_feedback.get_pulse_phase()
@@ -236,13 +269,124 @@ func _run_smoke() -> void:
 		cockpit.get_travel_phase_text() == tr("UI_COCKPIT_TRAVEL_PHASE_DEPARTURE"),
 		"Optional Radio interaction must not replace the active travel status."
 	)
-	if controller != null:
-		controller.advance_travel(
-			controller.departure_duration
-			+ controller.cruise_duration
-			+ controller.approach_duration
-			+ 0.1
+
+	_check(
+		cockpit.activate_hotspot(&"cargo_indicator"),
+		"Cargo indicator must start its unread optional travel dialogue."
+	)
+	await process_frame
+	_check(
+		cockpit.is_dialogue_active()
+		and cockpit.get_active_dialogue_id() == &"dialogue_lao_pi_travel_cargo"
+		and controller != null
+		and controller.is_narrative_held()
+		and not _game_state.has_story_flag(Cockpit.TRAVEL_MAIN_DIALOGUE_COMPLETED_FLAG),
+		"Cargo dialogue must remain optional and distinct from the required dialogue."
+	)
+	if dialogue_ui != null:
+		_check(
+			dialogue_ui.skip_dialogue_sequence()
+			== DialogueRuntime.SequenceSkipResult.FINISHED,
+			"Cargo dialogue must support the common whole-sequence skip."
 		)
+	await process_frame
+	_check(
+		not cockpit.is_dialogue_active()
+		and controller != null
+		and not controller.is_narrative_held()
+		and _game_state.has_read_dialogue_line(
+			&"dialogue_lao_pi_travel_cargo",
+			&"cargo_people"
+		),
+		"Finishing Cargo dialogue must record read state and resume travel."
+	)
+	_check(
+		cockpit.activate_hotspot(&"cargo_indicator"),
+		"A read Cargo dialogue must return the hotspot to its status panel."
+	)
+	await process_frame
+	_check(
+		cockpit.get_open_panel_id() == &"cargo_indicator" and not cockpit.is_dialogue_active(),
+		"Read Cargo interaction must not replay its optional dialogue."
+	)
+	cockpit.close_active_modal()
+	await process_frame
+
+	if controller != null:
+		controller.advance_travel(controller.departure_duration + 0.1)
+	await process_frame
+	await process_frame
+	_check(
+		_game_state.travel_state == GameStateModel.TravelState.CRUISE
+		and cockpit.is_dialogue_active()
+		and cockpit.get_active_dialogue_id() == &"dialogue_lao_pi_travel_main"
+		and controller != null
+		and controller.is_narrative_held(),
+		"Cruise must automatically start the required Lao Pi travel dialogue."
+	)
+	_check(
+		not cockpit.activate_hotspot(&"radio")
+		and not cockpit.activate_hotspot(&"cargo_indicator"),
+		"Optional hotspot dialogues must not overlap the required travel dialogue."
+	)
+	_check(
+		cockpit.close_active_modal(),
+		"The required dialogue must still respond to the common cancel action."
+	)
+	await process_frame
+	await process_frame
+	_check(
+		cockpit.is_dialogue_active()
+		and cockpit.get_active_dialogue_id() == &"dialogue_lao_pi_travel_main"
+		and not _game_state.has_story_flag(Cockpit.TRAVEL_MAIN_DIALOGUE_COMPLETED_FLAG)
+		and controller != null
+		and controller.is_narrative_held(),
+		"Canceling required content must safely re-present it without advancing travel."
+	)
+	if dialogue_ui != null:
+		dialogue_ui.quick_show_current_line()
+		_check(
+			dialogue_ui.continue_dialogue(),
+			"Required travel dialogue could not reach its loadout-specific comment."
+		)
+		dialogue_ui.quick_show_current_line()
+		_check(
+			dialogue_ui.get_full_text() == tr("DIALOGUE_LAO_PI_TRAVEL_MAIN_NO_LASER"),
+			"Default loadout must receive Lao Pi's no-laser travel comment."
+		)
+		_check(
+			dialogue_ui.skip_dialogue_sequence()
+			== DialogueRuntime.SequenceSkipResult.FINISHED,
+			"Required travel dialogue must remain explicitly skippable."
+		)
+	await process_frame
+	_check(
+		_game_state.has_story_flag(Cockpit.TRAVEL_MAIN_DIALOGUE_COMPLETED_FLAG)
+		and not cockpit.is_dialogue_active()
+		and controller != null
+		and not controller.is_narrative_held(),
+		"Completing required dialogue must persist its flag and resume travel once."
+	)
+	_check(
+		cockpit.activate_hotspot(&"radio"),
+		"Read Radio hotspot must keep its normal toggle behavior after the dialogue."
+	)
+	_check(
+		not cockpit.is_dialogue_active(),
+		"Read Radio dialogue must not replay after required content."
+	)
+	if cockpit.is_radio_on():
+		cockpit.activate_hotspot(&"radio")
+	if controller != null:
+		controller.advance_travel(controller.cruise_duration + 0.1)
+	_check(
+		_game_state.travel_state == GameStateModel.TravelState.APPROACH
+		and cockpit.get_travel_detail_text()
+		== tr("UI_COCKPIT_TRAVEL_DETAIL_APPROACH"),
+		"Approach must present the localized side-view flight control hint."
+	)
+	if controller != null:
+		controller.advance_travel(controller.approach_duration + 0.1)
 	await process_frame
 	await process_frame
 	_check(
@@ -389,8 +533,8 @@ func _finish_smoke() -> void:
 	TranslationServer.set_locale(_original_locale)
 	if _failures.is_empty():
 		print(
-			"[cockpit-travel] PASS: bottom travel HUD, passive Forward Window, "
-			+ "single-player Radio feedback, three phases, and retained FLIGHT handoff."
+			"[cockpit-travel] PASS: required and optional dialogue isolation, narrative holds, "
+			+ "loadout comment, control hint, and retained FLIGHT handoff."
 		)
 		quit(0)
 		return

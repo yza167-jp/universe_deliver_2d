@@ -7,9 +7,20 @@ signal radio_state_changed(is_on: bool)
 signal travel_phase_changed(phase: GameStateModel.TravelState)
 signal travel_finished(destination_id: StringName)
 
+enum DialogueContext {
+	NONE,
+	MANUAL_LAO_PI,
+	TRAVEL_REQUIRED,
+	TRAVEL_RADIO,
+	TRAVEL_CARGO,
+}
+
 const INTERACT_ACTION: StringName = &"interact"
 const CANCEL_ACTION: StringName = &"ui_cancel"
 const INITIAL_HOTSPOT_ID: StringName = &"navigation_screen"
+const TRAVEL_MAIN_DIALOGUE_COMPLETED_FLAG: StringName = (
+	&"story_cockpit_travel_main_completed"
+)
 const DIALOGUE_UI_SCENE: PackedScene = preload("res://scenes/narrative/dialogue_ui.tscn")
 const TRAVEL_PHASE_CUE_SECONDS: float = 0.16
 const TRAVEL_PHASE_CUE_VOLUME: float = 0.045
@@ -57,6 +68,9 @@ const MUTED_TEXT: Color = Color("9aa7b5")
 
 @export var data_registry: GameDataRegistry
 @export var lao_pi_dialogue: DialogueSequence
+@export var travel_main_dialogue: DialogueSequence
+@export var travel_radio_dialogue: DialogueSequence
+@export var travel_cargo_dialogue: DialogueSequence
 
 @onready var _title_label: Label = %TitleLabel
 @onready var _instruction_label: Label = %InstructionLabel
@@ -97,6 +111,10 @@ var _active_order: OrderDefinition
 var _dialogue_ui: DialogueUI
 var _fallback_dialogue_layer: CanvasLayer
 var _forward_window_passive: bool = false
+var _active_dialogue_context: DialogueContext = DialogueContext.NONE
+var _active_dialogue_id: StringName = &""
+var _active_dialogue_holds_travel: bool = false
+var _travel_main_dialogue_pending: bool = false
 
 
 func _ready() -> void:
@@ -118,6 +136,7 @@ func _ready() -> void:
 	_notification_panel.visible = false
 	_localize_content()
 	_refresh_travel_display()
+	_queue_travel_main_dialogue_if_needed(_travel_controller.get_phase())
 	queue_redraw()
 	call_deferred("focus_hotspot", INITIAL_HOTSPOT_ID)
 
@@ -225,6 +244,14 @@ func get_notification_text() -> String:
 
 func get_dialogue_ui() -> DialogueUI:
 	return _dialogue_ui
+
+
+func get_active_dialogue_id() -> StringName:
+	return _active_dialogue_id
+
+
+func is_travel_main_dialogue_pending() -> bool:
+	return _travel_main_dialogue_pending
 
 
 func get_starfield() -> CockpitStarfield:
@@ -352,12 +379,14 @@ func activate_hotspot(hotspot_id: StringName) -> bool:
 	_select_hotspot(hotspot_id)
 	var behavior_started: bool = false
 	match hotspot_id:
-		&"navigation_screen", &"company_terminal", &"cargo_indicator":
+		&"navigation_screen", &"company_terminal":
 			behavior_started = _open_device_panel(hotspot_id)
+		&"cargo_indicator":
+			behavior_started = _activate_cargo_hotspot()
 		&"lao_pi_seat":
 			behavior_started = _start_lao_pi_dialogue()
 		&"radio":
-			behavior_started = _toggle_radio()
+			behavior_started = _activate_radio_hotspot()
 		&"window_view":
 			behavior_started = _observe_window()
 	if not behavior_started:
@@ -673,6 +702,7 @@ func _on_travel_phase_changed(phase: GameStateModel.TravelState) -> void:
 	_refresh_travel_display()
 	_play_travel_phase_cue(phase)
 	travel_phase_changed.emit(phase)
+	_queue_travel_main_dialogue_if_needed(phase)
 
 
 func _on_travel_progress_changed(
@@ -695,8 +725,51 @@ func _on_travel_completed(destination_id: StringName, _was_skipped: bool) -> voi
 
 func _on_runtime_state_reset() -> void:
 	_active_order = _resolve_active_order()
+	_travel_main_dialogue_pending = false
 	_travel_controller.configure(_game_state, _active_order)
 	_refresh_travel_display()
+
+
+func _queue_travel_main_dialogue_if_needed(phase: GameStateModel.TravelState) -> void:
+	if (
+		phase != GameStateModel.TravelState.CRUISE
+		or _game_state == null
+		or _game_state.has_story_flag(TRAVEL_MAIN_DIALOGUE_COMPLETED_FLAG)
+		or _travel_main_dialogue_pending
+		or _active_dialogue_context == DialogueContext.TRAVEL_REQUIRED
+	):
+		return
+	if travel_main_dialogue == null:
+		push_error("Cockpit travel main dialogue is missing.")
+		return
+	_travel_main_dialogue_pending = true
+	_travel_controller.set_narrative_hold(true)
+	call_deferred("_try_start_pending_travel_main_dialogue")
+
+
+func _try_start_pending_travel_main_dialogue() -> void:
+	if not _travel_main_dialogue_pending:
+		return
+	if (
+		_game_state != null
+		and _game_state.has_story_flag(TRAVEL_MAIN_DIALOGUE_COMPLETED_FLAG)
+	):
+		_travel_main_dialogue_pending = false
+		_travel_controller.set_narrative_hold(false)
+		return
+	if is_input_locked() or _dialogue_ui == null or _dialogue_ui.visible:
+		return
+	if _start_dialogue_sequence(
+		travel_main_dialogue,
+		&"lao_pi_seat",
+		DialogueContext.TRAVEL_REQUIRED,
+		true
+	):
+		_travel_main_dialogue_pending = false
+		return
+	_travel_main_dialogue_pending = false
+	_travel_controller.set_narrative_hold(false)
+	push_error("Cockpit could not start the required travel dialogue.")
 
 
 func _refresh_travel_display() -> void:
@@ -892,24 +965,92 @@ func _get_travel_error_key(error: StringName) -> StringName:
 
 
 func _start_lao_pi_dialogue() -> bool:
-	if lao_pi_dialogue == null or _dialogue_ui == null or _game_state == null:
+	return _start_dialogue_sequence(
+		lao_pi_dialogue,
+		&"lao_pi_seat",
+		DialogueContext.MANUAL_LAO_PI,
+		_is_active_travel_phase()
+	)
+
+
+func _start_dialogue_sequence(
+	sequence: DialogueSequence,
+	hotspot_id: StringName,
+	context: DialogueContext,
+	hold_travel: bool
+) -> bool:
+	if sequence == null or _dialogue_ui == null or _game_state == null:
 		return false
-	if _dialogue_ui.visible or not _begin_modal(&"lao_pi_seat"):
+	if _dialogue_ui.visible or not _begin_modal(hotspot_id):
 		return false
+	if hold_travel:
+		_travel_controller.set_narrative_hold(true)
 	_device_dimmer.visible = false
 	_device_panel.visible = false
-	if not _dialogue_ui.start_dialogue(lao_pi_dialogue, _game_state):
+	if not _dialogue_ui.start_dialogue(sequence, _game_state):
+		if hold_travel:
+			_travel_controller.set_narrative_hold(false)
 		_finish_modal()
 		return false
 	_dialogue_active = true
+	_active_dialogue_context = context
+	_active_dialogue_id = sequence.id
+	_active_dialogue_holds_travel = hold_travel
 	return true
 
 
 func _on_dialogue_finished() -> void:
 	if not _dialogue_active:
 		return
+	var completed_context: DialogueContext = _active_dialogue_context
+	var held_travel: bool = _active_dialogue_holds_travel
+	var required_dialogue_incomplete: bool = (
+		completed_context == DialogueContext.TRAVEL_REQUIRED
+		and _game_state != null
+		and not _game_state.has_story_flag(TRAVEL_MAIN_DIALOGUE_COMPLETED_FLAG)
+	)
 	_dialogue_active = false
+	_active_dialogue_context = DialogueContext.NONE
+	_active_dialogue_id = &""
+	_active_dialogue_holds_travel = false
+	if required_dialogue_incomplete:
+		_travel_main_dialogue_pending = true
+	elif held_travel:
+		_travel_controller.set_narrative_hold(false)
 	_finish_modal()
+
+
+func _activate_radio_hotspot() -> bool:
+	if not _toggle_radio():
+		return false
+	if (
+		_radio_on
+		and _is_active_travel_phase()
+		and not _travel_main_dialogue_pending
+		and not _is_dialogue_sequence_fully_read(travel_radio_dialogue)
+	):
+		_start_dialogue_sequence(
+			travel_radio_dialogue,
+			&"radio",
+			DialogueContext.TRAVEL_RADIO,
+			true
+		)
+	return true
+
+
+func _activate_cargo_hotspot() -> bool:
+	if (
+		_is_active_travel_phase()
+		and not _travel_main_dialogue_pending
+		and not _is_dialogue_sequence_fully_read(travel_cargo_dialogue)
+	):
+		return _start_dialogue_sequence(
+			travel_cargo_dialogue,
+			&"cargo_indicator",
+			DialogueContext.TRAVEL_CARGO,
+			true
+		)
+	return _open_device_panel(&"cargo_indicator")
 
 
 func _toggle_radio() -> bool:
@@ -930,6 +1071,28 @@ func _toggle_radio() -> bool:
 
 func _is_passive_window_hotspot(hotspot_id: StringName) -> bool:
 	return hotspot_id == &"window_view" and _forward_window_passive
+
+
+func _is_active_travel_phase() -> bool:
+	if _travel_controller == null:
+		return false
+	return _travel_controller.get_phase() in [
+		GameStateModel.TravelState.DEPARTURE,
+		GameStateModel.TravelState.CRUISE,
+		GameStateModel.TravelState.APPROACH,
+	]
+
+
+func _is_dialogue_sequence_fully_read(sequence: DialogueSequence) -> bool:
+	if sequence == null or _game_state == null or sequence.lines.is_empty():
+		return false
+	for line: DialogueLine in sequence.lines:
+		if (
+			line == null
+			or not _game_state.has_read_dialogue_line(sequence.id, line.id)
+		):
+			return false
+	return true
 
 
 func _is_travel_window_passive() -> bool:
@@ -1021,6 +1184,8 @@ func _finish_modal() -> void:
 	_refresh_focus_prompt()
 	if not return_hotspot_id.is_empty():
 		call_deferred("focus_hotspot", return_hotspot_id)
+	if _travel_main_dialogue_pending:
+		call_deferred("_try_start_pending_travel_main_dialogue")
 
 
 func _set_hotspot_input_enabled(enabled: bool) -> void:

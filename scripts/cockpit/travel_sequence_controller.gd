@@ -15,6 +15,7 @@ var _game_state: GameStateModel
 var _order: OrderDefinition
 var _phase_elapsed: float = 0.0
 var _running: bool = false
+var _narrative_held: bool = false
 
 
 func _ready() -> void:
@@ -29,6 +30,7 @@ func configure(game_state: GameStateModel, order: OrderDefinition) -> bool:
 	_game_state = game_state
 	_order = order
 	_phase_elapsed = 0.0
+	_narrative_held = false
 	_running = _is_active_phase(get_phase())
 	set_process(_running)
 	return _game_state != null and _order != null
@@ -64,6 +66,15 @@ func is_running() -> bool:
 	return _running
 
 
+func is_narrative_held() -> bool:
+	return _narrative_held
+
+
+## Keeps the current timed phase stable while a cockpit dialogue owns player attention.
+func set_narrative_hold(held: bool) -> void:
+	_narrative_held = held and _running
+
+
 func can_skip() -> bool:
 	return (
 		_running
@@ -78,6 +89,7 @@ func start_travel(destination_id: StringName) -> bool:
 	if not _game_state.begin_travel(_order, destination_id):
 		return _reject(_game_state.last_travel_error)
 	_phase_elapsed = 0.0
+	_narrative_held = false
 	_running = true
 	set_process(true)
 	travel_started.emit(destination_id)
@@ -87,10 +99,10 @@ func start_travel(destination_id: StringName) -> bool:
 
 
 func advance_travel(delta: float) -> void:
-	if not _running or delta <= 0.0:
+	if not _running or _narrative_held or delta <= 0.0:
 		return
 	var remaining_delta: float = delta
-	while _running and remaining_delta > 0.0:
+	while _running and not _narrative_held and remaining_delta > 0.0:
 		var phase_duration: float = _get_phase_duration(get_phase())
 		var remaining_in_phase: float = maxf(phase_duration - _phase_elapsed, 0.0)
 		var consumed_delta: float = minf(remaining_delta, remaining_in_phase)
@@ -136,6 +148,7 @@ func _advance_phase() -> bool:
 
 func _finish_travel(was_skipped: bool) -> void:
 	_running = false
+	_narrative_held = false
 	_phase_elapsed = 0.0
 	set_process(false)
 	_emit_progress()

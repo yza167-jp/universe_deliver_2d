@@ -1,0 +1,62 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_sequence.gd" id="1_sequence"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_line.gd" id="2_line"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_condition.gd" id="3_condition"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_effect.gd" id="4_effect"]
+[ext_resource type="Resource" path="res://data/characters/lao_pi.tres" id="5_lao_pi"]
+
+[sub_resource type="Resource" id="ConditionLaserEquipped"]
+script = ExtResource("3_condition")
+condition_type = 1
+module_id = &"module_asteroid_laser"
+
+[sub_resource type="Resource" id="ConditionLaserUnequipped"]
+script = ExtResource("3_condition")
+condition_type = 1
+module_id = &"module_asteroid_laser"
+expected_value = false
+
+[sub_resource type="Resource" id="EffectMainCompleted"]
+script = ExtResource("4_effect")
+effect_id = &"story_cockpit_travel_main_completed"
+
+[sub_resource type="Resource" id="LineTravelQuiet"]
+script = ExtResource("2_line")
+id = &"travel_quiet"
+speaker = ExtResource("5_lao_pi")
+text_key = &"DIALOGUE_LAO_PI_TRAVEL_MAIN_01"
+portrait_expression = &"relaxed"
+next_line_id = &"laser_equipped"
+
+[sub_resource type="Resource" id="LineLaserEquipped"]
+script = ExtResource("2_line")
+id = &"laser_equipped"
+speaker = ExtResource("5_lao_pi")
+text_key = &"DIALOGUE_LAO_PI_TRAVEL_MAIN_LASER"
+portrait_expression = &"neutral"
+conditions = [SubResource("ConditionLaserEquipped")]
+next_line_id = &"laser_unequipped"
+
+[sub_resource type="Resource" id="LineLaserUnequipped"]
+script = ExtResource("2_line")
+id = &"laser_unequipped"
+speaker = ExtResource("5_lao_pi")
+text_key = &"DIALOGUE_LAO_PI_TRAVEL_MAIN_NO_LASER"
+portrait_expression = &"neutral"
+conditions = [SubResource("ConditionLaserUnequipped")]
+next_line_id = &"entry_ready"
+
+[sub_resource type="Resource" id="LineEntryReady"]
+script = ExtResource("2_line")
+id = &"entry_ready"
+speaker = ExtResource("5_lao_pi")
+text_key = &"DIALOGUE_LAO_PI_TRAVEL_MAIN_02"
+portrait_expression = &"friendly"
+effects = [SubResource("EffectMainCompleted")]
+
+[resource]
+script = ExtResource("1_sequence")
+id = &"dialogue_lao_pi_travel_main"
+start_line_id = &"travel_quiet"
+lines = [SubResource("LineTravelQuiet"), SubResource("LineLaserEquipped"), SubResource("LineLaserUnequipped"), SubResource("LineEntryReady")]
