@@ -38,6 +38,13 @@ func run() -> Array[String]:
 		"Flight Lab must show a placeholder ship Sprite2D.",
 		failures
 	)
+	expect_true(
+		flight_lab.get_node_or_null("World/FlightShip/BoostGlow") is Polygon2D
+		and flight_lab.get_node_or_null("World/FlightShip/ImpactSparks")
+		is CPUParticles2D,
+		"Flight Lab must expose minimum Boost and impact visual feedback.",
+		failures
+	)
 	expect_true(flight_camera != null and flight_camera.enabled, "Flight Lab camera must be enabled.", failures)
 	expect_true(debug_hud != null and debug_hud.visible, "Flight debug HUD must start visible.", failures)
 	expect_true(
@@ -50,6 +57,13 @@ func run() -> Array[String]:
 		and flight_ship.environment_profile is FlightEnvironmentProfile
 		and flight_ship.environment_profile.id == &"environment_deep_space",
 		"Flight Lab ship must start with the deep-space environment profile.",
+		failures
+	)
+	expect_true(
+		flight_ship != null
+		and flight_ship.cargo_definition is CargoDefinition
+		and flight_ship.cargo_definition.id == &"cargo_red_sand_m0",
+		"Flight Lab must exercise the current story cargo resource rules.",
 		failures
 	)
 	expect_true(
@@ -90,6 +104,21 @@ func run() -> Array[String]:
 		)
 
 	if flight_ship != null:
+		flight_ship.hull = 81.0
+		flight_ship.shield = 52.0
+		flight_ship.fuel = 63.0
+		flight_ship.boost_energy = 47.0
+		flight_ship.cargo_integrity = 88.0
+		flight_ship.position = Vector2(420.0, 144.0)
+		flight_ship.velocity = Vector2(74.0, -19.0)
+		flight_ship.rotation = 0.24
+		flight_ship.angular_velocity = -0.4
+		expect_true(
+			flight_ship.capture_checkpoint(&"checkpoint_test_custom"),
+			"A non-empty checkpoint ID must capture stable flight state.",
+			failures
+		)
+		flight_ship.resources.reset()
 		flight_ship.position = Vector2(780.0, 92.0)
 		flight_ship.velocity = Vector2(184.0, -73.0)
 		flight_ship.rotation = 0.7
@@ -97,34 +126,36 @@ func run() -> Array[String]:
 		flight_ship.throttle_input = 1.0
 		flight_ship.brake_input = 0.5
 		flight_ship.pitch_input = -1.0
-		flight_ship.fuel = 13.0
-		flight_ship.boost_energy = 27.0
+		flight_ship.cargo_integrity = 12.0
 		flight_ship.gravity_acceleration = 88.0
 		flight_ship.collision_state_key = &"temporary_collision_state"
-		flight_ship.reset_to_start()
+		expect_true(
+			flight_ship.restore_checkpoint(),
+			"Captured checkpoint must be restorable.",
+			failures
+		)
 	if flight_ship != null:
 		expect_true(
-			flight_ship.position == flight_ship.stable_start_position
-			and flight_ship.velocity == Vector2.ZERO
-			and is_zero_approx(flight_ship.rotation)
-			and is_zero_approx(flight_ship.angular_velocity)
+			flight_ship.position == Vector2(420.0, 144.0)
+			and flight_ship.velocity == Vector2(74.0, -19.0)
+			and is_equal_approx(flight_ship.rotation, 0.24)
+			and is_equal_approx(flight_ship.angular_velocity, -0.4)
 			and is_zero_approx(flight_ship.throttle_input)
 			and is_zero_approx(flight_ship.brake_input)
-			and is_zero_approx(flight_ship.pitch_input),
-			"Flight Lab reset must clear linear, angular, and input drift.",
+			and is_zero_approx(flight_ship.pitch_input)
+			and is_zero_approx(flight_ship.boost_input),
+			"Checkpoint restore must recover motion while clearing live input drift.",
 			failures
 		)
 		expect_true(
-			is_equal_approx(flight_ship.fuel, FlightLabShip.DEFAULT_RESOURCE_VALUE)
-			and is_equal_approx(
-				flight_ship.boost_energy,
-				FlightLabShip.DEFAULT_RESOURCE_VALUE
-			)
-			and is_zero_approx(flight_ship.gravity_acceleration)
-			and is_zero_approx(flight_ship.gravity_blend)
-			and is_zero_approx(flight_ship.air_density)
+			is_equal_approx(flight_ship.hull, 81.0)
+			and is_equal_approx(flight_ship.shield, 52.0)
+			and is_equal_approx(flight_ship.fuel, 63.0)
+			and is_equal_approx(flight_ship.boost_energy, 47.0)
+			and is_equal_approx(flight_ship.cargo_integrity, 88.0)
+			and flight_ship.get_checkpoint_id() == &"checkpoint_test_custom"
 			and flight_ship.collision_state_key == FlightLabShip.DEFAULT_COLLISION_KEY,
-			"Flight Lab reset must restore resources and collision state.",
+			"Checkpoint restore must recover all five resources and clear collision state.",
 			failures
 		)
 	flight_lab.free()

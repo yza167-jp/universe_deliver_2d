@@ -9,7 +9,8 @@ static func step_velocity(
 	throttle_input: float,
 	brake_input: float,
 	tuning: FlightTuning,
-	delta: float
+	delta: float,
+	boost_input: float = 0.0
 ) -> Vector2:
 	if tuning == null or delta <= 0.0:
 		return current_velocity
@@ -20,7 +21,8 @@ static func step_velocity(
 		throttle_input,
 		brake_input,
 		tuning,
-		delta
+		delta,
+		boost_input
 	)
 	next_velocity = _apply_space_drag(next_velocity, tuning, delta)
 	return apply_speed_limits(next_velocity, rotation, tuning)
@@ -33,17 +35,22 @@ static func step_control_velocity(
 	throttle_input: float,
 	brake_input: float,
 	tuning: FlightTuning,
-	delta: float
+	delta: float,
+	boost_input: float = 0.0
 ) -> Vector2:
 	if tuning == null or delta <= 0.0:
 		return current_velocity
 	var safe_throttle: float = clampf(throttle_input, 0.0, 1.0)
 	var safe_brake: float = clampf(brake_input, 0.0, 1.0)
+	var safe_boost: float = clampf(boost_input, 0.0, 1.0)
 	var next_velocity: Vector2 = current_velocity
 	next_velocity += (
 		Vector2.RIGHT.rotated(rotation)
 		* maxf(tuning.thrust_acceleration, 0.0)
-		* safe_throttle
+		* (
+			safe_throttle
+			+ safe_boost * maxf(tuning.boost_multiplier - 1.0, 0.0)
+		)
 		* delta
 	)
 	return _apply_brake(next_velocity, safe_brake, tuning, delta)

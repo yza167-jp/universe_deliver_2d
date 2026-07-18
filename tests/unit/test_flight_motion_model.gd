@@ -7,6 +7,7 @@ const M0_TUNING_PATH: String = "res://data/tuning/flight_tuning_m0.tres"
 func run() -> Array[String]:
 	var failures: Array[String] = []
 	_test_thrust_follows_ship_forward(failures)
+	_test_boost_adds_configured_forward_acceleration(failures)
 	_test_space_drag_preserves_inertia(failures)
 	_test_brake_decelerates_without_reversing(failures)
 	_test_speed_limit_is_enforced(failures)
@@ -15,6 +16,28 @@ func run() -> Array[String]:
 	_test_tuning_changes_motion_without_formula_changes(failures)
 	_test_default_tuning_reaches_high_speed_and_coasts(failures)
 	return failures
+
+
+func _test_boost_adds_configured_forward_acceleration(
+	failures: Array[String]
+) -> void:
+	var tuning: FlightTuning = _make_linear_tuning()
+	tuning.boost_multiplier = 2.0
+	var boosted_velocity: Vector2 = FlightMotionModel.step_velocity(
+		Vector2.ZERO,
+		0.0,
+		0.0,
+		0.0,
+		tuning,
+		0.5,
+		1.0
+	)
+	_expect_vector_close(
+		boosted_velocity,
+		Vector2(100.0, 0.0),
+		"Boost must add its configured forward acceleration without requiring throttle.",
+		failures
+	)
 
 
 func _test_thrust_follows_ship_forward(failures: Array[String]) -> void:
