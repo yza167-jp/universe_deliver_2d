@@ -9,7 +9,8 @@ func run() -> Array[String]:
 	_test_thrust_follows_ship_forward(failures)
 	_test_boost_adds_configured_forward_acceleration(failures)
 	_test_space_drag_preserves_inertia(failures)
-	_test_brake_decelerates_without_reversing(failures)
+	_test_brake_then_limited_reverse(failures)
+	_test_reverse_boost_gate_and_pitch_direction(failures)
 	_test_speed_limit_is_enforced(failures)
 	_test_pitch_response_and_damping(failures)
 	_test_pitch_limit_is_enforced(failures)
@@ -91,7 +92,7 @@ func _test_space_drag_preserves_inertia(failures: Array[String]) -> void:
 	)
 
 
-func _test_brake_decelerates_without_reversing(failures: Array[String]) -> void:
+func _test_brake_then_limited_reverse(failures: Array[String]) -> void:
 	var tuning: FlightTuning = _make_linear_tuning()
 	tuning.brake_acceleration = 100.0
 	var braked_velocity: Vector2 = FlightMotionModel.step_velocity(
@@ -119,7 +120,84 @@ func _test_brake_decelerates_without_reversing(failures: Array[String]) -> void:
 	_expect_vector_close(
 		stopped_velocity,
 		Vector2.ZERO,
-		"Brake must stop at zero without automatically reversing the ship.",
+		"Brake must finish the positive-speed braking stage at zero.",
+		failures
+	)
+	var reverse_velocity: Vector2 = FlightMotionModel.step_velocity(
+		stopped_velocity,
+		0.0,
+		0.0,
+		1.0,
+		tuning,
+		1.0
+	)
+	_expect_vector_close(
+		reverse_velocity,
+		Vector2(-80.0, 0.0),
+		"Continuing to hold S near zero must apply configured reverse thrust.",
+		failures
+	)
+	for _frame_index: int in 240:
+		reverse_velocity = FlightMotionModel.step_velocity(
+			reverse_velocity,
+			0.0,
+			0.0,
+			1.0,
+			tuning,
+			1.0 / 60.0
+		)
+	expect_true(
+		is_equal_approx(reverse_velocity.x, -tuning.get_max_reverse_speed()),
+		"Reverse speed must stop at the configured fraction of forward speed.",
+		failures
+	)
+	var recovered_velocity: Vector2 = FlightMotionModel.step_velocity(
+		Vector2(-80.0, 0.0),
+		0.0,
+		1.0,
+		0.0,
+		tuning,
+		0.5
+	)
+	expect_true(
+		recovered_velocity.x > 0.0,
+		"W thrust must cancel negative speed before resuming forward motion.",
+		failures
+	)
+
+
+func _test_reverse_boost_gate_and_pitch_direction(failures: Array[String]) -> void:
+	expect_true(
+		FlightMotionModel.is_reverse_boost_blocked(Vector2(80.0, 0.0), 0.0, 1.0)
+		and FlightMotionModel.is_reverse_boost_blocked(
+			Vector2(-1.0, 0.0),
+			0.0,
+			0.0
+		)
+		and not FlightMotionModel.is_reverse_boost_blocked(
+			Vector2(80.0, 0.0),
+			0.0,
+			0.0
+		),
+		"Reverse input or negative local forward speed must block Boost.",
+		failures
+	)
+	var tuning: FlightTuning = _make_linear_tuning()
+	var forward_pitch: float = FlightMotionModel.step_angular_velocity(
+		0.0,
+		-1.0,
+		tuning,
+		0.25
+	)
+	var reverse_pitch: float = FlightMotionModel.step_angular_velocity(
+		0.0,
+		-1.0,
+		tuning,
+		0.25
+	)
+	expect_true(
+		forward_pitch < 0.0 and is_equal_approx(forward_pitch, reverse_pitch),
+		"Reverse motion must not invert pitch input or use separate pitch limits.",
 		failures
 	)
 
@@ -316,6 +394,10 @@ func _make_linear_tuning() -> FlightTuning:
 	tuning.max_forward_speed = 1000.0
 	tuning.max_total_speed = 1200.0
 	tuning.brake_deadzone = 4.0
+	tuning.reverse_entry_speed_threshold = 6.0
+	tuning.reverse_thrust_multiplier = 0.4
+	tuning.reverse_max_speed_ratio = 0.3
+	tuning.reverse_brake_strength = 1.0
 	return tuning
 
 

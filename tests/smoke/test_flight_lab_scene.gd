@@ -40,9 +40,10 @@ func run() -> Array[String]:
 	)
 	expect_true(
 		flight_lab.get_node_or_null("World/FlightShip/BoostGlow") is Polygon2D
+		and flight_lab.get_node_or_null("World/FlightShip/ReverseGlow") is Polygon2D
 		and flight_lab.get_node_or_null("World/FlightShip/ImpactSparks")
 		is CPUParticles2D,
-		"Flight Lab must expose minimum Boost and impact visual feedback.",
+		"Flight Lab must expose Boost, reverse, and impact visual feedback.",
 		failures
 	)
 	expect_true(
@@ -62,7 +63,15 @@ func run() -> Array[String]:
 		failures
 	)
 	expect_true(flight_camera != null and flight_camera.enabled, "Flight Lab camera must be enabled.", failures)
-	expect_true(debug_hud != null and debug_hud.visible, "Flight debug HUD must start visible.", failures)
+	expect_true(
+		debug_hud != null
+		and debug_hud.visible
+		and not (
+			debug_hud.get_node_or_null("DiagnosticsPanel") as Control
+		).visible,
+		"Essential Flight HUD must start visible with Full Diagnostics hidden.",
+		failures
+	)
 	expect_true(
 		flight_lab.get_entry_style_tracker() is FlightStyleTracker,
 		"Flight Lab must own a reusable entry-style tracker.",
@@ -182,17 +191,20 @@ func run() -> Array[String]:
 
 	if debug_hud != null:
 		expect_true(
-			debug_hud.get_node_or_null("HeaderPanel") is PanelContainer
-			and debug_hud.get_node_or_null("StatsPanel") is PanelContainer
-			and debug_hud.get_node_or_null("StatsPanel/Margin/Stats/LaserLabel") is Label,
-			"Flight debug HUD must contain separate header and telemetry panels.",
+			debug_hud.get_node_or_null("EssentialMotionPanel") is PanelContainer
+			and debug_hud.get_node_or_null("EssentialResourcesPanel") is PanelContainer
+			and debug_hud.get_node_or_null("DiagnosticsPanel") is PanelContainer
+			and debug_hud.get_node_or_null(
+				"DiagnosticsPanel/Margin/Stats/LaserLabel"
+			) is Label,
+			"Flight HUD must separate essential flight data from Full Diagnostics.",
 			failures
 		)
 		expect_true(
 			debug_hud.get_node_or_null(
-				"StatsPanel/Margin/Stats/EntryStyleLabel"
+				"DiagnosticsPanel/Margin/Stats/EntryStyleLabel"
 			) is Label,
-			"Flight debug HUD must expose the current entry-style candidate.",
+			"Full Diagnostics must retain the current entry-style candidate.",
 			failures
 		)
 		expect_true(
@@ -202,8 +214,13 @@ func run() -> Array[String]:
 			) is Label
 			and debug_hud.get_node_or_null(
 				"RoutePanel/Margin/Content/RouteInstructionLabel"
-			) is Label,
-			"Flight debug HUD must expose the localized Gate B checklist and instruction.",
+			) is Label
+			and not (
+				debug_hud.get_node_or_null(
+					"RoutePanel/Margin/Content/RouteChecklistLabel"
+				) as Label
+			).visible,
+			"Gate B route must start compact while retaining its expandable checklist.",
 			failures
 		)
 

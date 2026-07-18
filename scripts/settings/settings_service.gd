@@ -61,9 +61,11 @@ func load_settings() -> bool:
 		return false
 
 	settings.read_from_config(config, SETTINGS_SECTION)
-	_load_input_bindings(config)
+	var migrated_legacy_flight_lab_bindings: bool = _load_input_bindings(config)
 	_apply_runtime_settings()
 	settings_changed.emit()
+	if migrated_legacy_flight_lab_bindings:
+		return save_settings()
 	return true
 
 
@@ -233,7 +235,8 @@ func _apply_action_events(action: StringName, events: Array[InputEvent]) -> void
 		InputMap.action_add_event(action, event)
 
 
-func _load_input_bindings(config: ConfigFile) -> void:
+func _load_input_bindings(config: ConfigFile) -> bool:
+	var migrated_legacy_flight_lab_bindings: bool = false
 	for action: StringName in SUPPORTED_ACTIONS:
 		var action_key: String = String(action)
 		if not config.has_section_key(INPUT_SECTION, action_key):
@@ -253,8 +256,14 @@ func _load_input_bindings(config: ConfigFile) -> void:
 				all_events_valid = false
 				break
 			events.append(input_event)
-		if all_events_valid:
+		if not all_events_valid:
+			continue
+		if _is_legacy_flight_lab_default(action, events):
+			_apply_action_events(action, _build_default_events(action))
+			migrated_legacy_flight_lab_bindings = true
+		else:
 			_apply_action_events(action, events)
+	return migrated_legacy_flight_lab_bindings
 
 
 func _write_input_bindings(config: ConfigFile) -> void:
@@ -338,16 +347,41 @@ static func _build_default_events(action: StringName) -> Array[InputEvent]:
 		&"flight_route_hint":
 			events.append(_create_key_event(KEY_TAB))
 		&"flight_debug_toggle":
-			events.append(_create_key_event(KEY_F3))
+			events.append(_create_key_event(KEY_H, true))
 		&"flight_environment_cycle":
-			events.append(_create_key_event(KEY_F4))
+			events.append(_create_key_event(KEY_V, true))
 		&"flight_assist_cycle":
-			events.append(_create_key_event(KEY_F5))
+			events.append(_create_key_event(KEY_G, true))
 		&"flight_laser_toggle":
-			events.append(_create_key_event(KEY_F6))
+			events.append(_create_key_event(KEY_L, true))
 		&"pause":
 			events.append(_create_key_event(KEY_ESCAPE))
 	return events
+
+
+static func _is_legacy_flight_lab_default(
+	action: StringName,
+	events: Array[InputEvent]
+) -> bool:
+	if events.size() != 1 or not events[0] is InputEventKey:
+		return false
+	var legacy_key: Key = KEY_NONE
+	match action:
+		&"flight_debug_toggle":
+			legacy_key = KEY_F3
+		&"flight_environment_cycle":
+			legacy_key = KEY_F4
+		&"flight_assist_cycle":
+			legacy_key = KEY_F5
+		&"flight_laser_toggle":
+			legacy_key = KEY_F6
+		_:
+			return false
+	var key_event: InputEventKey = events[0] as InputEventKey
+	return (
+		key_event.keycode == legacy_key
+		or key_event.physical_keycode == legacy_key
+	)
 
 
 static func _create_key_event(keycode: Key, use_physical_key: bool = false) -> InputEventKey:

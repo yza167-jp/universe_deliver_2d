@@ -9,25 +9,25 @@ allow_system_fallback = true
 [sub_resource type="Theme" id="ThemeFlightDebug"]
 default_font = SubResource("SystemFontFlightDebug")
 
-[sub_resource type="StyleBoxFlat" id="StyleHeader"]
-bg_color = Color(0.027451, 0.054902, 0.094118, 0.94)
+[sub_resource type="StyleBoxFlat" id="StyleEssential"]
+bg_color = Color(0.027451, 0.054902, 0.094118, 0.9)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.352941, 0.737255, 0.760784, 0.9)
+border_color = Color(0.352941, 0.737255, 0.760784, 0.82)
 corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
-[sub_resource type="StyleBoxFlat" id="StyleStats"]
-bg_color = Color(0.031373, 0.058824, 0.101961, 0.88)
+[sub_resource type="StyleBoxFlat" id="StyleDiagnostics"]
+bg_color = Color(0.031373, 0.058824, 0.101961, 0.94)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.905882, 0.658824, 0.356863, 0.78)
+border_color = Color(0.905882, 0.658824, 0.356863, 0.85)
 corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
@@ -37,241 +37,286 @@ corner_radius_bottom_left = 3
 layer = 30
 script = ExtResource("1_hud")
 
-[node name="HeaderPanel" type="PanelContainer" parent="."]
-anchors_preset = 10
-anchor_right = 1.0
+[node name="EssentialMotionPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
 offset_left = 8.0
 offset_top = 8.0
-offset_right = -8.0
-offset_bottom = 48.0
-grow_horizontal = 2
+offset_right = 264.0
+offset_bottom = 78.0
 theme = SubResource("ThemeFlightDebug")
-theme_override_styles/panel = SubResource("StyleHeader")
+theme_override_styles/panel = SubResource("StyleEssential")
 
-[node name="Margin" type="MarginContainer" parent="HeaderPanel"]
-layout_mode = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 6
-
-[node name="Content" type="HBoxContainer" parent="HeaderPanel/Margin"]
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="TitleLabel" type="Label" parent="HeaderPanel/Margin/Content"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(106, 0)
-layout_mode = 2
-theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
-theme_override_font_sizes/font_size = 13
-text = "UI_FLIGHT_LAB_TITLE"
-
-[node name="HintLabel" type="Label" parent="HeaderPanel/Margin/Content"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.741176, 0.823529, 0.85098, 1)
-theme_override_font_sizes/font_size = 10
-text = "UI_FLIGHT_LAB_HINTS"
-horizontal_alignment = 2
-vertical_alignment = 1
-
-[node name="StatsPanel" type="PanelContainer" parent="."]
-offset_left = 8.0
-offset_top = 56.0
-offset_right = 292.0
-offset_bottom = 350.0
-theme = SubResource("ThemeFlightDebug")
-theme_override_styles/panel = SubResource("StyleStats")
-
-[node name="Margin" type="MarginContainer" parent="StatsPanel"]
-layout_mode = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 8
-
-[node name="Stats" type="VBoxContainer" parent="StatsPanel/Margin"]
-layout_mode = 2
-theme_override_constants/separation = 2
-
-[node name="SpeedLabel" type="Label" parent="StatsPanel/Margin/Stats"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-text = "UI_FLIGHT_DEBUG_SPEED"
-
-[node name="VerticalSpeedLabel" type="Label" parent="StatsPanel/Margin/Stats"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-text = "UI_FLIGHT_DEBUG_VERTICAL_SPEED"
-
-[node name="PitchLabel" type="Label" parent="StatsPanel/Margin/Stats"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-text = "UI_FLIGHT_DEBUG_PITCH"
-
-[node name="AngularVelocityLabel" type="Label" parent="StatsPanel/Margin/Stats"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-text = "UI_FLIGHT_DEBUG_ANGULAR_VELOCITY"
-
-[node name="ZoneLabel" type="Label" parent="StatsPanel/Margin/Stats"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-text = "UI_FLIGHT_DEBUG_ZONE"
-
-[node name="EnvironmentLabel" type="Label" parent="StatsPanel/Margin/Stats"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-text = "UI_FLIGHT_DEBUG_ENVIRONMENT"
-
-[node name="GravityLabel" type="Label" parent="StatsPanel/Margin/Stats"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-text = "UI_FLIGHT_DEBUG_GRAVITY"
-
-[node name="TerminalLabel" type="Label" parent="StatsPanel/Margin/Stats"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-text = "UI_FLIGHT_DEBUG_TERMINAL"
-
-[node name="DurabilityLabel" type="Label" parent="StatsPanel/Margin/Stats"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-text = "UI_FLIGHT_DEBUG_DURABILITY"
-
-[node name="FuelLabel" type="Label" parent="StatsPanel/Margin/Stats"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-text = "UI_FLIGHT_DEBUG_FUEL"
-
-[node name="BoostLabel" type="Label" parent="StatsPanel/Margin/Stats"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-text = "UI_FLIGHT_DEBUG_BOOST"
-
-[node name="AssistLabel" type="Label" parent="StatsPanel/Margin/Stats"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-text = "UI_FLIGHT_DEBUG_ASSIST"
-
-[node name="EntryStyleLabel" type="Label" parent="StatsPanel/Margin/Stats"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 10
-text = "UI_FLIGHT_DEBUG_ENTRY_STYLE"
-
-[node name="LaserLabel" type="Label" parent="StatsPanel/Margin/Stats"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-text = "UI_FLIGHT_DEBUG_LASER"
-
-[node name="CollisionLabel" type="Label" parent="StatsPanel/Margin/Stats"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-text = "UI_FLIGHT_DEBUG_COLLISION"
-
-[node name="CheckpointLabel" type="Label" parent="StatsPanel/Margin/Stats"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-text = "UI_FLIGHT_DEBUG_CHECKPOINT"
-
-[node name="RoutePanel" type="PanelContainer" parent="."]
-unique_name_in_owner = true
-offset_left = 304.0
-offset_top = 56.0
-offset_right = 632.0
-offset_bottom = 176.0
-mouse_filter = 2
-theme = SubResource("ThemeFlightDebug")
-theme_override_styles/panel = SubResource("StyleStats")
-
-[node name="Margin" type="MarginContainer" parent="RoutePanel"]
-layout_mode = 2
-theme_override_constants/margin_left = 9
-theme_override_constants/margin_top = 7
-theme_override_constants/margin_right = 9
-theme_override_constants/margin_bottom = 7
-
-[node name="Content" type="VBoxContainer" parent="RoutePanel/Margin"]
-layout_mode = 2
-theme_override_constants/separation = 2
-
-[node name="RouteTitleLabel" type="Label" parent="RoutePanel/Margin/Content"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
-theme_override_font_sizes/font_size = 12
-text = "UI_FLIGHT_LAB_COURSE_TITLE"
-
-[node name="RouteProgressLabel" type="Label" parent="RoutePanel/Margin/Content"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.639216, 0.843137, 0.815686, 1)
-theme_override_font_sizes/font_size = 10
-text = "UI_FLIGHT_LAB_COURSE_PROGRESS"
-
-[node name="RouteChecklistLabel" type="Label" parent="RoutePanel/Margin/Content"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.831373, 0.87451, 0.890196, 1)
-theme_override_font_sizes/font_size = 10
-text = "UI_FLIGHT_LAB_COURSE_CHECKLIST"
-
-[node name="RouteInstructionLabel" type="Label" parent="RoutePanel/Margin/Content"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 46)
-layout_mode = 2
-theme_override_colors/font_color = Color(0.741176, 0.823529, 0.85098, 1)
-theme_override_font_sizes/font_size = 9
-text = "UI_FLIGHT_LAB_COURSE_INSTRUCTION_ASSIST"
-autowrap_mode = 2
-
-[node name="StatusPanel" type="PanelContainer" parent="."]
-anchors_preset = 3
-anchor_left = 1.0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -328.0
-offset_top = -58.0
-offset_right = -8.0
-offset_bottom = -8.0
-grow_horizontal = 0
-grow_vertical = 0
-theme = SubResource("ThemeFlightDebug")
-theme_override_styles/panel = SubResource("StyleHeader")
-
-[node name="Margin" type="MarginContainer" parent="StatusPanel"]
+[node name="Margin" type="MarginContainer" parent="EssentialMotionPanel"]
 layout_mode = 2
 theme_override_constants/margin_left = 8
 theme_override_constants/margin_top = 5
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 5
 
-[node name="StatusLabel" type="Label" parent="StatusPanel/Margin"]
+[node name="Content" type="VBoxContainer" parent="EssentialMotionPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 1
+
+[node name="MotionLabel" type="Label" parent="EssentialMotionPanel/Margin/Content"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.945098, 0.972549, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_FLIGHT_HUD_MOTION"
+
+[node name="EnvironmentAssistLabel" type="Label" parent="EssentialMotionPanel/Margin/Content"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.639216, 0.843137, 0.815686, 1)
 theme_override_font_sizes/font_size = 10
-text = "UI_FLIGHT_LAB_STATUS_READY"
+text = "UI_FLIGHT_HUD_ENVIRONMENT_ASSIST"
+
+[node name="ShortcutLabel" type="Label" parent="EssentialMotionPanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.607843, 0.670588, 0.733333, 1)
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_LAB_HINTS_COMPACT"
+
+[node name="EssentialResourcesPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+offset_left = 272.0
+offset_top = 8.0
+offset_right = 392.0
+offset_bottom = 78.0
+theme = SubResource("ThemeFlightDebug")
+theme_override_styles/panel = SubResource("StyleEssential")
+
+[node name="Margin" type="MarginContainer" parent="EssentialResourcesPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 7
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 7
+theme_override_constants/margin_bottom = 5
+
+[node name="Content" type="VBoxContainer" parent="EssentialResourcesPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="ResourceLabel" type="Label" parent="EssentialResourcesPanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_HUD_RESOURCES"
+
+[node name="IntegrityLabel" type="Label" parent="EssentialResourcesPanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.831373, 0.87451, 0.890196, 1)
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_HUD_INTEGRITY"
+
+[node name="RoutePanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+offset_left = 400.0
+offset_top = 8.0
+offset_right = 632.0
+offset_bottom = 78.0
+theme = SubResource("ThemeFlightDebug")
+theme_override_styles/panel = SubResource("StyleEssential")
+
+[node name="Margin" type="MarginContainer" parent="RoutePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 7
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 7
+theme_override_constants/margin_bottom = 5
+
+[node name="Content" type="VBoxContainer" parent="RoutePanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 1
+
+[node name="RouteProgressLabel" type="Label" parent="RoutePanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_FLIGHT_LAB_COURSE_PROGRESS_COMPACT"
+
+[node name="RouteTitleLabel" type="Label" parent="RoutePanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.945098, 0.972549, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_FLIGHT_LAB_COURSE_STEP_ASSIST"
+
+[node name="RouteChecklistLabel" type="Label" parent="RoutePanel/Margin/Content"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.741176, 0.823529, 0.85098, 1)
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_LAB_COURSE_CHECKLIST"
+autowrap_mode = 2
+
+[node name="RouteInstructionLabel" type="Label" parent="RoutePanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.639216, 0.843137, 0.815686, 1)
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_LAB_COURSE_INSTRUCTION_ASSIST_COMPACT"
+text_overrun_behavior = 3
+
+[node name="DiagnosticsPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+offset_left = 8.0
+offset_top = 86.0
+offset_right = 316.0
+offset_bottom = 352.0
+theme = SubResource("ThemeFlightDebug")
+theme_override_styles/panel = SubResource("StyleDiagnostics")
+
+[node name="Margin" type="MarginContainer" parent="DiagnosticsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 6
+
+[node name="Stats" type="VBoxContainer" parent="DiagnosticsPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 1
+
+[node name="DiagnosticsHintLabel" type="Label" parent="DiagnosticsPanel/Margin/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_LAB_HINTS_FULL"
+autowrap_mode = 2
+
+[node name="SpeedLabel" type="Label" parent="DiagnosticsPanel/Margin/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_DEBUG_SPEED"
+
+[node name="VerticalSpeedLabel" type="Label" parent="DiagnosticsPanel/Margin/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_DEBUG_VERTICAL_SPEED"
+
+[node name="PitchLabel" type="Label" parent="DiagnosticsPanel/Margin/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_DEBUG_PITCH"
+
+[node name="AngularVelocityLabel" type="Label" parent="DiagnosticsPanel/Margin/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_DEBUG_ANGULAR_VELOCITY"
+
+[node name="ZoneLabel" type="Label" parent="DiagnosticsPanel/Margin/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_DEBUG_ZONE"
+
+[node name="EnvironmentLabel" type="Label" parent="DiagnosticsPanel/Margin/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_DEBUG_ENVIRONMENT"
+
+[node name="GravityLabel" type="Label" parent="DiagnosticsPanel/Margin/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_DEBUG_GRAVITY"
+
+[node name="TerminalLabel" type="Label" parent="DiagnosticsPanel/Margin/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_DEBUG_TERMINAL"
+
+[node name="DurabilityLabel" type="Label" parent="DiagnosticsPanel/Margin/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_DEBUG_DURABILITY"
+
+[node name="FuelLabel" type="Label" parent="DiagnosticsPanel/Margin/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_DEBUG_FUEL"
+
+[node name="BoostLabel" type="Label" parent="DiagnosticsPanel/Margin/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_DEBUG_BOOST"
+
+[node name="AssistLabel" type="Label" parent="DiagnosticsPanel/Margin/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_DEBUG_ASSIST"
+
+[node name="EntryStyleLabel" type="Label" parent="DiagnosticsPanel/Margin/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_DEBUG_ENTRY_STYLE"
+
+[node name="LaserLabel" type="Label" parent="DiagnosticsPanel/Margin/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_DEBUG_LASER"
+
+[node name="CollisionLabel" type="Label" parent="DiagnosticsPanel/Margin/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_DEBUG_COLLISION"
+
+[node name="CheckpointLabel" type="Label" parent="DiagnosticsPanel/Margin/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_DEBUG_CHECKPOINT"
+
+[node name="StatusPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -336.0
+offset_top = -36.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 0
+grow_vertical = 0
+theme = SubResource("ThemeFlightDebug")
+theme_override_styles/panel = SubResource("StyleEssential")
+
+[node name="Margin" type="MarginContainer" parent="StatusPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 7
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 7
+theme_override_constants/margin_bottom = 4
+
+[node name="StatusLabel" type="Label" parent="StatusPanel/Margin"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.639216, 0.843137, 0.815686, 1)
+theme_override_font_sizes/font_size = 9
+text_overrun_behavior = 3
 horizontal_alignment = 1
 vertical_alignment = 1
-autowrap_mode = 2

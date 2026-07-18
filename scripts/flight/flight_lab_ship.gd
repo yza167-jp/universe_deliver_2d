@@ -11,6 +11,7 @@ signal laser_target_hit(
 	remaining_durability: int,
 	target_destroyed: bool
 )
+signal boost_blocked(reason_key: StringName)
 
 const THROTTLE_ACTION: StringName = &"flight_throttle"
 const BRAKE_ACTION: StringName = &"flight_brake"
@@ -18,6 +19,7 @@ const PITCH_UP_ACTION: StringName = &"flight_pitch_up"
 const PITCH_DOWN_ACTION: StringName = &"flight_pitch_down"
 const BOOST_ACTION: StringName = &"flight_boost"
 const FIRE_ACTION: StringName = &"flight_fire"
+const REVERSE_BOOST_BLOCKED_KEY: StringName = &"UI_FLIGHT_LAB_STATUS_REVERSE_BOOST_BLOCKED"
 const DEFAULT_RESOURCE_VALUE: float = FlightResources.MAX_RESOURCE_VALUE
 const DEFAULT_ASSIST_STRENGTH: float = 0.75
 const DEFAULT_ZONE_KEY: StringName = &"UI_FLIGHT_LAB_ZONE_DEEP_SPACE"
@@ -79,15 +81,19 @@ var pitch_input: float = 0.0
 var boost_input: float = 0.0
 var effective_throttle_input: float = 0.0
 var effective_boost_input: float = 0.0
+var effective_reverse_input: float = 0.0
 
 @onready var _engine_glow: Polygon2D = $EngineGlow
 @onready var _boost_glow: Polygon2D = $BoostGlow
+@onready var _reverse_glow: Polygon2D = $ReverseGlow
 @onready var _impact_sparks: CPUParticles2D = $ImpactSparks
 @onready var _laser_weapon: FlightLaserWeapon = %LaserWeapon
 
 var _checkpoint_state: FlightCheckpointState
 var _collision_feedback_cooldown_remaining: float = 0.0
 var _triggered_cargo_warning_keys: Dictionary[StringName, bool] = {}
+var _fire_input_held: bool = false
+var _reverse_boost_warning_latched: bool = false
 
 
 func _ready() -> void:
@@ -102,6 +108,15 @@ func _ready() -> void:
 		_laser_weapon.target_hit.connect(_on_laser_target_hit)
 
 
+func _notification(what: int) -> void:
+	if what in [
+		NOTIFICATION_PAUSED,
+		NOTIFICATION_EXIT_TREE,
+		NOTIFICATION_WM_WINDOW_FOCUS_OUT,
+	]:
+		cancel_held_fire()
+
+
 func _physics_process(delta: float) -> void:
 	_collision_feedback_cooldown_remaining = maxf(
 		_collision_feedback_cooldown_remaining - maxf(delta, 0.0),
@@ -111,8 +126,7 @@ func _physics_process(delta: float) -> void:
 		_clear_control_inputs()
 		_update_engine_feedback()
 		return
-	if Input.is_action_just_pressed(FIRE_ACTION):
-		request_laser_fire()
+	_update_held_fire_input()
 	var requested_pitch: float = Input.get_axis(PITCH_UP_ACTION, PITCH_DOWN_ACTION)
 	integrate_motion(
 		Input.get_action_strength(THROTTLE_ACTION),
@@ -139,6 +153,22 @@ func integrate_motion(
 	brake_input = clampf(requested_brake, 0.0, 1.0)
 	pitch_input = clampf(requested_pitch, -1.0, 1.0)
 	boost_input = clampf(requested_boost, 0.0, 1.0)
+	var reverse_boost_blocked: bool = FlightMotionModel.is_reverse_boost_blocked(
+		velocity,
+		rotation,
+		brake_input
+	)
+	effective_reverse_input = (
+		brake_input
+		if is_zero_approx(throttle_input) and FlightMotionModel.is_reverse_thrust_active(
+			velocity,
+			rotation,
+			brake_input,
+			tuning
+		)
+		else 0.0
+	)
+	_update_reverse_boost_warning(reverse_boost_blocked)
 	angular_velocity = FlightMotionModel.step_angular_velocity(
 		angular_velocity,
 		pitch_input,
@@ -166,7 +196,8 @@ func integrate_motion(
 		_get_cargo_boost_policy(),
 		_is_boost_recovery_blocked(),
 		tuning,
-		delta
+		delta,
+		reverse_boost_blocked
 	)
 	effective_throttle_input = effective_inputs.x
 	effective_boost_input = effective_inputs.y
@@ -221,6 +252,7 @@ func reset_to_start(
 	boost_input = 0.0
 	effective_throttle_input = 0.0
 	effective_boost_input = 0.0
+	effective_reverse_input = 0.0
 	resources.reset()
 	propulsion_fuel_cost_rate = 0.0
 	assist_strength = clampf(requested_assist_strength, 0.0, 1.0)
@@ -243,6 +275,7 @@ func reset_to_start(
 	_triggered_cargo_warning_keys.clear()
 	if _laser_weapon != null:
 		_laser_weapon.reset_weapon()
+	cancel_held_fire()
 	_update_engine_feedback()
 
 
@@ -372,6 +405,14 @@ func get_vertical_speed() -> float:
 	return velocity.y
 
 
+func get_forward_speed() -> float:
+	return FlightMotionModel.get_forward_speed(velocity, rotation)
+
+
+func is_reversing() -> bool:
+	return get_forward_speed() < 0.0
+
+
 func get_pitch_degrees() -> float:
 	return rad_to_deg(rotation)
 
@@ -391,6 +432,7 @@ func get_checkpoint_id() -> StringName:
 
 
 func set_laser_enabled(enabled: bool) -> void:
+	cancel_held_fire()
 	if _laser_weapon != null:
 		_laser_weapon.set_laser_enabled(enabled)
 
@@ -416,6 +458,14 @@ func request_laser_fire() -> FlightLaserWeapon.FireResult:
 		return FlightLaserWeapon.FireResult.UNAVAILABLE
 	_laser_weapon.tuning = tuning
 	return _laser_weapon.request_fire()
+
+
+func is_fire_input_held() -> bool:
+	return _fire_input_held
+
+
+func cancel_held_fire() -> void:
+	_fire_input_held = false
 
 
 func _update_environment_state(delta: float) -> void:
@@ -504,6 +554,9 @@ func _update_engine_feedback() -> void:
 	if _boost_glow != null:
 		_boost_glow.visible = effective_boost_input > 0.0
 		_boost_glow.scale.x = lerpf(0.8, 1.5, effective_boost_input)
+	if _reverse_glow != null:
+		_reverse_glow.visible = effective_reverse_input > 0.0
+		_reverse_glow.scale.x = lerpf(0.75, 1.25, effective_reverse_input)
 
 
 func _resolve_slide_collisions(incoming_velocity: Vector2) -> void:
@@ -610,6 +663,9 @@ func _clear_control_inputs() -> void:
 	boost_input = 0.0
 	effective_throttle_input = 0.0
 	effective_boost_input = 0.0
+	effective_reverse_input = 0.0
+	_reverse_boost_warning_latched = false
+	cancel_held_fire()
 
 
 func _clear_collision_state() -> void:
@@ -632,3 +688,26 @@ func _on_laser_target_hit(
 	target_destroyed: bool
 ) -> void:
 	laser_target_hit.emit(target_id, remaining_durability, target_destroyed)
+
+
+func _update_held_fire_input() -> void:
+	var fire_pressed: bool = Input.is_action_pressed(FIRE_ACTION)
+	if Input.is_action_just_pressed(FIRE_ACTION):
+		_fire_input_held = true
+		request_laser_fire()
+		return
+	if not fire_pressed:
+		cancel_held_fire()
+		return
+	if _fire_input_held and is_laser_ready():
+		request_laser_fire()
+
+
+func _update_reverse_boost_warning(reverse_boost_blocked: bool) -> void:
+	if boost_input <= 0.0:
+		_reverse_boost_warning_latched = false
+		return
+	if not reverse_boost_blocked or _reverse_boost_warning_latched:
+		return
+	_reverse_boost_warning_latched = true
+	boost_blocked.emit(REVERSE_BOOST_BLOCKED_KEY)

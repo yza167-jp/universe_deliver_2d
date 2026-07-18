@@ -305,6 +305,11 @@ visible = false
 polygon = PackedVector2Array(-25, -7, -48, 0, -25, 7)
 color = Color(0.309804, 0.847059, 1, 0.94)
 
+[node name="ReverseGlow" type="Polygon2D" parent="World/FlightShip"]
+visible = false
+polygon = PackedVector2Array(23, -5, 35, 0, 23, 5)
+color = Color(0.462745, 0.945098, 1, 0.9)
+
 [node name="ImpactSparks" type="CPUParticles2D" parent="World/FlightShip"]
 emitting = false
 amount = 10

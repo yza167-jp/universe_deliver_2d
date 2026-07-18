@@ -44,8 +44,9 @@ static func step_control_velocity(
 	var safe_brake: float = clampf(brake_input, 0.0, 1.0)
 	var safe_boost: float = clampf(boost_input, 0.0, 1.0)
 	var next_velocity: Vector2 = current_velocity
+	var forward: Vector2 = Vector2.RIGHT.rotated(rotation)
 	next_velocity += (
-		Vector2.RIGHT.rotated(rotation)
+		forward
 		* maxf(tuning.thrust_acceleration, 0.0)
 		* (
 			safe_throttle
@@ -53,7 +54,14 @@ static func step_control_velocity(
 		)
 		* delta
 	)
-	return _apply_brake(next_velocity, safe_brake, tuning, delta)
+	return _apply_brake_or_reverse(
+		next_velocity,
+		forward,
+		safe_brake,
+		is_zero_approx(safe_throttle),
+		tuning,
+		delta
+	)
 
 
 ## Approaches the requested pitch rate, then damps angular inertia on release.
@@ -97,20 +105,49 @@ static func integrate_rotation(
 	)
 
 
-static func _apply_brake(
+static func _apply_brake_or_reverse(
 	current_velocity: Vector2,
+	forward: Vector2,
 	brake_input: float,
+	allow_reverse: bool,
 	tuning: FlightTuning,
 	delta: float
 ) -> Vector2:
-	if brake_input <= 0.0 or current_velocity.is_zero_approx():
+	if brake_input <= 0.0:
 		return current_velocity
-	if current_velocity.length() <= maxf(tuning.brake_deadzone, 0.0):
-		return Vector2.ZERO
-	return current_velocity.move_toward(
-		Vector2.ZERO,
-		maxf(tuning.brake_acceleration, 0.0) * brake_input * delta
+	if not allow_reverse:
+		return current_velocity.move_toward(
+			Vector2.ZERO,
+			maxf(tuning.brake_acceleration, 0.0)
+			* maxf(tuning.reverse_brake_strength, 0.0)
+			* brake_input
+			* delta
+		)
+	var forward_speed: float = current_velocity.dot(forward)
+	var reverse_entry_threshold: float = maxf(
+		tuning.reverse_entry_speed_threshold,
+		maxf(tuning.brake_deadzone, 0.0)
 	)
+	if forward_speed > reverse_entry_threshold:
+		return current_velocity.move_toward(
+			Vector2.ZERO,
+			maxf(tuning.brake_acceleration, 0.0)
+			* maxf(tuning.reverse_brake_strength, 0.0)
+			* brake_input
+			* delta
+		)
+
+	var reverse_velocity: Vector2 = current_velocity
+	if forward_speed > 0.0:
+		reverse_velocity -= forward * forward_speed
+	reverse_velocity -= (
+		forward
+		* maxf(tuning.thrust_acceleration, 0.0)
+		* clampf(tuning.reverse_thrust_multiplier, 0.0, 1.0)
+		* brake_input
+		* delta
+	)
+	return reverse_velocity
 
 
 static func _apply_space_drag(
@@ -135,4 +172,37 @@ static func apply_speed_limits(
 	var forward_speed: float = limited_velocity.dot(forward)
 	if forward_speed > max_forward_speed:
 		limited_velocity -= forward * (forward_speed - max_forward_speed)
+	var max_reverse_speed: float = tuning.get_max_reverse_speed()
+	forward_speed = limited_velocity.dot(forward)
+	if forward_speed < -max_reverse_speed:
+		limited_velocity -= forward * (forward_speed + max_reverse_speed)
 	return limited_velocity.limit_length(maxf(tuning.max_total_speed, 0.0))
+
+
+static func get_forward_speed(current_velocity: Vector2, rotation: float) -> float:
+	return current_velocity.dot(Vector2.RIGHT.rotated(rotation))
+
+
+static func is_reverse_thrust_active(
+	current_velocity: Vector2,
+	rotation: float,
+	brake_input: float,
+	tuning: FlightTuning
+) -> bool:
+	if tuning == null or brake_input <= 0.0:
+		return false
+	return get_forward_speed(current_velocity, rotation) <= maxf(
+		tuning.reverse_entry_speed_threshold,
+		maxf(tuning.brake_deadzone, 0.0)
+	)
+
+
+static func is_reverse_boost_blocked(
+	current_velocity: Vector2,
+	rotation: float,
+	brake_input: float
+) -> bool:
+	return (
+		brake_input > 0.0
+		or get_forward_speed(current_velocity, rotation) < 0.0
+	)

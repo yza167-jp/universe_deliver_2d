@@ -15,6 +15,16 @@ var max_total_speed: float = 520.0
 @export_range(0.0, 50.0, 0.5, "or_greater")
 var brake_deadzone: float = 4.0
 
+@export_group("Limited Reverse")
+@export_range(0.0, 100.0, 0.5, "or_greater")
+var reverse_entry_speed_threshold: float = 6.0
+@export_range(0.0, 1.0, 0.01)
+var reverse_thrust_multiplier: float = 0.4
+@export_range(0.0, 1.0, 0.01)
+var reverse_max_speed_ratio: float = 0.3
+@export_range(0.0, 2.0, 0.05, "or_greater")
+var reverse_brake_strength: float = 1.0
+
 @export_group("Pitch")
 @export_range(0.0, 8.0, 0.05, "or_greater")
 var max_pitch_rate: float = 2.4
@@ -138,3 +148,10 @@ func get_max_pitch_radians() -> float:
 
 func get_free_assist_strength() -> float:
 	return clampf(free_assist_strength, 0.0, 1.0)
+
+
+func get_max_reverse_speed() -> float:
+	return (
+		maxf(max_forward_speed, 0.0)
+		* clampf(reverse_max_speed_ratio, 0.0, 1.0)
+	)

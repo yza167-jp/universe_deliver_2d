@@ -67,11 +67,15 @@ func run() -> Array[String]:
 		"debug settings unavailable": &"UI_DEBUG_SETTINGS_UNAVAILABLE",
 		"flight lab title": &"UI_FLIGHT_LAB_TITLE",
 		"flight lab hints": &"UI_FLIGHT_LAB_HINTS",
+		"flight lab compact hints": &"UI_FLIGHT_LAB_HINTS_COMPACT",
+		"flight lab full hints": &"UI_FLIGHT_LAB_HINTS_FULL",
 		"flight lab ready": &"UI_FLIGHT_LAB_STATUS_READY",
 		"flight lab reset": &"UI_FLIGHT_LAB_STATUS_RESET",
 		"flight lab auto retry": &"UI_FLIGHT_LAB_STATUS_AUTO_RETRY",
 		"flight lab environment status": &"UI_FLIGHT_LAB_STATUS_ENVIRONMENT",
 		"flight lab assist status": &"UI_FLIGHT_LAB_STATUS_ASSIST",
+		"flight lab assist detail status": &"UI_FLIGHT_LAB_STATUS_ASSIST_WITH_DETAIL",
+		"flight lab reverse boost blocked": &"UI_FLIGHT_LAB_STATUS_REVERSE_BOOST_BLOCKED",
 		"flight lab entry tracking": &"UI_FLIGHT_LAB_STATUS_ENTRY_TRACKING",
 		"flight lab entry finalized": &"UI_FLIGHT_LAB_STATUS_ENTRY_FINALIZED",
 		"flight lab impact status": &"UI_FLIGHT_LAB_STATUS_IMPACT",
@@ -84,6 +88,24 @@ func run() -> Array[String]:
 		"flight lab laser miss": &"UI_FLIGHT_LAB_STATUS_LASER_MISS",
 		"flight lab laser hit": &"UI_FLIGHT_LAB_STATUS_LASER_HIT",
 		"flight lab laser destroyed": &"UI_FLIGHT_LAB_STATUS_LASER_DESTROYED",
+		"flight assist off": &"UI_FLIGHT_ASSIST_MODE_OFF",
+		"flight assist limited": &"UI_FLIGHT_ASSIST_MODE_LIMITED",
+		"flight assist unlimited": &"UI_FLIGHT_ASSIST_MODE_UNLIMITED",
+		"flight assist unlimited detail": &"UI_FLIGHT_ASSIST_MODE_UNLIMITED_DESCRIPTION",
+		"flight hud forward speed": &"UI_FLIGHT_HUD_FORWARD_SPEED",
+		"flight hud reverse speed": &"UI_FLIGHT_HUD_REVERSE_SPEED",
+		"flight hud motion": &"UI_FLIGHT_HUD_MOTION",
+		"flight hud environment assist": &"UI_FLIGHT_HUD_ENVIRONMENT_ASSIST",
+		"flight hud resources": &"UI_FLIGHT_HUD_RESOURCES",
+		"flight hud integrity": &"UI_FLIGHT_HUD_INTEGRITY",
+		"flight route compact progress": &"UI_FLIGHT_LAB_COURSE_PROGRESS_COMPACT",
+		"flight route check item": &"UI_FLIGHT_LAB_COURSE_CHECK_ITEM",
+		"flight route assist compact": &"UI_FLIGHT_LAB_COURSE_INSTRUCTION_ASSIST_COMPACT",
+		"flight route dive compact": &"UI_FLIGHT_LAB_COURSE_INSTRUCTION_DIVE_COMPACT",
+		"flight route recovery compact": &"UI_FLIGHT_LAB_COURSE_INSTRUCTION_RECOVERY_COMPACT",
+		"flight route collision compact": &"UI_FLIGHT_LAB_COURSE_INSTRUCTION_COLLISION_COMPACT",
+		"flight route laser compact": &"UI_FLIGHT_LAB_COURSE_INSTRUCTION_LASER_COMPACT",
+		"flight route complete title": &"UI_FLIGHT_LAB_COURSE_COMPLETE_TITLE",
 		"flight debug speed": &"UI_FLIGHT_DEBUG_SPEED",
 		"flight debug vertical speed": &"UI_FLIGHT_DEBUG_VERTICAL_SPEED",
 		"flight debug pitch": &"UI_FLIGHT_DEBUG_PITCH",
@@ -317,6 +339,26 @@ func run() -> Array[String]:
 		"Dialogue UI keys must be localized: %s" % "; ".join(ui_errors),
 		failures
 	)
+	var flight_hint_keys: Array[StringName] = [
+		&"UI_FLIGHT_LAB_HINTS",
+		&"UI_FLIGHT_LAB_HINTS_COMPACT",
+		&"UI_FLIGHT_LAB_HINTS_FULL",
+		&"UI_FLIGHT_LAB_COURSE_INSTRUCTION_ASSIST_COMPACT",
+		&"UI_FLIGHT_LAB_COURSE_INSTRUCTION_LASER_COMPACT",
+		&"UI_FLIGHT_LAB_COURSE_INSTRUCTION_ASSIST",
+		&"UI_FLIGHT_LAB_COURSE_INSTRUCTION_LASER",
+	]
+	for message_key: StringName in flight_hint_keys:
+		for locale: StringName in [&"zh_CN", &"en"]:
+			var message: String = catalog.get_message(message_key, locale)
+			expect_true(
+				not message.contains("F3")
+				and not message.contains("F4")
+				and not message.contains("F5")
+				and not message.contains("F6"),
+				"Player-visible Flight Lab hints must not expose legacy F3-F6 keys.",
+				failures
+			)
 
 	var sequence: DialogueSequence = load(DIALOGUE_PATH) as DialogueSequence
 	var dialogue_errors: PackedStringArray = DialogueValidator.validate(

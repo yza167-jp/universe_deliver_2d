@@ -10,6 +10,7 @@ func run() -> Array[String]:
 	if tuning == null:
 		return failures
 	_test_boost_consumption_and_cargo_cap(tuning, failures)
+	_test_reverse_boost_block_prevents_resource_cost(tuning, failures)
 	_test_boost_recovery_and_hover_block(tuning, failures)
 	_test_emergency_thrust_prevents_fuel_deadlock(tuning, failures)
 	_test_shield_hull_and_cargo_damage_order(failures)
@@ -62,6 +63,34 @@ func _test_boost_consumption_and_cargo_cap(
 			FlightResources.MAX_RESOURCE_VALUE
 		),
 		"Forbidden cargo must prevent Boost without consuming its energy.",
+		failures
+	)
+
+
+func _test_reverse_boost_block_prevents_resource_cost(
+	tuning: FlightTuning,
+	failures: Array[String]
+) -> void:
+	var resources: FlightResources = FlightResources.new()
+	resources.fuel = 50.0
+	resources.boost_energy = 50.0
+	var effective_input: Vector2 = resources.step_propulsion(
+		0.0,
+		1.0,
+		0.0,
+		CargoDefinition.BoostPolicy.ALLOWED,
+		false,
+		tuning,
+		1.0,
+		true
+	)
+	expect_true(
+		is_zero_approx(effective_input.y)
+		and is_zero_approx(resources.boost_energy_cost_rate)
+		and is_zero_approx(resources.propulsion_fuel_cost_rate)
+		and is_equal_approx(resources.fuel, 50.0)
+		and resources.boost_energy >= 50.0,
+		"Reverse Boost gating must prevent activation and resource consumption.",
 		failures
 	)
 

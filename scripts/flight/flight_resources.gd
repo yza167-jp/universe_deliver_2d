@@ -57,11 +57,16 @@ func step_propulsion(
 	boost_policy: int,
 	block_boost_recovery: bool,
 	tuning: FlightTuning,
-	delta: float
+	delta: float,
+	block_boost_activation: bool = false
 ) -> Vector2:
 	clear_telemetry()
 	var safe_throttle: float = clampf(requested_throttle, 0.0, 1.0)
-	var safe_boost: float = clampf(requested_boost, 0.0, 1.0)
+	var safe_boost: float = 0.0 if block_boost_activation else clampf(
+		requested_boost,
+		0.0,
+		1.0
+	)
 	if tuning == null or delta <= 0.0:
 		return Vector2(safe_throttle, 0.0)
 

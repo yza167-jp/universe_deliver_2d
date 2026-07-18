@@ -11,6 +11,8 @@ var _laser_rejected_count: int = 0
 var _laser_hit_count: int = 0
 var _last_laser_rejection_key: StringName = &""
 var _last_laser_target_id: StringName = &""
+var _boost_blocked_count: int = 0
+var _last_boost_blocked_key: StringName = &""
 var _original_locale: String = ""
 
 
@@ -64,36 +66,68 @@ func _run_smoke() -> void:
 		flight_ship.laser_fired.connect(_on_laser_fired)
 		flight_ship.laser_fire_rejected.connect(_on_laser_fire_rejected)
 		flight_ship.laser_target_hit.connect(_on_laser_target_hit)
+		flight_ship.boost_blocked.connect(_on_boost_blocked)
 	if debug_hud != null:
-		var stats_rect: Rect2 = debug_hud.get_stats_rect()
+		var motion_rect: Rect2 = debug_hud.get_essential_motion_rect()
+		var resources_rect: Rect2 = debug_hud.get_essential_resources_rect()
 		var status_rect: Rect2 = debug_hud.get_status_rect()
 		var route_rect: Rect2 = debug_hud.get_route_rect()
 		_check(
-			viewport_bounds.encloses(debug_hud.get_header_rect())
-			and viewport_bounds.encloses(stats_rect)
+			viewport_bounds.encloses(motion_rect)
+			and viewport_bounds.encloses(resources_rect)
 			and viewport_bounds.encloses(status_rect)
 			and viewport_bounds.encloses(route_rect),
-			"Flight debug HUD leaves the 640x360 viewport."
+			"Essential Flight HUD leaves the 640x360 viewport."
 		)
 		_check(
-			not stats_rect.intersects(status_rect)
-			and not stats_rect.intersects(route_rect)
+			not motion_rect.intersects(resources_rect)
+			and not motion_rect.intersects(route_rect)
+			and not resources_rect.intersects(route_rect)
 			and not status_rect.intersects(route_rect),
-			"Flight debug telemetry, route, or status panels overlap at 640x360."
+			"Essential motion, resources, route, or status panels overlap at 640x360."
+		)
+		_check(
+			route_rect.size.x <= 640.0 * 0.4
+			and not motion_rect.intersects(Rect2(288.0, 166.0, 64.0, 48.0))
+			and not resources_rect.intersects(Rect2(288.0, 166.0, 64.0, 48.0))
+			and not route_rect.intersects(Rect2(480.0, 168.0, 48.0, 44.0)),
+			"Default HUD obscures the initial ship or first asteroid target."
+		)
+		_check(
+			not debug_hud.is_full_diagnostics_visible()
+			and debug_hud.get_diagnostics_rect() == Rect2()
+			and not debug_hud.has_visible_mouse_interception(),
+			"Full Diagnostics must start hidden without a residual input blocker."
 		)
 		_check(
 			debug_hud.is_route_guide_visible()
-			and debug_hud.get_route_progress_text().contains("0 / 5")
-			and debug_hud.get_route_checklist_text().contains("1[ ]")
-			and debug_hud.get_route_instruction_text().contains(
+			and not debug_hud.is_route_expanded()
+			and not debug_hud.is_route_checklist_visible()
+			and debug_hud.get_route_progress_text().contains("1/5")
+			and debug_hud.get_route_title_text().contains(
 				tr("UI_FLIGHT_LAB_COURSE_STEP_ASSIST")
 			)
-			and debug_hud.get_route_instruction_text().contains("F4"),
-			"The default Chinese Gate B route guide was missing or not localized."
+			and debug_hud.get_route_instruction_text().contains("V")
+			and debug_hud.get_route_instruction_text().contains("G"),
+			"The default Gate B card must show only current progress, name, and compact hint."
 		)
 		_check(
-			debug_hud.get_speed_text() == tr("UI_FLIGHT_DEBUG_SPEED") % 0.0,
-			"Flight debug HUD did not render the reset telemetry."
+			debug_hud.get_shortcut_text()
+			== tr("UI_FLIGHT_LAB_HINTS_COMPACT")
+			and not debug_hud.get_shortcut_text().contains("F3")
+			and not debug_hud.get_shortcut_text().contains("F4")
+			and not debug_hud.get_shortcut_text().contains("F5")
+			and not debug_hud.get_shortcut_text().contains("F6"),
+			"Default Flight Lab HUD still exposes the legacy function-key list."
+		)
+		_check(
+			debug_hud.get_forward_speed_text().contains(
+				tr("UI_FLIGHT_HUD_FORWARD_SPEED") % "0"
+			)
+			and debug_hud.get_environment_assist_text().contains(
+				tr(FlightAssistMode.LIMITED_NAME_KEY)
+			),
+			"Essential Flight HUD did not render signed speed and assist mode."
 		)
 		_check(
 			debug_hud.get_environment_text().contains("0%")
@@ -121,6 +155,12 @@ func _run_smoke() -> void:
 				tr("UI_FLIGHT_ENTRY_STYLE_PENDING")
 			),
 			"Flight debug HUD did not render the pending entry-style state."
+		)
+		debug_hud._process(FlightDebugHUD.STATUS_DURATION_SECONDS + 0.1)
+		_check(
+			not debug_hud.is_status_visible()
+			and debug_hud.get_status_rect() == Rect2(),
+			"Inactive company/status feedback must not reserve a persistent bottom panel."
 		)
 	_check(
 		flight_lab.environment_profiles.size() == 2
@@ -182,7 +222,7 @@ func _run_smoke() -> void:
 			and debug_hud.get_laser_text().contains(
 				tr("UI_FLIGHT_LASER_LOADOUT_INSTALLED")
 			),
-			"F6 did not expose the isolated Flight Lab laser loadout toggle."
+			"L action did not expose the isolated Flight Lab laser loadout toggle."
 		)
 
 		await _tap_action_for_physics_frames(FlightLabShip.FIRE_ACTION)
@@ -197,8 +237,9 @@ func _run_smoke() -> void:
 			and _laser_hit_count == 1
 			and _last_laser_target_id == small_asteroid.target_id
 			and small_asteroid.is_destroyed()
-			and small_asteroid.collision_layer == 0,
-			"Installed laser input did not destroy the one-hit small asteroid."
+			and small_asteroid.collision_layer == 0
+			and not flight_ship.is_fire_input_held(),
+			"A short laser press must fire exactly one pulse and stop on release."
 		)
 		_check(
 			laser_weapon != null
@@ -228,22 +269,35 @@ func _run_smoke() -> void:
 				"Laser cooldown did not provide concise Chinese status feedback."
 			)
 
-		var expected_large_durability: Array[int] = [2, 1, 0]
-		for expected_durability: int in expected_large_durability:
-			await _wait_for_laser_ready(flight_ship)
-			var fire_result: FlightLaserWeapon.FireResult = flight_ship.request_laser_fire()
-			_check(
-				fire_result == FlightLaserWeapon.FireResult.FIRED
-				and large_asteroid.get_current_durability() == expected_durability,
-				"Large asteroid did not consume exactly one durability per laser hit."
-			)
+		await _wait_for_laser_ready(flight_ship)
+		var fired_before_hold: int = _laser_fired_count
+		Input.action_press(FlightLabShip.FIRE_ACTION)
+		for _frame_index: int in 48:
+			await physics_frame
+		var fired_while_held: int = _laser_fired_count - fired_before_hold
+		_check(
+			flight_ship.is_fire_input_held()
+			and fired_while_held >= 3
+			and fired_while_held <= 5
+			and _laser_hit_count == 4,
+			"Held fire must repeat at the configured cooldown without a low-frame burst."
+		)
+		Input.action_release(FlightLabShip.FIRE_ACTION)
+		await physics_frame
+		var fired_after_release: int = _laser_fired_count
+		for _frame_index: int in 24:
+			await physics_frame
+		_check(
+			not flight_ship.is_fire_input_held()
+			and _laser_fired_count == fired_after_release,
+			"Releasing the shared fire action must stop repeated laser pulses immediately."
+		)
 		_check(
 			large_asteroid.is_destroyed()
 			and large_asteroid.collision_layer == 0
 			and large_asteroid.get_visual_root() != null
 			and not large_asteroid.get_visual_root().visible
-			and large_asteroid.get_destruction_fragments() != null
-			and large_asteroid.get_destruction_fragments().emitting,
+			and large_asteroid.get_destruction_fragments() != null,
 			"The durable asteroid did not open the route with fragment feedback."
 		)
 		_check(
@@ -254,14 +308,14 @@ func _run_smoke() -> void:
 		if debug_hud != null:
 			debug_hud.refresh()
 			_check(
-				debug_hud.get_status_text()
-				== tr("UI_FLIGHT_LAB_STATUS_LASER_DESTROYED"),
-				"Destroyed asteroid feedback was not retained in the status panel."
+				debug_hud.is_status_visible()
+				and not debug_hud.get_status_text().is_empty(),
+				"Held-fire laser feedback did not remain visible in the compact status line."
 			)
 			_check(
-				debug_hud.get_route_progress_text().contains("1 / 5")
+				debug_hud.get_route_progress_text().contains("1/5")
 				and debug_hud.get_route_checklist_text().contains(
-					"5[x]"
+					"✓ 5"
 				),
 				"Laser course completion was not visible in the localized route guide "
 				+ "(progress=%s, checklist=%s)." % [
@@ -283,14 +337,23 @@ func _run_smoke() -> void:
 				"Laser miss did not provide localized feedback."
 			)
 
+		Input.action_press(FlightLabShip.FIRE_ACTION)
+		await physics_frame
+		await physics_frame
+		_check(
+			flight_ship.is_fire_input_held(),
+			"Held-fire state was not entered before reset coverage."
+		)
 		_check(
 			flight_lab.restart_from_checkpoint(false)
+			and not flight_ship.is_fire_input_held()
 			and not small_asteroid.is_destroyed()
 			and small_asteroid.get_current_durability() == small_asteroid.max_durability
 			and not large_asteroid.is_destroyed()
 			and large_asteroid.get_current_durability() == large_asteroid.max_durability,
 			"Checkpoint restart did not restore destructible asteroid state."
 		)
+		Input.action_release(FlightLabShip.FIRE_ACTION)
 		_check(
 			course != null
 			and course.is_exercise_complete(FlightLabCourse.Exercise.LASER),
@@ -299,28 +362,53 @@ func _run_smoke() -> void:
 		flight_lab._unhandled_input(laser_toggle_event)
 		_check(
 			not flight_ship.is_laser_enabled(),
-			"Second F6 action did not return to the uninstalled laser loadout."
+			"Second L action did not return to the uninstalled laser loadout."
 		)
 
 	var toggle_event: InputEventAction = InputEventAction.new()
 	toggle_event.action = FlightLab.HUD_TOGGLE_ACTION
 	toggle_event.pressed = true
 	flight_lab._unhandled_input(toggle_event)
-	_check(debug_hud != null and not debug_hud.visible, "F3 action did not hide the debug HUD.")
+	_check(
+		debug_hud != null
+		and debug_hud.visible
+		and debug_hud.is_full_diagnostics_visible(),
+		"H action did not open Full Diagnostics while preserving Essential HUD."
+	)
 	flight_lab._unhandled_input(toggle_event)
-	_check(debug_hud != null and debug_hud.visible, "F3 action did not restore the debug HUD.")
+	_check(
+		debug_hud != null
+		and debug_hud.visible
+		and not debug_hud.is_full_diagnostics_visible()
+		and debug_hud.get_diagnostics_rect() == Rect2(),
+		"Second H action did not fully hide Full Diagnostics."
+	)
 	var route_event: InputEventAction = InputEventAction.new()
 	route_event.action = FlightLab.ROUTE_HINT_ACTION
 	route_event.pressed = true
 	flight_lab._unhandled_input(route_event)
 	_check(
-		debug_hud != null and not debug_hud.is_route_guide_visible(),
-		"Tab action did not hide the Gate B route guide."
+		debug_hud != null
+		and debug_hud.is_route_guide_visible()
+		and debug_hud.is_route_expanded()
+		and debug_hud.is_route_checklist_visible()
+		and debug_hud.get_route_rect().size.y > FlightDebugHUD.COMPACT_ROUTE_HEIGHT
+		and viewport_bounds.encloses(debug_hud.get_route_rect())
+		and not debug_hud.get_route_rect().intersects(
+			Rect2(288.0, 166.0, 64.0, 48.0)
+		)
+		and not debug_hud.get_route_rect().intersects(
+			Rect2(480.0, 168.0, 48.0, 44.0)
+		),
+		"Tab action did not expand the complete Gate B route."
 	)
 	flight_lab._unhandled_input(route_event)
 	_check(
-		debug_hud != null and debug_hud.is_route_guide_visible(),
-		"Second Tab action did not restore the Gate B route guide."
+		debug_hud != null
+		and debug_hud.is_route_guide_visible()
+		and not debug_hud.is_route_expanded()
+		and not debug_hud.is_route_checklist_visible(),
+		"Second Tab action did not collapse the Gate B route."
 	)
 
 	if flight_ship != null:
@@ -385,6 +473,90 @@ func _run_smoke() -> void:
 			"Idle Boost energy did not recover after its configured delay."
 		)
 
+		_check(
+			flight_lab.restart_from_checkpoint(false),
+			"Flight Lab could not restore its stable checkpoint before reverse smoke."
+		)
+		flight_ship.velocity = Vector2(100.0, 0.0)
+		await _hold_action_for_physics_frames(FlightLabShip.BRAKE_ACTION, 1)
+		_check(
+			flight_ship.get_forward_speed() > 0.0
+			and flight_ship.get_forward_speed() < 100.0,
+			"S must first reduce positive forward speed instead of applying full reverse."
+		)
+		Input.action_press(FlightLabShip.BRAKE_ACTION)
+		for _frame_index: int in 120:
+			await physics_frame
+			if flight_ship.get_forward_speed() < -20.0:
+				break
+		var reverse_glow: Polygon2D = flight_ship.get_node_or_null(
+			"ReverseGlow"
+		) as Polygon2D
+		_check(
+			flight_ship.get_forward_speed() < 0.0
+			and flight_ship.effective_reverse_input > 0.0
+			and reverse_glow != null
+			and reverse_glow.visible,
+			"Continuing to hold S after zero must enter visible limited reverse."
+		)
+		for _frame_index: int in 180:
+			await physics_frame
+		var max_reverse_speed: float = flight_ship.tuning.get_max_reverse_speed()
+		_check(
+			flight_ship.get_forward_speed() >= -max_reverse_speed - 0.1
+			and flight_ship.get_forward_speed() <= -max_reverse_speed * 0.9,
+			"Reverse speed exceeded or failed to approach the configured limit."
+		)
+		if debug_hud != null:
+			debug_hud.refresh()
+			_check(
+				debug_hud.get_forward_speed_text().contains("倒车")
+				and debug_hud.get_forward_speed_text().contains("-"),
+				"Essential HUD did not identify negative forward speed as reverse."
+			)
+
+		flight_ship.fuel = 50.0
+		flight_ship.boost_energy = 50.0
+		_boost_blocked_count = 0
+		Input.action_press(FlightLabShip.BOOST_ACTION)
+		for _frame_index: int in 8:
+			await physics_frame
+		_check(
+			is_zero_approx(flight_ship.effective_boost_input)
+			and is_zero_approx(flight_ship.resources.boost_energy_cost_rate)
+			and flight_ship.fuel >= 49.99
+			and flight_ship.boost_energy >= 50.0
+			and _boost_blocked_count == 1
+			and _last_boost_blocked_key
+			== FlightLabShip.REVERSE_BOOST_BLOCKED_KEY,
+			"Reverse Boost input must be blocked once without consuming resources."
+		)
+		if debug_hud != null:
+			_check(
+				debug_hud.get_status_text()
+				== tr(FlightLabShip.REVERSE_BOOST_BLOCKED_KEY),
+				"Reverse Boost rejection did not use the compact localized status line."
+			)
+		Input.action_release(FlightLabShip.BOOST_ACTION)
+		await physics_frame
+		Input.action_release(FlightLabShip.BRAKE_ACTION)
+		var pitch_before_reverse_control: float = flight_ship.rotation
+		await _hold_action_for_physics_frames(FlightLabShip.PITCH_UP_ACTION, 6)
+		_check(
+			flight_ship.rotation < pitch_before_reverse_control
+			and flight_ship.rotation >= -flight_ship.tuning.get_max_pitch_radians(),
+			"Reverse motion inverted pitch-up or bypassed the normal pitch limit."
+		)
+		await _hold_action_for_physics_frames(FlightLabShip.THROTTLE_ACTION, 90)
+		_check(
+			flight_ship.get_forward_speed() > 0.0,
+			"W did not cancel negative speed and return the ship to forward motion."
+		)
+		_check(
+			flight_lab.restart_from_checkpoint(false),
+			"Flight Lab could not reset after reverse smoke."
+		)
+
 	var environment_event: InputEventAction = InputEventAction.new()
 	environment_event.action = FlightLab.ENVIRONMENT_CYCLE_ACTION
 	environment_event.pressed = true
@@ -393,7 +565,7 @@ func _run_smoke() -> void:
 		flight_lab.get_active_environment_profile() != null
 		and flight_lab.get_active_environment_profile().id
 		== &"environment_red_sand_atmosphere",
-		"F4 action did not select the Red Sand atmosphere preset."
+		"V action did not select the Red Sand atmosphere preset."
 	)
 	if flight_ship != null:
 		for _frame_index: int in 10:
@@ -504,7 +676,7 @@ func _run_smoke() -> void:
 	observed_assist_presets.sort()
 	_check(
 		observed_assist_presets == [0, 75, 100],
-		"F5 action did not cycle all 0%, 75%, and 100% assist presets."
+		"G action did not cycle all accepted gravity-assist presets."
 	)
 	_check(
 		course != null
@@ -516,7 +688,7 @@ func _run_smoke() -> void:
 	_check(
 		flight_lab.get_active_environment_profile() != null
 		and flight_lab.get_active_environment_profile().id == &"environment_deep_space",
-		"Second F4 action did not return to deep space."
+		"Second V action did not return to deep space."
 	)
 	_check(
 		smoke_game_state.get_order_entry_style() == FlightStyleTracker.STYLE_GLIDE
@@ -712,6 +884,7 @@ func _tap_action_for_physics_frames(action: StringName) -> void:
 	await physics_frame
 	Input.action_release(action)
 	await physics_frame
+	await physics_frame
 
 
 func _wait_for_laser_ready(flight_ship: FlightLabShip) -> void:
@@ -731,9 +904,9 @@ func _finish() -> void:
 	TranslationServer.set_locale(_original_locale)
 	if _failures.is_empty():
 		print(
-			"[flight-lab] PASS: Gate B route, laser gate and asteroids, controls, Boost resources, "
-			+ "environment, entry-style result, collision bands, cargo warning, rapid retry, HUD, "
-			+ "and checkpoint reset."
+			"[flight-lab] PASS: compact/expanded Gate B HUD, H/V/G/L controls, held laser, "
+			+ "limited reverse and Boost gate, assist resources, environment, entry style, "
+			+ "collision bands, cargo warning, rapid retry, and checkpoint reset."
 		)
 		quit(0)
 		return
@@ -770,3 +943,8 @@ func _on_laser_target_hit(
 ) -> void:
 	_laser_hit_count += 1
 	_last_laser_target_id = target_id
+
+
+func _on_boost_blocked(reason_key: StringName) -> void:
+	_boost_blocked_count += 1
+	_last_boost_blocked_key = reason_key

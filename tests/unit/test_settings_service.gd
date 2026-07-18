@@ -1,6 +1,7 @@
 extends ProjectTestSuite
 
 const TEST_SETTINGS_PATH: String = "user://t006_settings_service_test.cfg"
+const LEGACY_SETTINGS_PATH: String = "user://t036_legacy_flight_lab_bindings.cfg"
 
 var _assist_events: Array[StringName] = []
 
@@ -20,6 +21,7 @@ func run() -> Array[String]:
 		failures
 	)
 	_expect_default_input_map(failures)
+	_test_legacy_flight_lab_bindings_migrate(failures)
 
 	expect_true(service.set_master_volume(0.4), "Master volume must save.", failures)
 	expect_true(service.set_music_volume(0.5), "Music volume must save.", failures)
@@ -130,8 +132,8 @@ func _expect_default_input_map(failures: Array[String]) -> void:
 		failures
 	)
 	expect_true(
-		_has_key(InputMap.action_get_events(&"flight_debug_toggle"), KEY_F3),
-		"Flight Lab debug HUD toggle must default to F3.",
+		_has_physical_key(InputMap.action_get_events(&"flight_debug_toggle"), KEY_H),
+		"Flight Lab full diagnostics toggle must default to H.",
 		failures
 	)
 	expect_true(
@@ -140,20 +142,96 @@ func _expect_default_input_map(failures: Array[String]) -> void:
 		failures
 	)
 	expect_true(
-		_has_key(InputMap.action_get_events(&"flight_environment_cycle"), KEY_F4),
-		"Flight Lab environment cycle must default to F4.",
+		_has_physical_key(InputMap.action_get_events(&"flight_environment_cycle"), KEY_V),
+		"Flight Lab environment cycle must default to V.",
 		failures
 	)
 	expect_true(
-		_has_key(InputMap.action_get_events(&"flight_assist_cycle"), KEY_F5),
-		"Flight Lab assist preset cycle must default to F5.",
+		_has_physical_key(InputMap.action_get_events(&"flight_assist_cycle"), KEY_G),
+		"Flight Lab gravity-assist cycle must default to G.",
 		failures
 	)
 	expect_true(
-		_has_key(InputMap.action_get_events(&"flight_laser_toggle"), KEY_F6),
-		"Flight Lab laser loadout toggle must default to F6.",
+		_has_physical_key(InputMap.action_get_events(&"flight_laser_toggle"), KEY_L),
+		"Flight Lab laser loadout toggle must default to L.",
 		failures
 	)
+	expect_true(
+		not _has_key(InputMap.action_get_events(&"flight_debug_toggle"), KEY_F3)
+		and not _has_key(InputMap.action_get_events(&"flight_environment_cycle"), KEY_F4)
+		and not _has_key(InputMap.action_get_events(&"flight_assist_cycle"), KEY_F5)
+		and not _has_key(InputMap.action_get_events(&"flight_laser_toggle"), KEY_F6),
+		"Legacy F3-F6 bindings must not remain in the default Input Map.",
+		failures
+	)
+
+
+func _test_legacy_flight_lab_bindings_migrate(failures: Array[String]) -> void:
+	var legacy_config: ConfigFile = ConfigFile.new()
+	legacy_config.set_value(
+		SettingsServiceModel.INPUT_SECTION,
+		"flight_debug_toggle",
+		_make_stored_key_binding(KEY_F3)
+	)
+	legacy_config.set_value(
+		SettingsServiceModel.INPUT_SECTION,
+		"flight_environment_cycle",
+		_make_stored_key_binding(KEY_F4)
+	)
+	legacy_config.set_value(
+		SettingsServiceModel.INPUT_SECTION,
+		"flight_assist_cycle",
+		_make_stored_key_binding(KEY_F5)
+	)
+	legacy_config.set_value(
+		SettingsServiceModel.INPUT_SECTION,
+		"flight_laser_toggle",
+		_make_stored_key_binding(KEY_F6)
+	)
+	expect_true(
+		legacy_config.save(LEGACY_SETTINGS_PATH) == OK,
+		"Legacy Flight Lab binding fixture must save.",
+		failures
+	)
+	var migrated: SettingsServiceModel = SettingsServiceModel.new()
+	migrated.storage_path = LEGACY_SETTINGS_PATH
+	expect_true(
+		migrated.load_settings(),
+		"Legacy Flight Lab defaults must migrate without resetting other settings.",
+		failures
+	)
+	expect_true(
+		_has_physical_key(InputMap.action_get_events(&"flight_debug_toggle"), KEY_H)
+		and _has_physical_key(
+			InputMap.action_get_events(&"flight_environment_cycle"),
+			KEY_V
+		)
+		and _has_physical_key(
+			InputMap.action_get_events(&"flight_assist_cycle"),
+			KEY_G
+		)
+		and _has_physical_key(
+			InputMap.action_get_events(&"flight_laser_toggle"),
+			KEY_L
+		),
+		"Exact legacy F3-F6 defaults must migrate to H/V/G/L.",
+		failures
+	)
+	migrated.free()
+	_remove_file(LEGACY_SETTINGS_PATH)
+
+
+func _make_stored_key_binding(keycode: Key) -> Array[Dictionary]:
+	var stored_event: Dictionary[String, Variant] = {
+		"type": "key",
+		"keycode": int(keycode),
+		"physical_keycode": 0,
+		"shift_pressed": false,
+		"alt_pressed": false,
+		"ctrl_pressed": false,
+		"meta_pressed": false,
+	}
+	return [stored_event]
 
 
 func _has_physical_key(events: Array[InputEvent], expected_key: Key) -> bool:
@@ -199,5 +277,10 @@ func _restore_global_settings(fallback_service: SettingsServiceModel) -> void:
 
 
 func _remove_test_settings() -> void:
-	if FileAccess.file_exists(TEST_SETTINGS_PATH):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SETTINGS_PATH))
+	_remove_file(TEST_SETTINGS_PATH)
+	_remove_file(LEGACY_SETTINGS_PATH)
+
+
+func _remove_file(path: String) -> void:
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))

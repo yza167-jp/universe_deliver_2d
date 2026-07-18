@@ -7,7 +7,11 @@ const ROUTE_HINT_ACTION: StringName = &"flight_route_hint"
 const ENVIRONMENT_CYCLE_ACTION: StringName = &"flight_environment_cycle"
 const ASSIST_CYCLE_ACTION: StringName = &"flight_assist_cycle"
 const LASER_TOGGLE_ACTION: StringName = &"flight_laser_toggle"
-const ASSIST_PRESETS: Array[float] = [0.0, 0.75, 1.0]
+const ASSIST_PRESETS: Array[float] = [
+	FlightAssistMode.OFF,
+	FlightAssistMode.LIMITED,
+	FlightAssistMode.UNLIMITED,
+]
 const LAB_CHECKPOINT_ID: StringName = &"checkpoint_flight_lab_start"
 const NO_RETRY_PENDING: float = -1.0
 
@@ -69,7 +73,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed(ROUTE_HINT_ACTION):
-		debug_hud.toggle_route_guide()
+		debug_hud.toggle_route_expanded()
 		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed(ENVIRONMENT_CYCLE_ACTION):
@@ -159,8 +163,7 @@ func cycle_assist_preset() -> float:
 func toggle_debug_hud() -> bool:
 	if debug_hud == null:
 		return false
-	debug_hud.visible = not debug_hud.visible
-	return debug_hud.visible
+	return debug_hud.toggle_full_diagnostics()
 
 
 func toggle_debug_laser_loadout() -> bool:
@@ -400,6 +403,8 @@ func _connect_ship_signals() -> void:
 		flight_ship.laser_fire_rejected.connect(_on_laser_fire_rejected)
 	if not flight_ship.laser_target_hit.is_connected(_on_laser_target_hit):
 		flight_ship.laser_target_hit.connect(_on_laser_target_hit)
+	if not flight_ship.boost_blocked.is_connected(_on_boost_blocked):
+		flight_ship.boost_blocked.connect(_on_boost_blocked)
 
 
 func _connect_scenic_triggers() -> void:
@@ -472,6 +477,11 @@ func _on_laser_target_hit(
 	_course.record_laser_target(target_id, target_destroyed)
 	if debug_hud != null:
 		debug_hud.show_laser_hit_feedback(remaining_durability, target_destroyed)
+
+
+func _on_boost_blocked(reason_key: StringName) -> void:
+	if debug_hud != null:
+		debug_hud.show_boost_blocked_feedback(reason_key)
 
 
 func _update_auto_retry(delta: float) -> void:

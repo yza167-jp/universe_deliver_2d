@@ -385,7 +385,33 @@ FlightShip (CharacterBody2D)
 
 M0 可以先以较少脚本实现，但必须保持运动公式可独立测试。
 
-### 8.3 环境分区
+### 8.3 Flight Lab 输入与诊断层
+
+Flight Lab 的默认键位由 `SettingsService` 统一写入 Input Map；业务脚本只读取 action：
+
+| Action | 默认输入 | 用途 |
+|---|---|---|
+| `flight_debug_toggle` | H | 显示/隐藏 Full Diagnostics |
+| `flight_environment_cycle` | V | 切换深空/大气环境 |
+| `flight_assist_cycle` | G | 循环三档重力补偿 |
+| `flight_laser_toggle` | L | 安装/卸载调试激光模块 |
+| `flight_route_hint` | Tab | 紧凑/展开 Gate B 路线卡 |
+| `flight_restart` | R | 重置当前 Flight Lab 检查点 |
+| `flight_fire` | F / 鼠标左键 | 共用一次开火入口；短按单发、按住连发 |
+
+旧存档若仍是精确的 F3–F6 默认绑定，由 `SettingsService` 一次性迁移到 H/V/G/L；自定义绑定不应被无条件覆盖。玩家可见文本不再提示 F3–F6。
+
+飞行测试 HUD 分为两层：
+
+- Essential Flight HUD 默认显示，保留方向速度、垂直速度、俯仰、环境、重力补偿名称、燃料/Boost、三项完整度与当前 Gate 目标。
+- Full Diagnostics 默认隐藏，由 H 独立开关，保留角速度、重力/阻力、终端下降、资源速率、碰撞、检查点、激光和进入风格等内部遥测。
+- Gate B 路线卡默认只显示进度、当前名称和一行提示，Tab 才展开五项清单；隐藏节点不得残留鼠标拦截区域。
+
+`FlightLabShip` 持有最小 held-fire 状态：按下 `flight_fire` 立即请求第一发，按住时只在现有 `FlightLaserWeapon` 冷却就绪后请求下一发；重置、失败、暂停、窗口失焦、卸载模块或离开场景时清除状态，不增加第二套计时器或武器节点。
+
+有限倒车仍由显式速度积分完成。进入阈值、反推倍率、倒车速度比例和制动力倍率统一位于 `FlightTuning` Resource；倒车输入或负本地前向速度会在资源结算前门控 Boost，避免消耗燃料或 Boost 能量。俯仰与相机不因倒车切换另一套方向或限制。
+
+### 8.4 环境分区
 
 - `Area2D` 提供当前环境阶段和参数目标。
 - `EnvironmentDirector` 处理多个 Area 重叠的优先级与平滑过渡。
