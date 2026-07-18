@@ -317,7 +317,13 @@ func _close_behavior_and_check_focus(hotspot_id: StringName, use_escape: bool) -
 				"ModalLayer/DevicePanel/Margin/Content/Actions/DeviceCloseButton"
 			) as Button
 			if _cockpit.is_dialogue_active():
-				_check(_cockpit.close_active_modal(), "Dialogue modal could not close.")
+				var dialogue_ui: DialogueUI = _cockpit.get_dialogue_ui()
+				_check(
+					dialogue_ui != null
+					and dialogue_ui.skip_dialogue_sequence()
+					== DialogueRuntime.SequenceSkipResult.FINISHED,
+					"Dialogue sequence skip could not finish the cockpit modal."
+				)
 			elif close_button != null:
 				close_button.pressed.emit()
 		await process_frame
@@ -377,7 +383,7 @@ func _finish_smoke() -> void:
 	if _failures.is_empty():
 		print(
 			"[cockpit] PASS: hover/focus/activation semantics, six behaviors, modal lock, "
-			+ "focus recovery, and layered starfield."
+			+ "sequence-skip focus recovery, and layered starfield."
 		)
 		quit(0)
 		return

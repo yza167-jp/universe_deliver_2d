@@ -7,12 +7,19 @@ signal flow_event_emitted(event_id: StringName)
 
 const MAX_CONDITION_SKIPS: int = 128
 
+enum SequenceSkipResult {
+	REJECTED,
+	STOPPED_AT_CHOICE,
+	FINISHED,
+}
+
 var sequence: DialogueSequence
 var current_line: DialogueLine
 var last_error: String = ""
 
 var _game_state: GameStateModel
 var _is_running: bool = false
+var _finish_emitted: bool = false
 
 
 func start(dialogue_sequence: DialogueSequence, game_state: GameStateModel) -> bool:
@@ -21,6 +28,7 @@ func start(dialogue_sequence: DialogueSequence, game_state: GameStateModel) -> b
 	_game_state = game_state
 	current_line = null
 	_is_running = false
+	_finish_emitted = false
 	if sequence == null:
 		return _fail("DialogueSequence is missing.")
 	if _game_state == null:
@@ -50,7 +58,7 @@ func advance() -> bool:
 	last_error = ""
 	if not _is_running or current_line == null:
 		return _fail("No dialogue line is active.")
-	if not get_available_choices().is_empty():
+	if not current_line.choices.is_empty():
 		return _fail("Dialogue line '%s' requires a choice." % current_line.id)
 
 	var next_line_id: StringName = current_line.next_line_id
@@ -98,6 +106,41 @@ func skip_read_lines(maximum_lines: int = MAX_CONDITION_SKIPS) -> int:
 			break
 		skipped_lines += 1
 	return skipped_lines
+
+
+## Completes linear content and its effects, but always stops before a choice.
+func skip_sequence(maximum_lines: int = MAX_CONDITION_SKIPS) -> SequenceSkipResult:
+	last_error = ""
+	if not _is_running or current_line == null:
+		_fail("No dialogue sequence is active to skip.")
+		return SequenceSkipResult.REJECTED
+	if maximum_lines <= 0:
+		_fail("Dialogue sequence skip limit must be positive.")
+		return SequenceSkipResult.REJECTED
+
+	var completed_line_ids: Dictionary[StringName, bool] = {}
+	var completed_line_count: int = 0
+	while _is_running and current_line != null:
+		if not current_line.choices.is_empty():
+			return SequenceSkipResult.STOPPED_AT_CHOICE
+		if completed_line_count >= maximum_lines:
+			_fail("DialogueSequence '%s' exceeded the sequence-skip limit." % sequence.id)
+			return SequenceSkipResult.REJECTED
+		if completed_line_ids.has(current_line.id):
+			_fail("DialogueSequence '%s' contains a sequence-skip cycle." % sequence.id)
+			return SequenceSkipResult.REJECTED
+
+		completed_line_ids[current_line.id] = true
+		var next_line_id: StringName = current_line.next_line_id
+		_complete_current_line()
+		completed_line_count += 1
+		if not _move_to_line(next_line_id):
+			return SequenceSkipResult.REJECTED
+
+	if not _is_running:
+		return SequenceSkipResult.FINISHED
+	_fail("Dialogue sequence skip ended in an invalid runtime state.")
+	return SequenceSkipResult.REJECTED
 
 
 func _move_to_line(line_id: StringName) -> bool:
@@ -149,8 +192,11 @@ func _apply_effects(effects: Array[DialogueEffect]) -> void:
 
 
 func _finish_dialogue() -> void:
+	if not _is_running or _finish_emitted:
+		return
 	current_line = null
 	_is_running = false
+	_finish_emitted = true
 	dialogue_finished.emit()
 
 

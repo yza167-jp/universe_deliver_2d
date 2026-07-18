@@ -12,6 +12,7 @@ signal flow_event_emitted(event_id: StringName)
 @onready var choice_container: VBoxContainer = %ChoiceContainer
 @onready var quick_show_button: Button = %QuickShowButton
 @onready var skip_read_button: Button = %SkipReadButton
+@onready var skip_sequence_button: Button = %SkipSequenceButton
 @onready var history_button: Button = %HistoryButton
 @onready var continue_button: Button = %ContinueButton
 @onready var history_panel: PanelContainer = %HistoryPanel
@@ -104,6 +105,22 @@ func skip_read_lines() -> int:
 	return _runtime.skip_read_lines()
 
 
+## Skips linear content, applies its effects once, and reveals the nearest choice.
+func skip_dialogue_sequence() -> DialogueRuntime.SequenceSkipResult:
+	if _runtime == null:
+		return DialogueRuntime.SequenceSkipResult.REJECTED
+	if _is_revealing:
+		quick_show_current_line()
+	var result: DialogueRuntime.SequenceSkipResult = _runtime.skip_sequence()
+	if (
+		result == DialogueRuntime.SequenceSkipResult.STOPPED_AT_CHOICE
+		or (result == DialogueRuntime.SequenceSkipResult.REJECTED and _runtime.is_running())
+	):
+		quick_show_current_line()
+	_refresh_controls()
+	return result
+
+
 func show_history() -> void:
 	if _history_lines.is_empty():
 		history_text.text = tr("UI_DIALOGUE_HISTORY_EMPTY")
@@ -184,7 +201,7 @@ func _build_choice_buttons() -> void:
 	choice_container.visible = choice_container.get_child_count() > 0
 	if choice_container.visible:
 		var first_button: Button = choice_container.get_child(0) as Button
-		if first_button != null:
+		if first_button != null and first_button.is_inside_tree():
 			first_button.grab_focus()
 
 
@@ -198,10 +215,13 @@ func _refresh_controls() -> void:
 	quick_show_button.disabled = not _is_revealing
 	var has_choices: bool = false
 	if _runtime != null and not _is_revealing:
-		has_choices = not _runtime.get_available_choices().is_empty()
+		has_choices = (
+			_runtime.current_line != null and not _runtime.current_line.choices.is_empty()
+		)
 	skip_read_button.disabled = (
 		_is_revealing or _runtime == null or not _runtime.can_skip_current_line()
 	)
+	skip_sequence_button.disabled = _runtime == null or not _runtime.is_running()
 	continue_button.disabled = _runtime == null or has_choices
 
 
@@ -240,6 +260,7 @@ func _initialize_controls() -> bool:
 	choice_container = get_node_or_null("%ChoiceContainer") as VBoxContainer
 	quick_show_button = get_node_or_null("%QuickShowButton") as Button
 	skip_read_button = get_node_or_null("%SkipReadButton") as Button
+	skip_sequence_button = get_node_or_null("%SkipSequenceButton") as Button
 	history_button = get_node_or_null("%HistoryButton") as Button
 	continue_button = get_node_or_null("%ContinueButton") as Button
 	history_panel = get_node_or_null("%HistoryPanel") as PanelContainer
@@ -251,6 +272,7 @@ func _initialize_controls() -> bool:
 		or choice_container == null
 		or quick_show_button == null
 		or skip_read_button == null
+		or skip_sequence_button == null
 		or history_button == null
 		or continue_button == null
 		or history_panel == null
@@ -260,6 +282,8 @@ func _initialize_controls() -> bool:
 		return false
 	quick_show_button.pressed.connect(quick_show_current_line)
 	skip_read_button.pressed.connect(skip_read_lines)
+	skip_sequence_button.pressed.connect(skip_dialogue_sequence)
+	skip_sequence_button.text = tr("UI_DIALOGUE_SKIP_SEQUENCE")
 	history_button.pressed.connect(show_history)
 	continue_button.pressed.connect(continue_dialogue)
 	close_history_button.pressed.connect(hide_history)

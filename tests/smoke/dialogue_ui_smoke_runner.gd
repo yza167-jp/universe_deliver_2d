@@ -45,6 +45,13 @@ func _run_smoke() -> void:
 		dialogue_ui.body_font_has_glyph("老".unicode_at(0)),
 		"Dialogue SystemFont fallback chain does not expose Chinese glyphs."
 	)
+	var skip_sequence_button: Button = dialogue_ui.get_node(
+		"DialoguePanel/Margin/Content/Controls/SkipSequenceButton"
+	) as Button
+	_check(skip_sequence_button != null, "Whole-sequence skip button is missing.")
+	if skip_sequence_button != null:
+		_check(skip_sequence_button.text == "跳过整段", "Whole-sequence skip is not localized.")
+		_check(not skip_sequence_button.disabled, "Whole-sequence skip is unexpectedly disabled.")
 
 	var dialogue_panel: PanelContainer = dialogue_ui.get_node("DialoguePanel") as PanelContainer
 	_check(dialogue_panel.position.x >= 0.0, "Dialogue panel extends past the left viewport edge.")
@@ -57,9 +64,11 @@ func _run_smoke() -> void:
 		dialogue_panel.position.y + dialogue_panel.size.y <= 360.0,
 		"Dialogue panel extends past the bottom viewport edge."
 	)
-	_check(dialogue_ui.continue_dialogue(), "Dialogue UI could not advance to its choice prompt.")
-	await process_frame
-	dialogue_ui.quick_show_current_line()
+	_check(
+		dialogue_ui.skip_dialogue_sequence()
+		== DialogueRuntime.SequenceSkipResult.STOPPED_AT_CHOICE,
+		"Whole-sequence skip did not stop at the choice prompt."
+	)
 	await process_frame
 	var choice_container: VBoxContainer = dialogue_ui.get_node(
 		"DialoguePanel/Margin/Content/ChoiceContainer"
@@ -87,7 +96,7 @@ func _run_smoke() -> void:
 	TranslationServer.set_locale(original_locale)
 	await process_frame
 	if _failures.is_empty():
-		print("[dialogue-ui] PASS: Chinese glyphs, layout, history, and localization.")
+		print("[dialogue-ui] PASS: Chinese glyphs, layout, history, localization, and safe sequence skip.")
 		quit(0)
 		return
 	for failure: String in _failures:

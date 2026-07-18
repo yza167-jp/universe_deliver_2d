@@ -25,10 +25,12 @@ func _run_smoke() -> void:
 	var controller: StationTutorialController = station.get_tutorial_controller()
 	var player: StationPlayer = station.get_station_player()
 	var lao_pi: LaoPiStation = station.get_lao_pi()
+	var modal_coordinator: StationModalCoordinator = station.get_modal_coordinator()
 	_check(controller != null, "Station tutorial controller is missing.")
 	_check(player != null, "Station player is missing.")
 	_check(lao_pi != null, "Lao Pi is missing from the station.")
-	if controller == null or player == null or lao_pi == null:
+	_check(modal_coordinator != null, "Station modal coordinator is missing.")
+	if controller == null or player == null or lao_pi == null or modal_coordinator == null:
 		station.queue_free()
 		await process_frame
 		game_state.reset_runtime_state()
@@ -44,15 +46,26 @@ func _run_smoke() -> void:
 	_check(not player.is_input_enabled(), "World input must pause during dialogue.")
 	_check(lao_pi.is_talking(), "Lao Pi must animate while speaking.")
 	if dialogue_ui != null:
-		await _finish_dialogue(
-			controller,
-			dialogue_ui,
-			&"dialogue_lao_pi_tutorial_intro"
+		_check(
+			dialogue_ui.skip_dialogue_sequence()
+			== DialogueRuntime.SequenceSkipResult.FINISHED,
+			"Whole-sequence skip must safely complete the linear tutorial introduction."
 		)
+		await process_frame
 	_check(
 		controller.get_stage() == StationTutorialController.Stage.WAIT_FOR_MOVE,
 		"Introduction must advance to movement."
 	)
+	_check(player.is_input_enabled(), "World input must resume after whole-sequence skip.")
+	_check(not modal_coordinator.is_modal_active(), "Whole-sequence skip must release the modal lock.")
+	_check(not lao_pi.is_talking(), "Lao Pi must stop talking after whole-sequence skip.")
+	if dialogue_ui != null:
+		_check(
+			dialogue_ui.skip_dialogue_sequence()
+			== DialogueRuntime.SequenceSkipResult.REJECTED,
+			"Repeated whole-sequence skip must be rejected after completion."
+		)
+		_check(player.is_input_enabled(), "Repeated skip must not re-lock world input.")
 	_check(
 		controller.get_objective_text().contains("在大厅走动"),
 		"Movement objective must be visible and localized."
@@ -198,7 +211,7 @@ func _finish_dialogue(
 func _finish_smoke(original_locale: String) -> void:
 	TranslationServer.set_locale(original_locale)
 	if _failures.is_empty():
-		print("[station-tutorial] PASS: recovery, dialogue, completion restore, and daily interaction.")
+		print("[station-tutorial] PASS: recovery, safe sequence skip, input restore, completion restore, and daily interaction.")
 		quit(0)
 		return
 	for failure: String in _failures:

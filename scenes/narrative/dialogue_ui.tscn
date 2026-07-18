@@ -119,6 +119,12 @@ custom_minimum_size = Vector2(88, 24)
 layout_mode = 2
 text = "UI_DIALOGUE_SKIP_READ"
 
+[node name="SkipSequenceButton" type="Button" parent="DialoguePanel/Margin/Content/Controls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(88, 24)
+layout_mode = 2
+text = "UI_DIALOGUE_SKIP_SEQUENCE"
+
 [node name="HistoryButton" type="Button" parent="DialoguePanel/Margin/Content/Controls"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(64, 24)
