@@ -47,10 +47,17 @@ func _run_smoke() -> void:
 	var flight_ship: FlightLabShip = flight_lab.get_flight_ship()
 	var flight_camera: Camera2D = flight_lab.get_flight_camera()
 	var debug_hud: FlightDebugHUD = flight_lab.get_debug_hud()
+	var course: FlightLabCourse = flight_lab.get_course()
 	var viewport_bounds: Rect2 = Rect2(Vector2.ZERO, Vector2(640.0, 360.0))
 	_check(flight_ship != null, "Flight Lab ship is missing.")
 	_check(flight_camera != null and flight_camera.enabled, "Flight Lab camera is not active.")
 	_check(debug_hud != null and debug_hud.visible, "Flight debug HUD is not visible.")
+	_check(
+		course != null
+		and course.get_exercise_count() == 5
+		and course.get_completed_count() == 0,
+		"Flight Lab did not start with an empty five-exercise Gate B course."
+	)
 	if flight_ship != null:
 		flight_ship.flight_failed.connect(_on_flight_failed)
 		flight_ship.company_warning_requested.connect(_on_company_warning_requested)
@@ -60,15 +67,29 @@ func _run_smoke() -> void:
 	if debug_hud != null:
 		var stats_rect: Rect2 = debug_hud.get_stats_rect()
 		var status_rect: Rect2 = debug_hud.get_status_rect()
+		var route_rect: Rect2 = debug_hud.get_route_rect()
 		_check(
 			viewport_bounds.encloses(debug_hud.get_header_rect())
 			and viewport_bounds.encloses(stats_rect)
-			and viewport_bounds.encloses(status_rect),
+			and viewport_bounds.encloses(status_rect)
+			and viewport_bounds.encloses(route_rect),
 			"Flight debug HUD leaves the 640x360 viewport."
 		)
 		_check(
-			not stats_rect.intersects(status_rect),
-			"Flight debug status and telemetry panels overlap at 640x360."
+			not stats_rect.intersects(status_rect)
+			and not stats_rect.intersects(route_rect)
+			and not status_rect.intersects(route_rect),
+			"Flight debug telemetry, route, or status panels overlap at 640x360."
+		)
+		_check(
+			debug_hud.is_route_guide_visible()
+			and debug_hud.get_route_progress_text().contains("0 / 5")
+			and debug_hud.get_route_checklist_text().contains("1[ ]")
+			and debug_hud.get_route_instruction_text().contains(
+				tr("UI_FLIGHT_LAB_COURSE_STEP_ASSIST")
+			)
+			and debug_hud.get_route_instruction_text().contains("F4"),
+			"The default Chinese Gate B route guide was missing or not localized."
 		)
 		_check(
 			debug_hud.get_speed_text() == tr("UI_FLIGHT_DEBUG_SPEED") % 0.0,
@@ -225,11 +246,28 @@ func _run_smoke() -> void:
 			and large_asteroid.get_destruction_fragments().emitting,
 			"The durable asteroid did not open the route with fragment feedback."
 		)
+		_check(
+			course != null
+			and course.is_exercise_complete(FlightLabCourse.Exercise.LASER),
+			"Destroying both Flight Lab asteroid types did not update the Gate B route."
+		)
 		if debug_hud != null:
+			debug_hud.refresh()
 			_check(
 				debug_hud.get_status_text()
 				== tr("UI_FLIGHT_LAB_STATUS_LASER_DESTROYED"),
 				"Destroyed asteroid feedback was not retained in the status panel."
+			)
+			_check(
+				debug_hud.get_route_progress_text().contains("1 / 5")
+				and debug_hud.get_route_checklist_text().contains(
+					"5[x]"
+				),
+				"Laser course completion was not visible in the localized route guide "
+				+ "(progress=%s, checklist=%s)." % [
+					debug_hud.get_route_progress_text(),
+					debug_hud.get_route_checklist_text(),
+				]
 			)
 
 		await _wait_for_laser_ready(flight_ship)
@@ -253,6 +291,11 @@ func _run_smoke() -> void:
 			and large_asteroid.get_current_durability() == large_asteroid.max_durability,
 			"Checkpoint restart did not restore destructible asteroid state."
 		)
+		_check(
+			course != null
+			and course.is_exercise_complete(FlightLabCourse.Exercise.LASER),
+			"Checkpoint restart erased the already attempted laser exercise."
+		)
 		flight_lab._unhandled_input(laser_toggle_event)
 		_check(
 			not flight_ship.is_laser_enabled(),
@@ -266,6 +309,19 @@ func _run_smoke() -> void:
 	_check(debug_hud != null and not debug_hud.visible, "F3 action did not hide the debug HUD.")
 	flight_lab._unhandled_input(toggle_event)
 	_check(debug_hud != null and debug_hud.visible, "F3 action did not restore the debug HUD.")
+	var route_event: InputEventAction = InputEventAction.new()
+	route_event.action = FlightLab.ROUTE_HINT_ACTION
+	route_event.pressed = true
+	flight_lab._unhandled_input(route_event)
+	_check(
+		debug_hud != null and not debug_hud.is_route_guide_visible(),
+		"Tab action did not hide the Gate B route guide."
+	)
+	flight_lab._unhandled_input(route_event)
+	_check(
+		debug_hud != null and debug_hud.is_route_guide_visible(),
+		"Second Tab action did not restore the Gate B route guide."
+	)
 
 	if flight_ship != null:
 		var start_position: Vector2 = flight_ship.position
@@ -433,6 +489,8 @@ func _run_smoke() -> void:
 			and flight_ship.assist_fuel_cost_rate > 0.0,
 			"100% assist did not hover with an explicit fuel cost."
 		)
+		for _frame_index: int in 40:
+			await physics_frame
 
 	var assist_event: InputEventAction = InputEventAction.new()
 	assist_event.action = FlightLab.ASSIST_CYCLE_ACTION
@@ -447,6 +505,11 @@ func _run_smoke() -> void:
 	_check(
 		observed_assist_presets == [0, 75, 100],
 		"F5 action did not cycle all 0%, 75%, and 100% assist presets."
+	)
+	_check(
+		course != null
+		and course.is_exercise_complete(FlightLabCourse.Exercise.ASSIST_HOVER),
+		"The integrated preset cycle and full-assist hover did not update the Gate B route."
 	)
 
 	flight_lab._unhandled_input(environment_event)
@@ -520,6 +583,13 @@ func _run_smoke() -> void:
 			and flight_ship.is_failed
 			and flight_lab.is_retry_pending(),
 			"High-speed collision with real terrain did not enter rapid failure retry."
+		)
+		_check(
+			course != null
+			and course.is_exercise_complete(
+				FlightLabCourse.Exercise.COLLISION_RETRY
+			),
+			"Nonfatal and fatal impacts did not update the Gate B collision route."
 		)
 		await process_frame
 		if debug_hud != null:
@@ -614,6 +684,15 @@ func _run_smoke() -> void:
 		and not scenic_storm.is_triggered(),
 		"Checkpoint reset did not re-arm both scenic trigger gates."
 	)
+	_check(
+		course != null
+		and course.is_exercise_complete(FlightLabCourse.Exercise.ASSIST_HOVER)
+		and course.is_exercise_complete(
+			FlightLabCourse.Exercise.COLLISION_RETRY
+		)
+		and course.is_exercise_complete(FlightLabCourse.Exercise.LASER),
+		"Manual and automatic retries erased completed Gate B exercises."
+	)
 
 	flight_lab.queue_free()
 	await process_frame
@@ -652,7 +731,7 @@ func _finish() -> void:
 	TranslationServer.set_locale(_original_locale)
 	if _failures.is_empty():
 		print(
-			"[flight-lab] PASS: laser gate and asteroids, controls, Boost resources, "
+			"[flight-lab] PASS: Gate B route, laser gate and asteroids, controls, Boost resources, "
 			+ "environment, entry-style result, collision bands, cargo warning, rapid retry, HUD, "
 			+ "and checkpoint reset."
 		)

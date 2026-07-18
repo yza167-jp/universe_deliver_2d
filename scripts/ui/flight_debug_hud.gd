@@ -1,6 +1,21 @@
 class_name FlightDebugHUD
 extends CanvasLayer
 
+const COURSE_STEP_KEYS: Array[StringName] = [
+	&"UI_FLIGHT_LAB_COURSE_STEP_ASSIST",
+	&"UI_FLIGHT_LAB_COURSE_STEP_DIVE",
+	&"UI_FLIGHT_LAB_COURSE_STEP_RECOVERY",
+	&"UI_FLIGHT_LAB_COURSE_STEP_COLLISION",
+	&"UI_FLIGHT_LAB_COURSE_STEP_LASER",
+]
+const COURSE_INSTRUCTION_KEYS: Array[StringName] = [
+	&"UI_FLIGHT_LAB_COURSE_INSTRUCTION_ASSIST",
+	&"UI_FLIGHT_LAB_COURSE_INSTRUCTION_DIVE",
+	&"UI_FLIGHT_LAB_COURSE_INSTRUCTION_RECOVERY",
+	&"UI_FLIGHT_LAB_COURSE_INSTRUCTION_COLLISION",
+	&"UI_FLIGHT_LAB_COURSE_INSTRUCTION_LASER",
+]
+
 @onready var _title_label: Label = %TitleLabel
 @onready var _hint_label: Label = %HintLabel
 @onready var _speed_label: Label = %SpeedLabel
@@ -20,10 +35,16 @@ extends CanvasLayer
 @onready var _collision_label: Label = %CollisionLabel
 @onready var _checkpoint_label: Label = %CheckpointLabel
 @onready var _status_label: Label = %StatusLabel
+@onready var _route_panel: PanelContainer = %RoutePanel
+@onready var _route_title_label: Label = %RouteTitleLabel
+@onready var _route_progress_label: Label = %RouteProgressLabel
+@onready var _route_checklist_label: Label = %RouteChecklistLabel
+@onready var _route_instruction_label: Label = %RouteInstructionLabel
 
 var _flight_ship: FlightLabShip
 var _entry_style_tracker: FlightStyleTracker
 var _flight_tuning: FlightTuning
+var _course: FlightLabCourse
 
 
 func _ready() -> void:
@@ -50,6 +71,27 @@ func bind_entry_style_tracker(
 	_entry_style_tracker = tracker
 	_flight_tuning = tuning
 	refresh()
+
+
+func bind_course(course: FlightLabCourse) -> void:
+	_course = course
+	_refresh_route_guide()
+
+
+func set_route_guide_visible(is_visible: bool) -> void:
+	if _route_panel != null:
+		_route_panel.visible = is_visible
+
+
+func toggle_route_guide() -> bool:
+	if _route_panel == null:
+		return false
+	_route_panel.visible = not _route_panel.visible
+	return _route_panel.visible
+
+
+func is_route_guide_visible() -> bool:
+	return _route_panel != null and _route_panel.visible
 
 
 func refresh() -> void:
@@ -118,6 +160,7 @@ func refresh() -> void:
 	_checkpoint_label.text = tr("UI_FLIGHT_DEBUG_CHECKPOINT") % String(
 		_flight_ship.get_checkpoint_id()
 	)
+	_refresh_route_guide()
 
 
 func show_reset_feedback(_checkpoint_id: StringName = &"") -> void:
@@ -248,6 +291,10 @@ func get_status_rect() -> Rect2:
 	return Rect2() if status_panel == null else status_panel.get_global_rect()
 
 
+func get_route_rect() -> Rect2:
+	return Rect2() if _route_panel == null else _route_panel.get_global_rect()
+
+
 func get_speed_text() -> String:
 	return "" if _speed_label == null else _speed_label.text
 
@@ -284,9 +331,22 @@ func get_checkpoint_text() -> String:
 	return "" if _checkpoint_label == null else _checkpoint_label.text
 
 
+func get_route_progress_text() -> String:
+	return "" if _route_progress_label == null else _route_progress_label.text
+
+
+func get_route_checklist_text() -> String:
+	return "" if _route_checklist_label == null else _route_checklist_label.text
+
+
+func get_route_instruction_text() -> String:
+	return "" if _route_instruction_label == null else _route_instruction_label.text
+
+
 func _localize_static_content() -> void:
 	_title_label.text = tr("UI_FLIGHT_LAB_TITLE")
 	_hint_label.text = tr("UI_FLIGHT_LAB_HINTS")
+	_route_title_label.text = tr("UI_FLIGHT_LAB_COURSE_TITLE")
 
 
 func _refresh_entry_style() -> void:
@@ -323,3 +383,48 @@ func _get_entry_style_key(style: StringName) -> StringName:
 		FlightStyleTracker.STYLE_BALANCED:
 			return &"UI_FLIGHT_ENTRY_STYLE_BALANCED"
 	return &"UI_FLIGHT_ENTRY_STYLE_PENDING"
+
+
+func _refresh_route_guide() -> void:
+	if (
+		_route_progress_label == null
+		or _route_checklist_label == null
+		or _route_instruction_label == null
+	):
+		return
+	var exercise_count: int = FlightLabCourse.Exercise.COUNT
+	var completed_count: int = 0 if _course == null else _course.get_completed_count()
+	_route_progress_label.text = tr("UI_FLIGHT_LAB_COURSE_PROGRESS") % [
+		completed_count,
+		exercise_count,
+	]
+
+	var checklist_lines: PackedStringArray = []
+	for exercise: int in exercise_count:
+		var marker: String = " "
+		if _course != null and _course.is_exercise_complete(exercise):
+			marker = "x"
+		checklist_lines.append(
+			tr("UI_FLIGHT_LAB_COURSE_CHECK_FORMAT") % [
+				exercise + 1,
+				marker,
+			]
+		)
+	_route_checklist_label.text = "  ".join(checklist_lines)
+
+	var current_exercise: int = (
+		FlightLabCourse.Exercise.ASSIST_HOVER
+		if _course == null
+		else _course.get_current_exercise()
+	)
+	if current_exercise >= exercise_count:
+		_route_instruction_label.text = tr("UI_FLIGHT_LAB_COURSE_COMPLETE")
+		return
+	_route_instruction_label.text = "%s\n%s" % [
+		tr("UI_FLIGHT_LAB_COURSE_CURRENT") % [
+			current_exercise + 1,
+			exercise_count,
+			tr(COURSE_STEP_KEYS[current_exercise]),
+		],
+		tr(COURSE_INSTRUCTION_KEYS[current_exercise]),
+	]

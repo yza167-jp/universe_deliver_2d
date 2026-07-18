@@ -135,6 +135,11 @@ func _expect_default_input_map(failures: Array[String]) -> void:
 		failures
 	)
 	expect_true(
+		_has_key(InputMap.action_get_events(&"flight_route_hint"), KEY_TAB),
+		"Flight Lab route guide toggle must default to Tab.",
+		failures
+	)
+	expect_true(
 		_has_key(InputMap.action_get_events(&"flight_environment_cycle"), KEY_F4),
 		"Flight Lab environment cycle must default to F4.",
 		failures

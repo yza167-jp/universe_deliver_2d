@@ -3,6 +3,7 @@ extends Node2D
 
 const RESTART_ACTION: StringName = &"flight_restart"
 const HUD_TOGGLE_ACTION: StringName = &"flight_debug_toggle"
+const ROUTE_HINT_ACTION: StringName = &"flight_route_hint"
 const ENVIRONMENT_CYCLE_ACTION: StringName = &"flight_environment_cycle"
 const ASSIST_CYCLE_ACTION: StringName = &"flight_assist_cycle"
 const LASER_TOGGLE_ACTION: StringName = &"flight_laser_toggle"
@@ -32,6 +33,7 @@ var _camera_shake_elapsed: float = 0.0
 var _camera_shake_amplitude: float = 0.0
 var _entry_style_tracker: FlightStyleTracker = FlightStyleTracker.new()
 var _local_order_run_state: OrderRunState = OrderRunState.new()
+var _course: FlightLabCourse = FlightLabCourse.new()
 
 
 func _ready() -> void:
@@ -39,17 +41,22 @@ func _ready() -> void:
 	_active_assist_index = _find_nearest_assist_index(_active_assist_strength)
 	_active_environment_index = _find_environment_index(flight_ship.environment_profile)
 	_entry_style_tracker.bind_run_state(_resolve_order_run_state())
+	_course.reset()
+	_course.record_assist_preset(_active_assist_strength)
 	_connect_ship_signals()
 	_connect_scenic_triggers()
 	flight_ship.set_laser_enabled(_resolve_laser_enabled_from_loadout())
 	debug_hud.bind_ship(flight_ship)
 	debug_hud.bind_entry_style_tracker(_entry_style_tracker, flight_ship.tuning)
+	debug_hud.bind_course(_course)
+	debug_hud.set_route_guide_visible(_resolve_route_hints_enabled())
 	reset_lab()
 
 
 func _process(delta: float) -> void:
 	_update_auto_retry(delta)
 	_update_entry_style_tracking(delta)
+	_update_course(delta)
 	_sync_camera_to_ship()
 	_update_camera_shake(delta)
 	_update_environment_visuals()
@@ -59,6 +66,10 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed(HUD_TOGGLE_ACTION):
 		toggle_debug_hud()
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed(ROUTE_HINT_ACTION):
+		debug_hud.toggle_route_guide()
 		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed(ENVIRONMENT_CYCLE_ACTION):
@@ -138,6 +149,7 @@ func cycle_assist_preset() -> float:
 	_active_assist_strength = ASSIST_PRESETS[_active_assist_index]
 	if flight_ship != null:
 		flight_ship.set_assist_strength(_active_assist_strength)
+	_course.record_assist_preset(_active_assist_strength)
 	_refresh_lab_checkpoint()
 	if debug_hud != null:
 		debug_hud.show_assist_feedback(_active_assist_strength)
@@ -189,6 +201,10 @@ func get_active_assist_strength() -> float:
 
 func get_entry_style_tracker() -> FlightStyleTracker:
 	return _entry_style_tracker
+
+
+func get_course() -> FlightLabCourse:
+	return _course
 
 
 func get_entry_style_candidate() -> StringName:
@@ -285,6 +301,21 @@ func _update_entry_style_tracking(delta: float) -> void:
 	)
 
 
+func _update_course(delta: float) -> void:
+	if flight_ship == null or flight_ship.tuning == null or flight_ship.is_failed:
+		return
+	_course.record_flight_sample(
+		delta,
+		flight_ship.air_density,
+		flight_ship.gravity_blend,
+		flight_ship.assist_strength,
+		flight_ship.velocity,
+		flight_ship.brake_input,
+		flight_ship.pitch_input,
+		flight_ship.tuning
+	)
+
+
 func _resolve_assist_strength() -> float:
 	var settings_service: SettingsServiceModel = settings_service_override
 	if settings_service == null:
@@ -301,6 +332,15 @@ func _resolve_screen_shake_strength() -> float:
 	if settings_service == null:
 		return LocalSettingsData.DEFAULT_SCREEN_SHAKE_STRENGTH
 	return clampf(settings_service.settings.screen_shake_strength, 0.0, 1.0)
+
+
+func _resolve_route_hints_enabled() -> bool:
+	var settings_service: SettingsServiceModel = settings_service_override
+	if settings_service == null:
+		settings_service = get_node_or_null("/root/SettingsService") as SettingsServiceModel
+	if settings_service == null:
+		return LocalSettingsData.DEFAULT_ROUTE_HINTS_ENABLED
+	return settings_service.settings.route_hints_enabled
 
 
 func _resolve_game_state() -> GameStateModel:
@@ -386,6 +426,7 @@ func _refresh_lab_checkpoint() -> void:
 func _on_impact_resolved(severity: int, impact_speed: float) -> void:
 	if severity != FlightCollisionResult.Severity.NONE:
 		_entry_style_tracker.record_collision()
+		_course.record_impact(severity)
 	if debug_hud != null:
 		debug_hud.show_impact_feedback(severity, impact_speed)
 	_start_camera_shake(severity)
@@ -396,6 +437,7 @@ func _on_scenic_triggered(trigger_id: StringName) -> void:
 
 
 func _on_flight_failed(reason_key: StringName) -> void:
+	_course.record_flight_failure()
 	var retry_delay: float = 0.0
 	if flight_ship != null and flight_ship.tuning != null:
 		retry_delay = maxf(flight_ship.tuning.failure_retry_delay_seconds, 0.0)
@@ -423,10 +465,11 @@ func _on_laser_fire_rejected(reason_key: StringName) -> void:
 
 
 func _on_laser_target_hit(
-	_target_id: StringName,
+	target_id: StringName,
 	remaining_durability: int,
 	target_destroyed: bool
 ) -> void:
+	_course.record_laser_target(target_id, target_destroyed)
 	if debug_hud != null:
 		debug_hud.show_laser_hit_feedback(remaining_durability, target_destroyed)
 

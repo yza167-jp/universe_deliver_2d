@@ -69,6 +69,12 @@ func run() -> Array[String]:
 		failures
 	)
 	expect_true(
+		flight_lab.get_course() is FlightLabCourse
+		and flight_lab.get_course().get_exercise_count() == 5,
+		"Flight Lab must own the five-exercise Gate B route state.",
+		failures
+	)
+	expect_true(
 		flight_ship != null and flight_ship.tuning is FlightTuning,
 		"Flight Lab ship must use a FlightTuning resource.",
 		failures
@@ -187,6 +193,17 @@ func run() -> Array[String]:
 				"StatsPanel/Margin/Stats/EntryStyleLabel"
 			) is Label,
 			"Flight debug HUD must expose the current entry-style candidate.",
+			failures
+		)
+		expect_true(
+			debug_hud.get_node_or_null("RoutePanel") is PanelContainer
+			and debug_hud.get_node_or_null(
+				"RoutePanel/Margin/Content/RouteChecklistLabel"
+			) is Label
+			and debug_hud.get_node_or_null(
+				"RoutePanel/Margin/Content/RouteInstructionLabel"
+			) is Label,
+			"Flight debug HUD must expose the localized Gate B checklist and instruction.",
 			failures
 		)
 
