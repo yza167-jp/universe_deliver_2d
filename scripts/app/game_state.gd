@@ -57,10 +57,12 @@ var last_loadout_error: StringName = &""
 var travel_state: TravelState = TravelState.IDLE
 var travel_destination_id: StringName = &""
 var last_travel_error: StringName = &""
+var order_run_state: OrderRunState = OrderRunState.new()
 
 
 func _init() -> void:
 	ship_configuration = ShipLoadoutRules.create_default_configuration()
+	order_run_state.reset()
 
 
 func reset_runtime_state() -> void:
@@ -77,6 +79,10 @@ func reset_runtime_state() -> void:
 	travel_state = TravelState.IDLE
 	travel_destination_id = &""
 	last_travel_error = &""
+	if order_run_state == null:
+		order_run_state = OrderRunState.new()
+	else:
+		order_run_state.reset()
 	runtime_state_reset.emit()
 
 
@@ -114,6 +120,7 @@ func accept_order(order: OrderDefinition) -> bool:
 	current_order_id = order.id
 	destination_id = order.destination_planet.id
 	cargo_id = order.cargo.id
+	order_run_state.reset(order.id)
 	departure_confirmed = false
 	last_loadout_error = &""
 	_reset_travel_state(false)
@@ -145,6 +152,26 @@ func complete_current_order(order: OrderDefinition) -> bool:
 
 func has_completed_order(order_id: StringName) -> bool:
 	return not order_id.is_empty() and completed_order_ids.get(order_id, false)
+
+
+func get_active_order_run_state() -> OrderRunState:
+	if current_order_id.is_empty():
+		return null
+	if order_run_state == null or order_run_state.order_id != current_order_id:
+		order_run_state = OrderRunState.new()
+		order_run_state.reset(current_order_id)
+	return order_run_state
+
+
+func get_order_entry_style() -> StringName:
+	return &"" if order_run_state == null else order_run_state.entry_style
+
+
+func has_order_entry_style(style: StringName) -> bool:
+	return (
+		not style.is_empty()
+		and get_order_entry_style() == style
+	)
 
 
 func equip_ship_module(module: ShipModuleDefinition) -> bool:

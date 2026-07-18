@@ -31,6 +31,15 @@ func _run_smoke() -> void:
 	if flight_lab == null:
 		_finish()
 		return
+	var smoke_game_state: GameStateModel = GameStateModel.new()
+	var smoke_order: OrderDefinition = flight_lab.data_registry.find_order(
+		&"order_red_sand_m0"
+	)
+	_check(
+		smoke_order != null and smoke_game_state.accept_order(smoke_order),
+		"Flight Lab smoke could not initialize an active order-run result."
+	)
+	flight_lab.game_state_override = smoke_game_state
 	root.add_child(flight_lab)
 	await process_frame
 	await process_frame
@@ -86,6 +95,12 @@ func _run_smoke() -> void:
 			),
 			"Flight debug HUD did not render the unavailable default laser loadout."
 		)
+		_check(
+			debug_hud.get_entry_style_text().contains(
+				tr("UI_FLIGHT_ENTRY_STYLE_PENDING")
+			),
+			"Flight debug HUD did not render the pending entry-style state."
+		)
 	_check(
 		flight_lab.environment_profiles.size() == 2
 		and flight_lab.get_active_environment_profile() != null
@@ -106,6 +121,12 @@ func _run_smoke() -> void:
 	var large_asteroid: DestructibleAsteroid = flight_lab.get_node_or_null(
 		"World/DestructibleAsteroids/LargeAsteroid"
 	) as DestructibleAsteroid
+	var scenic_ridge: FlightScenicTrigger = flight_lab.get_node_or_null(
+		"World/ScenicTriggers/ScenicRidge"
+	) as FlightScenicTrigger
+	var scenic_storm: FlightScenicTrigger = flight_lab.get_node_or_null(
+		"World/ScenicTriggers/ScenicStorm"
+	) as FlightScenicTrigger
 	_check(
 		flight_ship != null
 		and not flight_ship.is_laser_enabled()
@@ -336,6 +357,48 @@ func _run_smoke() -> void:
 			and debug_hud.get_environment_text() != "UI_FLIGHT_DEBUG_ENVIRONMENT",
 			"Atmosphere transition did not provide visible tint and localized HUD feedback."
 		)
+		var style_tracker: FlightStyleTracker = flight_lab.get_entry_style_tracker()
+		_check(
+			style_tracker != null
+			and style_tracker.is_tracking()
+			and style_tracker.get_run_state() == smoke_game_state.order_run_state
+			and style_tracker.get_run_state().entry_duration > 0.0,
+			"Entering atmosphere did not begin live tracking on the active order result "
+			+ "(tracking=%s, same_result=%s, duration=%.3f)." % [
+				style_tracker != null and style_tracker.is_tracking(),
+				style_tracker != null
+				and style_tracker.get_run_state() == smoke_game_state.order_run_state,
+				0.0 if style_tracker == null or style_tracker.get_run_state() == null
+				else style_tracker.get_run_state().entry_duration,
+			]
+		)
+		if style_tracker != null:
+			for _sample_index: int in 9:
+				style_tracker.record_sample(
+					1.0,
+					Vector2(80.0, 60.0),
+					0.2,
+					flight_ship.tuning
+				)
+			_check(
+				scenic_ridge != null
+				and scenic_ridge.try_trigger(flight_ship)
+				and not scenic_ridge.try_trigger(flight_ship)
+				and scenic_storm != null
+				and scenic_storm.try_trigger(flight_ship)
+				and flight_lab.get_entry_style_candidate()
+				== FlightStyleTracker.STYLE_GLIDE,
+				"A long calm Flight Lab sample did not produce the GLIDE candidate."
+			)
+		await process_frame
+		_check(
+			debug_hud != null
+			and debug_hud.get_entry_style_text().contains(
+				tr("UI_FLIGHT_ENTRY_STYLE_GLIDE")
+			),
+			"Flight debug HUD did not show the live localized GLIDE candidate: %s"
+			% ("<missing>" if debug_hud == null else debug_hud.get_entry_style_text())
+		)
 		flight_ship.reset_to_start(
 			0.75,
 			flight_lab.get_active_environment_profile(),
@@ -391,6 +454,23 @@ func _run_smoke() -> void:
 		flight_lab.get_active_environment_profile() != null
 		and flight_lab.get_active_environment_profile().id == &"environment_deep_space",
 		"Second F4 action did not return to deep space."
+	)
+	_check(
+		smoke_game_state.get_order_entry_style() == FlightStyleTracker.STYLE_GLIDE
+		and not flight_lab.get_entry_style_tracker().is_tracking()
+		and smoke_game_state.order_run_state.active_checkpoint_id
+		== FlightLab.LAB_CHECKPOINT_ID
+		and debug_hud != null
+		and debug_hud.get_status_text().contains(
+			tr("UI_FLIGHT_ENTRY_STYLE_GLIDE")
+		),
+		"Leaving atmosphere did not finalize GLIDE into the order-run result "
+		+ "(style=%s, tracking=%s, checkpoint=%s, status=%s)." % [
+			String(smoke_game_state.get_order_entry_style()),
+			flight_lab.get_entry_style_tracker().is_tracking(),
+			String(smoke_game_state.order_run_state.active_checkpoint_id),
+			"<missing>" if debug_hud == null else debug_hud.get_status_text(),
+		]
 	)
 
 	if flight_ship != null:
@@ -527,9 +607,17 @@ func _run_smoke() -> void:
 			flight_camera.position == flight_ship.stable_start_position,
 			"Camera did not snap back to the stable start."
 		)
+	_check(
+		scenic_ridge != null
+		and not scenic_ridge.is_triggered()
+		and scenic_storm != null
+		and not scenic_storm.is_triggered(),
+		"Checkpoint reset did not re-arm both scenic trigger gates."
+	)
 
 	flight_lab.queue_free()
 	await process_frame
+	smoke_game_state.free()
 	_finish()
 
 
@@ -565,7 +653,7 @@ func _finish() -> void:
 	if _failures.is_empty():
 		print(
 			"[flight-lab] PASS: laser gate and asteroids, controls, Boost resources, "
-			+ "environment, collision bands, cargo warning, rapid retry, HUD, "
+			+ "environment, entry-style result, collision bands, cargo warning, rapid retry, HUD, "
 			+ "and checkpoint reset."
 		)
 		quit(0)

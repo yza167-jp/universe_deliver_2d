@@ -15,12 +15,15 @@ extends CanvasLayer
 @onready var _fuel_label: Label = %FuelLabel
 @onready var _boost_label: Label = %BoostLabel
 @onready var _assist_label: Label = %AssistLabel
+@onready var _entry_style_label: Label = %EntryStyleLabel
 @onready var _laser_label: Label = %LaserLabel
 @onready var _collision_label: Label = %CollisionLabel
 @onready var _checkpoint_label: Label = %CheckpointLabel
 @onready var _status_label: Label = %StatusLabel
 
 var _flight_ship: FlightLabShip
+var _entry_style_tracker: FlightStyleTracker
+var _flight_tuning: FlightTuning
 
 
 func _ready() -> void:
@@ -37,6 +40,15 @@ func _notification(what: int) -> void:
 func bind_ship(flight_ship: FlightLabShip) -> void:
 	_flight_ship = flight_ship
 	_status_label.text = tr("UI_FLIGHT_LAB_STATUS_READY")
+	refresh()
+
+
+func bind_entry_style_tracker(
+	tracker: FlightStyleTracker,
+	tuning: FlightTuning
+) -> void:
+	_entry_style_tracker = tracker
+	_flight_tuning = tuning
 	refresh()
 
 
@@ -82,6 +94,7 @@ func refresh() -> void:
 		roundi(_flight_ship.assist_strength * 100.0),
 		roundi(_flight_ship.effective_assist_strength * 100.0),
 	]
+	_refresh_entry_style()
 	var laser_loadout_key: StringName = &"UI_FLIGHT_LASER_LOADOUT_UNINSTALLED"
 	var laser_state_text: String = tr("UI_FLIGHT_LASER_STATE_UNAVAILABLE")
 	if _flight_ship.is_laser_enabled():
@@ -132,6 +145,21 @@ func show_assist_feedback(assist_strength: float) -> void:
 		tr("UI_FLIGHT_LAB_STATUS_ASSIST")
 		% roundi(clampf(assist_strength, 0.0, 1.0) * 100.0)
 	)
+
+
+func show_entry_style_tracking_started() -> void:
+	if not is_node_ready():
+		return
+	_status_label.text = tr("UI_FLIGHT_LAB_STATUS_ENTRY_TRACKING")
+
+
+func show_entry_style_finalized(style: StringName) -> void:
+	if not is_node_ready():
+		return
+	_status_label.text = tr("UI_FLIGHT_LAB_STATUS_ENTRY_FINALIZED") % tr(
+		_get_entry_style_key(style)
+	)
+	refresh()
 
 
 func show_laser_loadout_feedback(enabled: bool) -> void:
@@ -248,6 +276,10 @@ func get_laser_text() -> String:
 	return "" if _laser_label == null else _laser_label.text
 
 
+func get_entry_style_text() -> String:
+	return "" if _entry_style_label == null else _entry_style_label.text
+
+
 func get_checkpoint_text() -> String:
 	return "" if _checkpoint_label == null else _checkpoint_label.text
 
@@ -255,3 +287,39 @@ func get_checkpoint_text() -> String:
 func _localize_static_content() -> void:
 	_title_label.text = tr("UI_FLIGHT_LAB_TITLE")
 	_hint_label.text = tr("UI_FLIGHT_LAB_HINTS")
+
+
+func _refresh_entry_style() -> void:
+	if _entry_style_label == null:
+		return
+	var style: StringName = &""
+	var duration: float = 0.0
+	var downward_speed: float = 0.0
+	var risk_or_heat: float = 0.0
+	var scenic_trigger_count: int = 0
+	if _entry_style_tracker != null:
+		style = _entry_style_tracker.get_candidate_style(_flight_tuning)
+		var run_state: OrderRunState = _entry_style_tracker.get_run_state()
+		if run_state != null:
+			duration = run_state.entry_duration
+			downward_speed = run_state.max_downward_speed
+			risk_or_heat = run_state.max_risk_or_heat
+			scenic_trigger_count = run_state.scenic_trigger_count
+	_entry_style_label.text = tr("UI_FLIGHT_DEBUG_ENTRY_STYLE") % [
+		tr(_get_entry_style_key(style)),
+		duration,
+		downward_speed,
+		roundi(risk_or_heat * 100.0),
+		scenic_trigger_count,
+	]
+
+
+func _get_entry_style_key(style: StringName) -> StringName:
+	match style:
+		FlightStyleTracker.STYLE_DIVE:
+			return &"UI_FLIGHT_ENTRY_STYLE_DIVE"
+		FlightStyleTracker.STYLE_GLIDE:
+			return &"UI_FLIGHT_ENTRY_STYLE_GLIDE"
+		FlightStyleTracker.STYLE_BALANCED:
+			return &"UI_FLIGHT_ENTRY_STYLE_BALANCED"
+	return &"UI_FLIGHT_ENTRY_STYLE_PENDING"

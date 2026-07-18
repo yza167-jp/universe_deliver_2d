@@ -4,11 +4,13 @@ extends Resource
 enum ConditionType {
 	STORY_FLAG_EQUALS,
 	SHIP_MODULE_EQUIPPED,
+	ENTRY_STYLE_EQUALS,
 }
 
 @export var condition_type: ConditionType = ConditionType.STORY_FLAG_EQUALS
 @export var flag_id: StringName = &""
 @export var module_id: StringName = &""
+@export var entry_style: StringName = &""
 @export var expected_value: bool = true
 
 
@@ -25,5 +27,9 @@ func is_met(game_state: GameStateModel) -> bool:
 			if module_id.is_empty():
 				return false
 			return game_state.is_ship_module_equipped(module_id) == expected_value
+		ConditionType.ENTRY_STYLE_EQUALS:
+			if not FlightStyleTracker.is_valid_style(entry_style):
+				return false
+			return game_state.has_order_entry_style(entry_style)
 		_:
 			return false

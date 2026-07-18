@@ -115,7 +115,7 @@ static func _validate_conditions(
 			continue
 		if (
 			condition.condition_type < DialogueCondition.ConditionType.STORY_FLAG_EQUALS
-			or condition.condition_type > DialogueCondition.ConditionType.SHIP_MODULE_EQUIPPED
+			or condition.condition_type > DialogueCondition.ConditionType.ENTRY_STYLE_EQUALS
 		):
 			errors.append("%s condition %d has an unsupported type." % [label, index])
 			continue
@@ -126,6 +126,12 @@ static func _validate_conditions(
 			DialogueCondition.ConditionType.SHIP_MODULE_EQUIPPED:
 				if condition.module_id.is_empty():
 					errors.append("%s condition %d module_id is empty." % [label, index])
+			DialogueCondition.ConditionType.ENTRY_STYLE_EQUALS:
+				if not FlightStyleTracker.is_valid_style(condition.entry_style):
+					errors.append(
+					"%s condition %d entry_style must be DIVE, GLIDE, or BALANCED."
+					% [label, index]
+				)
 
 
 static func _validate_effects(

@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=18 format=3]
 
 [ext_resource type="Script" path="res://scripts/flight/flight_lab.gd" id="1_lab"]
 [ext_resource type="Script" path="res://scripts/flight/flight_lab_ship.gd" id="2_ship"]
@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://scripts/flight/flight_laser_weapon.gd" id="9_laser_weapon"]
 [ext_resource type="PackedScene" path="res://scenes/flight/destructible_asteroid.tscn" id="10_asteroid"]
 [ext_resource type="Resource" path="res://data/m0_data_registry.tres" id="11_registry"]
+[ext_resource type="Script" path="res://scripts/flight/flight_scenic_trigger.gd" id="12_scenic_trigger"]
 
 [sub_resource type="RectangleShape2D" id="ShapeShip"]
 size = Vector2(38, 16)
@@ -20,6 +21,9 @@ size = Vector2(3200, 140)
 
 [sub_resource type="RectangleShape2D" id="ShapePillar"]
 size = Vector2(64, 78)
+
+[sub_resource type="RectangleShape2D" id="ShapeScenicTrigger"]
+size = Vector2(28, 160)
 
 [sub_resource type="ParticleProcessMaterial" id="ParticlesImpactSparks"]
 particle_flag_disable_z = true
@@ -186,6 +190,63 @@ position = Vector2(2240, 0)
 points = PackedVector2Array(0, 74, 0, 274)
 width = 1.0
 default_color = Color(0.352941, 0.737255, 0.760784, 0.2)
+
+[node name="ScenicTriggers" type="Node2D" parent="World"]
+unique_name_in_owner = true
+
+[node name="ScenicRidge" type="Area2D" parent="World/ScenicTriggers"]
+position = Vector2(830, 174)
+collision_layer = 0
+collision_mask = 1
+script = ExtResource("12_scenic_trigger")
+trigger_id = &"scenic_lab_ridge"
+
+[node name="VisualRoot" type="Node2D" parent="World/ScenicTriggers/ScenicRidge"]
+
+[node name="Guide" type="Line2D" parent="World/ScenicTriggers/ScenicRidge/VisualRoot"]
+points = PackedVector2Array(0, -80, 0, 80)
+width = 2.0
+default_color = Color(0.415686, 0.847059, 0.862745, 0.54)
+
+[node name="TopMarker" type="Polygon2D" parent="World/ScenicTriggers/ScenicRidge/VisualRoot"]
+position = Vector2(0, -80)
+polygon = PackedVector2Array(0, -6, 6, 0, 0, 6, -6, 0)
+color = Color(0.415686, 0.847059, 0.862745, 0.82)
+
+[node name="BottomMarker" type="Polygon2D" parent="World/ScenicTriggers/ScenicRidge/VisualRoot"]
+position = Vector2(0, 80)
+polygon = PackedVector2Array(0, -6, 6, 0, 0, 6, -6, 0)
+color = Color(0.415686, 0.847059, 0.862745, 0.82)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/ScenicTriggers/ScenicRidge"]
+shape = SubResource("ShapeScenicTrigger")
+
+[node name="ScenicStorm" type="Area2D" parent="World/ScenicTriggers"]
+position = Vector2(1080, 174)
+collision_layer = 0
+collision_mask = 1
+script = ExtResource("12_scenic_trigger")
+trigger_id = &"scenic_lab_storm"
+
+[node name="VisualRoot" type="Node2D" parent="World/ScenicTriggers/ScenicStorm"]
+
+[node name="Guide" type="Line2D" parent="World/ScenicTriggers/ScenicStorm/VisualRoot"]
+points = PackedVector2Array(0, -80, 0, 80)
+width = 2.0
+default_color = Color(0.905882, 0.658824, 0.356863, 0.54)
+
+[node name="TopMarker" type="Polygon2D" parent="World/ScenicTriggers/ScenicStorm/VisualRoot"]
+position = Vector2(0, -80)
+polygon = PackedVector2Array(0, -6, 6, 0, 0, 6, -6, 0)
+color = Color(0.905882, 0.658824, 0.356863, 0.82)
+
+[node name="BottomMarker" type="Polygon2D" parent="World/ScenicTriggers/ScenicStorm/VisualRoot"]
+position = Vector2(0, 80)
+polygon = PackedVector2Array(0, -6, 6, 0, 0, 6, -6, 0)
+color = Color(0.905882, 0.658824, 0.356863, 0.82)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/ScenicTriggers/ScenicStorm"]
+shape = SubResource("ShapeScenicTrigger")
 
 [node name="Terrain" type="Node2D" parent="World"]
 

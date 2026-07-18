@@ -27,6 +27,13 @@ func run() -> Array[String]:
 		failures
 	)
 	expect_true(
+		game_state.get_active_order_run_state() != null
+		and game_state.get_active_order_run_state().order_id == order.id
+		and game_state.get_order_entry_style().is_empty(),
+		"Accepting an order must initialize its clean order-run result.",
+		failures
+	)
+	expect_true(
 		game_state.get_order_status(order.id) == GameStateModel.OrderStatus.ACCEPTED,
 		"Accepted order must expose its accepted state.",
 		failures
@@ -52,9 +59,15 @@ func run() -> Array[String]:
 		failures
 	)
 
+	game_state.order_run_state.entry_style = FlightStyleTracker.STYLE_BALANCED
 	expect_true(
 		game_state.complete_current_order(order),
 		"The active order must support the future completion transition.",
+		failures
+	)
+	expect_true(
+		game_state.get_order_entry_style() == FlightStyleTracker.STYLE_BALANCED,
+		"Completing an order must retain its run result for settlement dialogue.",
 		failures
 	)
 	expect_true(

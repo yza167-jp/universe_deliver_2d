@@ -64,6 +64,11 @@ func run() -> Array[String]:
 	expect_true(flight_camera != null and flight_camera.enabled, "Flight Lab camera must be enabled.", failures)
 	expect_true(debug_hud != null and debug_hud.visible, "Flight debug HUD must start visible.", failures)
 	expect_true(
+		flight_lab.get_entry_style_tracker() is FlightStyleTracker,
+		"Flight Lab must own a reusable entry-style tracker.",
+		failures
+	)
+	expect_true(
 		flight_ship != null and flight_ship.tuning is FlightTuning,
 		"Flight Lab ship must use a FlightTuning resource.",
 		failures
@@ -103,6 +108,22 @@ func run() -> Array[String]:
 	expect_true(
 		flight_lab.get_node_or_null("World/SpeedMarkers") is Node2D,
 		"Flight Lab must contain world-space motion references.",
+		failures
+	)
+	var scenic_ridge: FlightScenicTrigger = flight_lab.get_node_or_null(
+		"World/ScenicTriggers/ScenicRidge"
+	) as FlightScenicTrigger
+	var scenic_storm: FlightScenicTrigger = flight_lab.get_node_or_null(
+		"World/ScenicTriggers/ScenicStorm"
+	) as FlightScenicTrigger
+	expect_true(
+		scenic_ridge != null
+		and scenic_ridge.trigger_id == &"scenic_lab_ridge"
+		and scenic_ridge.collision_layer == 0
+		and scenic_storm != null
+		and scenic_storm.trigger_id == &"scenic_lab_storm"
+		and scenic_storm.collision_layer == 0,
+		"Flight Lab must provide two non-blocking scenic trigger gates.",
 		failures
 	)
 	expect_true(
@@ -159,6 +180,13 @@ func run() -> Array[String]:
 			and debug_hud.get_node_or_null("StatsPanel") is PanelContainer
 			and debug_hud.get_node_or_null("StatsPanel/Margin/Stats/LaserLabel") is Label,
 			"Flight debug HUD must contain separate header and telemetry panels.",
+			failures
+		)
+		expect_true(
+			debug_hud.get_node_or_null(
+				"StatsPanel/Margin/Stats/EntryStyleLabel"
+			) is Label,
+			"Flight debug HUD must expose the current entry-style candidate.",
 			failures
 		)
 

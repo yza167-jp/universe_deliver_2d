@@ -59,6 +59,34 @@ var laser_beam_duration_seconds: float = 0.07
 @export_range(0, 20, 1, "or_greater")
 var laser_damage: int = 1
 
+@export_group("Entry Style")
+@export_range(0.0, 30.0, 0.1, "or_greater")
+var entry_style_min_sample_seconds: float = 1.0
+@export_range(0.0, 1200.0, 1.0, "or_greater")
+var dive_min_downward_speed: float = 190.0
+@export_range(0.0, 1.0, 0.01)
+var dive_min_risk_or_heat: float = 0.72
+@export_range(0.0, 120.0, 0.5, "or_greater")
+var dive_max_duration_seconds: float = 6.0
+@export_range(0.0, 1600.0, 1.0, "or_greater")
+var dive_short_entry_min_total_speed: float = 260.0
+@export_range(0, 20, 1, "or_greater")
+var dive_max_scenic_trigger_count: int = 0
+@export_range(0.0, 120.0, 0.5, "or_greater")
+var glide_min_duration_seconds: float = 8.0
+@export_range(0.0, 1200.0, 1.0, "or_greater")
+var glide_max_downward_speed: float = 110.0
+@export_range(0.0, 1.0, 0.01)
+var glide_max_risk_or_heat: float = 0.45
+@export_range(0, 20, 1, "or_greater")
+var glide_min_scenic_trigger_count: int = 2
+@export_range(0.0, 120.0, 0.5, "or_greater")
+var late_pull_up_min_elapsed_seconds: float = 3.0
+@export_range(0.0, 1200.0, 1.0, "or_greater")
+var late_pull_up_arm_downward_speed: float = 180.0
+@export_range(0.0, 1200.0, 1.0, "or_greater")
+var late_pull_up_recovery_downward_speed: float = 70.0
+
 @export_group("Collision")
 @export_range(0.0, 200.0, 1.0, "or_greater")
 var minimum_impact_speed: float = 20.0

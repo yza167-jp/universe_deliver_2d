@@ -15,11 +15,13 @@ const NO_RETRY_PENDING: float = -1.0
 @onready var debug_hud: FlightDebugHUD = %FlightDebugHUD
 @onready var atmosphere_tint: ColorRect = %AtmosphereTint
 @onready var destructible_asteroids: Node2D = %DestructibleAsteroids
+@onready var scenic_triggers: Node2D = %ScenicTriggers
 
 @export var environment_profiles: Array[FlightEnvironmentProfile] = []
 @export var data_registry: GameDataRegistry
 
 var settings_service_override: SettingsServiceModel
+var game_state_override: GameStateModel
 var _active_environment_index: int = 0
 var _active_assist_index: int = 1
 var _active_assist_strength: float = FlightLabShip.DEFAULT_ASSIST_STRENGTH
@@ -28,20 +30,26 @@ var _camera_shake_remaining: float = 0.0
 var _camera_shake_duration: float = 0.0
 var _camera_shake_elapsed: float = 0.0
 var _camera_shake_amplitude: float = 0.0
+var _entry_style_tracker: FlightStyleTracker = FlightStyleTracker.new()
+var _local_order_run_state: OrderRunState = OrderRunState.new()
 
 
 func _ready() -> void:
 	_active_assist_strength = _resolve_assist_strength()
 	_active_assist_index = _find_nearest_assist_index(_active_assist_strength)
 	_active_environment_index = _find_environment_index(flight_ship.environment_profile)
+	_entry_style_tracker.bind_run_state(_resolve_order_run_state())
 	_connect_ship_signals()
+	_connect_scenic_triggers()
 	flight_ship.set_laser_enabled(_resolve_laser_enabled_from_loadout())
 	debug_hud.bind_ship(flight_ship)
+	debug_hud.bind_entry_style_tracker(_entry_style_tracker, flight_ship.tuning)
 	reset_lab()
 
 
 func _process(delta: float) -> void:
 	_update_auto_retry(delta)
+	_update_entry_style_tracking(delta)
 	_sync_camera_to_ship()
 	_update_camera_shake(delta)
 	_update_environment_visuals()
@@ -88,10 +96,13 @@ func restart_from_checkpoint(is_automatic: bool = false) -> bool:
 	if not flight_ship.restore_checkpoint():
 		return false
 	_reset_destructible_asteroids()
+	_reset_scenic_triggers()
 	_auto_retry_remaining = NO_RETRY_PENDING
 	_clear_camera_shake()
 	_sync_camera_to_ship()
 	_update_environment_visuals()
+	if _is_entry_environment(get_active_environment_profile()):
+		begin_entry_style_tracking()
 	debug_hud.refresh()
 	if is_automatic:
 		debug_hud.show_auto_retry_feedback(flight_ship.get_checkpoint_id())
@@ -103,13 +114,22 @@ func restart_from_checkpoint(is_automatic: bool = false) -> bool:
 func cycle_environment_profile() -> bool:
 	if environment_profiles.is_empty() or flight_ship == null:
 		return false
+	var leaving_entry: bool = _is_entry_environment(get_active_environment_profile())
+	var finalized_style: StringName = &""
+	if leaving_entry and _entry_style_tracker.is_tracking():
+		finalized_style = finalize_entry_style()
 	_active_environment_index = (
 		_active_environment_index + 1
 	) % environment_profiles.size()
 	var profile: FlightEnvironmentProfile = get_active_environment_profile()
 	flight_ship.set_environment_profile(profile, false)
 	_refresh_lab_checkpoint()
-	debug_hud.show_environment_feedback(profile.display_name_key)
+	if _is_entry_environment(profile):
+		begin_entry_style_tracking()
+	if not finalized_style.is_empty():
+		debug_hud.show_entry_style_finalized(finalized_style)
+	else:
+		debug_hud.show_environment_feedback(profile.display_name_key)
 	return true
 
 
@@ -167,6 +187,47 @@ func get_active_assist_strength() -> float:
 	return _active_assist_strength
 
 
+func get_entry_style_tracker() -> FlightStyleTracker:
+	return _entry_style_tracker
+
+
+func get_entry_style_candidate() -> StringName:
+	if flight_ship == null:
+		return &""
+	return _entry_style_tracker.get_candidate_style(flight_ship.tuning)
+
+
+func begin_entry_style_tracking() -> bool:
+	var run_state: OrderRunState = _resolve_order_run_state()
+	if not _entry_style_tracker.begin(run_state):
+		return false
+	_reset_scenic_triggers()
+	if debug_hud != null:
+		debug_hud.show_entry_style_tracking_started()
+	return true
+
+
+func finalize_entry_style() -> StringName:
+	if flight_ship == null or flight_ship.tuning == null:
+		return &""
+	var run_state: OrderRunState = _entry_style_tracker.get_run_state()
+	if run_state == null:
+		return &""
+	_sync_order_run_resources(run_state)
+	var final_style: StringName = _entry_style_tracker.finalize(flight_ship.tuning)
+	if debug_hud != null and not final_style.is_empty():
+		debug_hud.show_entry_style_finalized(final_style)
+	return final_style
+
+
+func record_scenic_trigger(trigger_id: StringName) -> bool:
+	return _entry_style_tracker.record_scenic_trigger(trigger_id)
+
+
+func mark_late_pull_up() -> bool:
+	return _entry_style_tracker.mark_late_pull_up()
+
+
 func is_retry_pending() -> bool:
 	return _auto_retry_remaining >= 0.0
 
@@ -204,6 +265,26 @@ func _update_environment_visuals() -> void:
 	atmosphere_tint.color = tint_color
 
 
+func _update_entry_style_tracking(delta: float) -> void:
+	if (
+		flight_ship == null
+		or flight_ship.tuning == null
+		or flight_ship.is_failed
+		or not _entry_style_tracker.is_tracking()
+	):
+		return
+	var risk: float = FlightStyleTracker.calculate_normalized_risk(
+		flight_ship.get_vertical_speed(),
+		flight_ship.get_terminal_fall_speed_safety()
+	)
+	_entry_style_tracker.record_sample(
+		delta,
+		flight_ship.velocity,
+		risk,
+		flight_ship.tuning
+	)
+
+
 func _resolve_assist_strength() -> float:
 	var settings_service: SettingsServiceModel = settings_service_override
 	if settings_service == null:
@@ -220,6 +301,23 @@ func _resolve_screen_shake_strength() -> float:
 	if settings_service == null:
 		return LocalSettingsData.DEFAULT_SCREEN_SHAKE_STRENGTH
 	return clampf(settings_service.settings.screen_shake_strength, 0.0, 1.0)
+
+
+func _resolve_game_state() -> GameStateModel:
+	if game_state_override != null:
+		return game_state_override
+	return get_node_or_null("/root/GameState") as GameStateModel
+
+
+func _resolve_order_run_state() -> OrderRunState:
+	var game_state: GameStateModel = _resolve_game_state()
+	if game_state != null:
+		var active_run_state: OrderRunState = game_state.get_active_order_run_state()
+		if active_run_state != null:
+			return active_run_state
+	if _local_order_run_state == null:
+		_local_order_run_state = OrderRunState.new()
+	return _local_order_run_state
 
 
 func _find_nearest_assist_index(requested_strength: float) -> int:
@@ -264,6 +362,17 @@ func _connect_ship_signals() -> void:
 		flight_ship.laser_target_hit.connect(_on_laser_target_hit)
 
 
+func _connect_scenic_triggers() -> void:
+	if scenic_triggers == null:
+		return
+	for child: Node in scenic_triggers.get_children():
+		if not child is FlightScenicTrigger:
+			continue
+		var trigger: FlightScenicTrigger = child as FlightScenicTrigger
+		if not trigger.triggered.is_connected(_on_scenic_triggered):
+			trigger.triggered.connect(_on_scenic_triggered)
+
+
 func _refresh_lab_checkpoint() -> void:
 	if flight_ship == null:
 		return
@@ -275,9 +384,15 @@ func _refresh_lab_checkpoint() -> void:
 
 
 func _on_impact_resolved(severity: int, impact_speed: float) -> void:
+	if severity != FlightCollisionResult.Severity.NONE:
+		_entry_style_tracker.record_collision()
 	if debug_hud != null:
 		debug_hud.show_impact_feedback(severity, impact_speed)
 	_start_camera_shake(severity)
+
+
+func _on_scenic_triggered(trigger_id: StringName) -> void:
+	_entry_style_tracker.record_scenic_trigger(trigger_id)
 
 
 func _on_flight_failed(reason_key: StringName) -> void:
@@ -359,12 +474,33 @@ func _clear_camera_shake() -> void:
 func _resolve_laser_enabled_from_loadout() -> bool:
 	if data_registry == null:
 		return false
-	var game_state: GameStateModel = get_node_or_null("/root/GameState") as GameStateModel
+	var game_state: GameStateModel = _resolve_game_state()
 	if game_state == null:
 		return false
 	return FlightWeaponRules.has_asteroid_laser(
 		game_state.ship_configuration,
 		data_registry.modules
+	)
+
+
+func _sync_order_run_resources(run_state: OrderRunState) -> void:
+	if run_state == null or flight_ship == null:
+		return
+	run_state.cargo_integrity = flight_ship.cargo_integrity
+	run_state.hull = flight_ship.hull
+	run_state.shield = flight_ship.shield
+	run_state.fuel = flight_ship.fuel
+	run_state.boost_energy = flight_ship.boost_energy
+	run_state.active_checkpoint_id = flight_ship.get_checkpoint_id()
+
+
+func _is_entry_environment(profile: FlightEnvironmentProfile) -> bool:
+	return (
+		profile != null
+		and (
+			profile.target_air_density > 0.0
+			or profile.target_gravity_blend > 0.0
+		)
 	)
 
 
@@ -374,3 +510,11 @@ func _reset_destructible_asteroids() -> void:
 	for child: Node in destructible_asteroids.get_children():
 		if child is DestructibleAsteroid:
 			(child as DestructibleAsteroid).reset_asteroid()
+
+
+func _reset_scenic_triggers() -> void:
+	if scenic_triggers == null:
+		return
+	for child: Node in scenic_triggers.get_children():
+		if child is FlightScenicTrigger:
+			(child as FlightScenicTrigger).reset_trigger()
