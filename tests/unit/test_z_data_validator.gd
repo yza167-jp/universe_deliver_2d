@@ -38,6 +38,7 @@ func run() -> Array[String]:
 	unregistered_planet.id = &"planet_unregistered"
 	unregistered_planet.display_name_key = &"TEST_UNREGISTERED_PLANET_NAME"
 	unregistered_planet.description_key = &"TEST_UNREGISTERED_PLANET_DESCRIPTION"
+	unregistered_planet.flight_environment_profile = registry.planets[0].flight_environment_profile
 	unregistered_planet.flight_scene_path = "res://scenes/flight/flight_level.tscn"
 
 	var missing_reference_order: OrderDefinition = OrderDefinition.new()
@@ -81,6 +82,16 @@ func run() -> Array[String]:
 		"Validator must reject missing resource references.",
 		failures
 	)
+
+	var original_profile: FlightEnvironmentProfile = registry.planets[0].flight_environment_profile
+	registry.planets[0].flight_environment_profile = null
+	var missing_profile_errors: PackedStringArray = GameDataValidator.validate(registry)
+	expect_true(
+		_contains_error(missing_profile_errors, "flight_environment_profile is missing"),
+		"Validator must reject a planet without a flight environment profile.",
+		failures
+	)
+	registry.planets[0].flight_environment_profile = original_profile
 
 	registry.orders.resize(original_order_count)
 	registry.cargo_items.resize(original_cargo_count)

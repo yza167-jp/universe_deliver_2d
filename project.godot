@@ -93,6 +93,14 @@ flight_debug_toggle={
 "deadzone": 0.5,
 "events": []
 }
+flight_environment_cycle={
+"deadzone": 0.5,
+"events": []
+}
+flight_assist_cycle={
+"deadzone": 0.5,
+"events": []
+}
 pause={
 "deadzone": 0.5,
 "events": []

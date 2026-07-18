@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="PlanetDefinition" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="PlanetDefinition" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/definitions/planet_definition.gd" id="1_planet"]
+[ext_resource type="Resource" path="res://data/tuning/flight_environment_red_sand_atmosphere.tres" id="2_environment"]
 
 [resource]
 script = ExtResource("1_planet")
@@ -8,5 +9,6 @@ id = &"planet_red_sand"
 display_name_key = &"PLANET_RED_SAND_NAME"
 description_key = &"PLANET_RED_SAND_DESCRIPTION"
 gravity_scale = 1.0
+flight_environment_profile = ExtResource("2_environment")
 flight_scene_path = "res://scenes/flight/flight_level.tscn"
 required_story_flags = Array[StringName]([])

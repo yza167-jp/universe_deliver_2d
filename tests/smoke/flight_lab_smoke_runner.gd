@@ -41,6 +41,17 @@ func _run_smoke() -> void:
 			debug_hud.get_speed_text() == tr("UI_FLIGHT_DEBUG_SPEED") % 0.0,
 			"Flight debug HUD did not render the reset telemetry."
 		)
+		_check(
+			debug_hud.get_environment_text().contains("0%")
+			and not debug_hud.get_terminal_text().is_empty(),
+			"Flight debug HUD did not render environment and terminal telemetry."
+		)
+	_check(
+		flight_lab.environment_profiles.size() == 2
+		and flight_lab.get_active_environment_profile() != null
+		and flight_lab.get_active_environment_profile().id == &"environment_deep_space",
+		"Flight Lab did not start in the deterministic deep-space preset."
+	)
 	_check(
 		UniverseDeliverApp.should_start_in_flight_lab(
 			true,
@@ -92,6 +103,91 @@ func _run_smoke() -> void:
 				"Flight debug HUD did not display angular velocity."
 			)
 
+	var environment_event: InputEventAction = InputEventAction.new()
+	environment_event.action = FlightLab.ENVIRONMENT_CYCLE_ACTION
+	environment_event.pressed = true
+	flight_lab._unhandled_input(environment_event)
+	_check(
+		flight_lab.get_active_environment_profile() != null
+		and flight_lab.get_active_environment_profile().id
+		== &"environment_red_sand_atmosphere",
+		"F4 action did not select the Red Sand atmosphere preset."
+	)
+	if flight_ship != null:
+		for _frame_index: int in 10:
+			await physics_frame
+		_check(
+			flight_ship.gravity_blend > 0.0
+			and flight_ship.gravity_blend < 1.0
+			and flight_ship.air_density > 0.0
+			and flight_ship.air_density < 1.0,
+			"Atmosphere gravity and density did not blend in gradually."
+		)
+		await process_frame
+		_check(
+			flight_lab.atmosphere_tint.color.a > 0.0
+			and debug_hud != null
+			and debug_hud.get_environment_text().contains("%")
+			and debug_hud.get_environment_text() != "UI_FLIGHT_DEBUG_ENVIRONMENT",
+			"Atmosphere transition did not provide visible tint and localized HUD feedback."
+		)
+		flight_ship.reset_to_start(
+			0.75,
+			flight_lab.get_active_environment_profile(),
+			true
+		)
+		for _frame_index: int in 120:
+			flight_ship.integrate_motion(0.0, 0.0, 0.0, 1.0 / 60.0)
+		_check(
+			flight_ship.velocity.y > 0.0
+			and flight_ship.velocity.y
+			< flight_ship.get_terminal_fall_speed_safety(),
+			"Default atmosphere assist did not produce a controlled downward fall."
+		)
+		flight_ship.velocity = Vector2(240.0, 0.0)
+		for _frame_index: int in 60:
+			flight_ship.integrate_motion(0.0, 0.0, 0.0, 1.0 / 60.0)
+		_check(
+			flight_ship.velocity.x < 190.0,
+			"Atmosphere did not decay horizontal speed with its independent drag."
+		)
+
+		flight_ship.reset_to_start(
+			1.0,
+			flight_lab.get_active_environment_profile(),
+			true
+		)
+		for _frame_index: int in 60:
+			flight_ship.integrate_motion(0.0, 0.0, 0.0, 1.0 / 60.0)
+		_check(
+			absf(flight_ship.velocity.y) < 0.01
+			and flight_ship.fuel < FlightLabShip.DEFAULT_RESOURCE_VALUE
+			and flight_ship.assist_fuel_cost_rate > 0.0,
+			"100% assist did not hover with an explicit fuel cost."
+		)
+
+	var assist_event: InputEventAction = InputEventAction.new()
+	assist_event.action = FlightLab.ASSIST_CYCLE_ACTION
+	assist_event.pressed = true
+	var observed_assist_presets: Array[int] = []
+	for _preset_index: int in 3:
+		flight_lab._unhandled_input(assist_event)
+		observed_assist_presets.append(
+			roundi(flight_lab.get_active_assist_strength() * 100.0)
+		)
+	observed_assist_presets.sort()
+	_check(
+		observed_assist_presets == [0, 75, 100],
+		"F5 action did not cycle all 0%, 75%, and 100% assist presets."
+	)
+
+	flight_lab._unhandled_input(environment_event)
+	_check(
+		flight_lab.get_active_environment_profile() != null
+		and flight_lab.get_active_environment_profile().id == &"environment_deep_space",
+		"Second F4 action did not return to deep space."
+	)
+
 	if flight_ship != null:
 		flight_ship.position = Vector2(812.0, 54.0)
 		flight_ship.velocity = Vector2(220.0, 96.0)
@@ -125,6 +221,12 @@ func _run_smoke() -> void:
 			),
 			"R action left stale fuel or Boost after reset."
 		)
+		_check(
+			is_zero_approx(flight_ship.gravity_acceleration)
+			and is_zero_approx(flight_ship.gravity_blend)
+			and is_zero_approx(flight_ship.air_density),
+			"R action did not snap the selected deep-space environment baseline."
+		)
 	if flight_camera != null and flight_ship != null:
 		_check(
 			flight_camera.position == flight_ship.stable_start_position,
@@ -151,8 +253,8 @@ func _check(condition: bool, message: String) -> void:
 func _finish() -> void:
 	if _failures.is_empty():
 		print(
-			"[flight-lab] PASS: explicit thrust, inertia, brake, pitch, HUD, "
-			+ "direct route, and deterministic reset."
+			"[flight-lab] PASS: controls, environment blend, axis drag, paid hover, "
+			+ "assist presets, HUD, direct route, and deterministic reset."
 		)
 		quit(0)
 		return

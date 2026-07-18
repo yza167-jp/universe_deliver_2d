@@ -14,3 +14,5 @@ max_pitch_rate = 2.4
 pitch_acceleration = 7.0
 angular_damping = 5.0
 max_pitch_degrees = 70.0
+free_assist_strength = 0.75
+full_assist_fuel_cost_per_second = 2.0

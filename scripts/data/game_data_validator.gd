@@ -36,6 +36,7 @@ static func _validate_planets(
 		_validate_text_key(planet.id, "description_key", planet.description_key, errors)
 		if not is_finite(planet.gravity_scale) or planet.gravity_scale <= 0.0:
 			errors.append("PlanetDefinition '%s' gravity_scale must be finite and greater than 0." % planet.id)
+		_validate_flight_environment_profile(planet, errors)
 		if planet.flight_scene_path.is_empty():
 			errors.append("PlanetDefinition '%s' flight_scene_path is empty." % planet.id)
 		elif not ResourceLoader.exists(planet.flight_scene_path):
@@ -47,6 +48,78 @@ static func _validate_planets(
 			"PlanetDefinition '%s' required_story_flags" % planet.id,
 			planet.required_story_flags,
 			errors
+		)
+
+
+static func _validate_flight_environment_profile(
+	planet: PlanetDefinition,
+	errors: PackedStringArray
+) -> void:
+	var profile: FlightEnvironmentProfile = planet.flight_environment_profile
+	if profile == null:
+		errors.append(
+			"PlanetDefinition '%s' flight_environment_profile is missing." % planet.id
+		)
+		return
+	if profile.id.is_empty():
+		errors.append("PlanetDefinition '%s' environment profile has an empty ID." % planet.id)
+	elif not _is_valid_definition_id(profile.id):
+		errors.append(
+			"FlightEnvironmentProfile ID '%s' must use lower snake_case." % profile.id
+		)
+	_validate_text_key(profile.id, "display_name_key", profile.display_name_key, errors)
+	if not is_finite(profile.planet_gravity) or profile.planet_gravity < 0.0:
+		errors.append(
+			"FlightEnvironmentProfile '%s' planet_gravity must be finite and non-negative."
+			% profile.id
+		)
+	if (
+		not is_finite(profile.target_gravity_blend)
+		or profile.target_gravity_blend < 0.0
+		or profile.target_gravity_blend > 1.0
+	):
+		errors.append(
+			"FlightEnvironmentProfile '%s' target_gravity_blend must be between 0 and 1."
+			% profile.id
+		)
+	if (
+		not is_finite(profile.target_air_density)
+		or profile.target_air_density < 0.0
+		or profile.target_air_density > 1.0
+	):
+		errors.append(
+			"FlightEnvironmentProfile '%s' target_air_density must be between 0 and 1."
+			% profile.id
+		)
+	if (
+		not is_finite(profile.horizontal_drag)
+		or profile.horizontal_drag < 0.0
+		or not is_finite(profile.vertical_drag)
+		or profile.vertical_drag < 0.0
+	):
+		errors.append(
+			"FlightEnvironmentProfile '%s' drag coefficients must be finite and non-negative."
+			% profile.id
+		)
+	if (
+		not is_finite(profile.terminal_fall_speed_safety)
+		or profile.terminal_fall_speed_safety < 0.0
+	):
+		errors.append(
+			"FlightEnvironmentProfile '%s' terminal_fall_speed_safety must be non-negative."
+			% profile.id
+		)
+	elif (
+		profile.target_gravity_blend > 0.0
+		and profile.terminal_fall_speed_safety <= 0.0
+	):
+		errors.append(
+			"FlightEnvironmentProfile '%s' with gravity must define a positive terminal fall safety."
+			% profile.id
+		)
+	if not is_finite(profile.transition_rate) or profile.transition_rate <= 0.0:
+		errors.append(
+			"FlightEnvironmentProfile '%s' transition_rate must be positive." % profile.id
 		)
 
 

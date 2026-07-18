@@ -32,6 +32,11 @@ static func validate_registry(
 			continue
 		keys_by_label["PlanetDefinition '%s' display_name_key" % planet.id] = planet.display_name_key
 		keys_by_label["PlanetDefinition '%s' description_key" % planet.id] = planet.description_key
+		if planet.flight_environment_profile != null:
+			keys_by_label[
+				"FlightEnvironmentProfile '%s' display_name_key"
+				% planet.flight_environment_profile.id
+			] = planet.flight_environment_profile.display_name_key
 	for order: OrderDefinition in registry.orders:
 		if order == null:
 			continue

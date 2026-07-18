@@ -130,6 +130,16 @@ func _expect_default_input_map(failures: Array[String]) -> void:
 		"Flight Lab debug HUD toggle must default to F3.",
 		failures
 	)
+	expect_true(
+		_has_key(InputMap.action_get_events(&"flight_environment_cycle"), KEY_F4),
+		"Flight Lab environment cycle must default to F4.",
+		failures
+	)
+	expect_true(
+		_has_key(InputMap.action_get_events(&"flight_assist_cycle"), KEY_F5),
+		"Flight Lab assist preset cycle must default to F5.",
+		failures
+	)
 
 
 func _has_physical_key(events: Array[InputEvent], expected_key: Key) -> bool:

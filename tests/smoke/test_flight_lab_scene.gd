@@ -46,6 +46,20 @@ func run() -> Array[String]:
 		failures
 	)
 	expect_true(
+		flight_ship != null
+		and flight_ship.environment_profile is FlightEnvironmentProfile
+		and flight_ship.environment_profile.id == &"environment_deep_space",
+		"Flight Lab ship must start with the deep-space environment profile.",
+		failures
+	)
+	expect_true(
+		flight_lab.environment_profiles.size() == 2
+		and flight_lab.environment_profiles[1].id
+		== &"environment_red_sand_atmosphere",
+		"Flight Lab must expose deep-space and Red Sand atmosphere presets.",
+		failures
+	)
+	expect_true(
 		flight_lab.get_node_or_null("Backdrop/Space") is ColorRect,
 		"Flight Lab must contain a space backdrop.",
 		failures
@@ -59,6 +73,11 @@ func run() -> Array[String]:
 	expect_true(
 		flight_lab.get_node_or_null("World/SpeedMarkers") is Node2D,
 		"Flight Lab must contain world-space motion references.",
+		failures
+	)
+	expect_true(
+		flight_lab.get_node_or_null("Backdrop/AtmosphereTint") is ColorRect,
+		"Flight Lab must provide minimal atmosphere transition feedback.",
 		failures
 	)
 
@@ -102,6 +121,8 @@ func run() -> Array[String]:
 				FlightLabShip.DEFAULT_RESOURCE_VALUE
 			)
 			and is_zero_approx(flight_ship.gravity_acceleration)
+			and is_zero_approx(flight_ship.gravity_blend)
+			and is_zero_approx(flight_ship.air_density)
 			and flight_ship.collision_state_key == FlightLabShip.DEFAULT_COLLISION_KEY,
 			"Flight Lab reset must restore resources and collision state.",
 			failures

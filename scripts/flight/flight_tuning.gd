@@ -25,6 +25,16 @@ var angular_damping: float = 5.0
 @export_range(5.0, 85.0, 1.0)
 var max_pitch_degrees: float = 70.0
 
+@export_group("Flight Assist")
+@export_range(0.0, 1.0, 0.01)
+var free_assist_strength: float = 0.75
+@export_range(0.0, 20.0, 0.1, "or_greater")
+var full_assist_fuel_cost_per_second: float = 2.0
+
 
 func get_max_pitch_radians() -> float:
 	return deg_to_rad(maxf(max_pitch_degrees, 0.0))
+
+
+func get_free_assist_strength() -> float:
+	return clampf(free_assist_strength, 0.0, 1.0)

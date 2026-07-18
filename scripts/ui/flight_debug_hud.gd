@@ -8,7 +8,9 @@ extends CanvasLayer
 @onready var _pitch_label: Label = %PitchLabel
 @onready var _angular_velocity_label: Label = %AngularVelocityLabel
 @onready var _zone_label: Label = %ZoneLabel
+@onready var _environment_label: Label = %EnvironmentLabel
 @onready var _gravity_label: Label = %GravityLabel
+@onready var _terminal_label: Label = %TerminalLabel
 @onready var _fuel_label: Label = %FuelLabel
 @onready var _boost_label: Label = %BoostLabel
 @onready var _assist_label: Label = %AssistLabel
@@ -48,14 +50,26 @@ func refresh() -> void:
 		% _flight_ship.get_angular_velocity()
 	)
 	_zone_label.text = tr("UI_FLIGHT_DEBUG_ZONE") % tr(_flight_ship.environment_zone_key)
+	_environment_label.text = tr("UI_FLIGHT_DEBUG_ENVIRONMENT") % [
+		roundi(_flight_ship.air_density * 100.0),
+		roundi(_flight_ship.gravity_blend * 100.0),
+	]
 	_gravity_label.text = (
 		tr("UI_FLIGHT_DEBUG_GRAVITY") % _flight_ship.gravity_acceleration
 	)
-	_fuel_label.text = tr("UI_FLIGHT_DEBUG_FUEL") % roundi(_flight_ship.fuel)
+	_terminal_label.text = tr("UI_FLIGHT_DEBUG_TERMINAL") % [
+		_flight_ship.natural_terminal_fall_speed,
+		_flight_ship.get_terminal_fall_speed_safety(),
+	]
+	_fuel_label.text = tr("UI_FLIGHT_DEBUG_FUEL") % [
+		roundi(_flight_ship.fuel),
+		_flight_ship.assist_fuel_cost_rate,
+	]
 	_boost_label.text = tr("UI_FLIGHT_DEBUG_BOOST") % roundi(_flight_ship.boost_energy)
-	_assist_label.text = (
-		tr("UI_FLIGHT_DEBUG_ASSIST") % roundi(_flight_ship.assist_strength * 100.0)
-	)
+	_assist_label.text = tr("UI_FLIGHT_DEBUG_ASSIST") % [
+		roundi(_flight_ship.assist_strength * 100.0),
+		roundi(_flight_ship.effective_assist_strength * 100.0),
+	]
 	_collision_label.text = (
 		tr("UI_FLIGHT_DEBUG_COLLISION") % tr(_flight_ship.collision_state_key)
 	)
@@ -65,6 +79,21 @@ func show_reset_feedback() -> void:
 	if not is_node_ready():
 		return
 	_status_label.text = tr("UI_FLIGHT_LAB_STATUS_RESET")
+
+
+func show_environment_feedback(environment_key: StringName) -> void:
+	if not is_node_ready():
+		return
+	_status_label.text = tr("UI_FLIGHT_LAB_STATUS_ENVIRONMENT") % tr(environment_key)
+
+
+func show_assist_feedback(assist_strength: float) -> void:
+	if not is_node_ready():
+		return
+	_status_label.text = (
+		tr("UI_FLIGHT_LAB_STATUS_ASSIST")
+		% roundi(clampf(assist_strength, 0.0, 1.0) * 100.0)
+	)
 
 
 func get_header_rect() -> Rect2:
@@ -87,6 +116,14 @@ func get_status_text() -> String:
 
 func get_angular_velocity_text() -> String:
 	return "" if _angular_velocity_label == null else _angular_velocity_label.text
+
+
+func get_environment_text() -> String:
+	return "" if _environment_label == null else _environment_label.text
+
+
+func get_terminal_text() -> String:
+	return "" if _terminal_label == null else _terminal_label.text
 
 
 func _localize_static_content() -> void:

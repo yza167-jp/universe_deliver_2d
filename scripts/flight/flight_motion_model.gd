@@ -14,20 +14,39 @@ static func step_velocity(
 	if tuning == null or delta <= 0.0:
 		return current_velocity
 
-	var safe_delta: float = maxf(delta, 0.0)
+	var next_velocity: Vector2 = step_control_velocity(
+		current_velocity,
+		rotation,
+		throttle_input,
+		brake_input,
+		tuning,
+		delta
+	)
+	next_velocity = _apply_space_drag(next_velocity, tuning, delta)
+	return apply_speed_limits(next_velocity, rotation, tuning)
+
+
+## Applies only player-controlled thrust and braking so environment forces can be composed once.
+static func step_control_velocity(
+	current_velocity: Vector2,
+	rotation: float,
+	throttle_input: float,
+	brake_input: float,
+	tuning: FlightTuning,
+	delta: float
+) -> Vector2:
+	if tuning == null or delta <= 0.0:
+		return current_velocity
 	var safe_throttle: float = clampf(throttle_input, 0.0, 1.0)
 	var safe_brake: float = clampf(brake_input, 0.0, 1.0)
 	var next_velocity: Vector2 = current_velocity
-	var forward: Vector2 = Vector2.RIGHT.rotated(rotation)
 	next_velocity += (
-		forward
+		Vector2.RIGHT.rotated(rotation)
 		* maxf(tuning.thrust_acceleration, 0.0)
 		* safe_throttle
-		* safe_delta
+		* delta
 	)
-	next_velocity = _apply_brake(next_velocity, safe_brake, tuning, safe_delta)
-	next_velocity = _apply_space_drag(next_velocity, tuning, safe_delta)
-	return _apply_speed_limits(next_velocity, forward, tuning)
+	return _apply_brake(next_velocity, safe_brake, tuning, delta)
 
 
 ## Approaches the requested pitch rate, then damps angular inertia on release.
@@ -96,12 +115,15 @@ static func _apply_space_drag(
 	return current_velocity * drag_factor
 
 
-static func _apply_speed_limits(
+static func apply_speed_limits(
 	current_velocity: Vector2,
-	forward: Vector2,
+	rotation: float,
 	tuning: FlightTuning
 ) -> Vector2:
+	if tuning == null:
+		return current_velocity
 	var limited_velocity: Vector2 = current_velocity
+	var forward: Vector2 = Vector2.RIGHT.rotated(rotation)
 	var max_forward_speed: float = maxf(tuning.max_forward_speed, 0.0)
 	var forward_speed: float = limited_velocity.dot(forward)
 	if forward_speed > max_forward_speed:

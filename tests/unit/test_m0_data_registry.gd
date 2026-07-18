@@ -33,6 +33,17 @@ func run() -> Array[String]:
 		"Red Sand order must reference its destination planet.",
 		failures
 	)
+	if order.destination_planet != null:
+		var environment: FlightEnvironmentProfile = (
+			order.destination_planet.flight_environment_profile
+		)
+		expect_true(
+			environment != null
+			and environment.id == &"environment_red_sand_atmosphere"
+			and environment.planet_gravity > 0.0,
+			"Red Sand must reference its configurable atmosphere and gravity profile.",
+			failures
+		)
 	expect_true(order.cargo != null, "Red Sand order must reference cargo.", failures)
 	expect_true(order.required_modules.size() == 2, "Red Sand order must declare required modules.", failures)
 	expect_true(
