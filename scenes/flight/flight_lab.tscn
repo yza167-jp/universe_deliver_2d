@@ -1,0 +1,128 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/flight/flight_lab.gd" id="1_lab"]
+[ext_resource type="Script" path="res://scripts/flight/flight_lab_ship.gd" id="2_ship"]
+[ext_resource type="PackedScene" path="res://scenes/ui/flight_debug_hud.tscn" id="3_hud"]
+[ext_resource type="Texture2D" path="res://assets/flight_lab_ship_placeholder.svg" id="4_ship_texture"]
+
+[sub_resource type="RectangleShape2D" id="ShapeShip"]
+size = Vector2(38, 16)
+
+[sub_resource type="RectangleShape2D" id="ShapeFloor"]
+size = Vector2(1600, 140)
+
+[sub_resource type="RectangleShape2D" id="ShapePillar"]
+size = Vector2(64, 78)
+
+[node name="FlightLab" type="Node2D"]
+script = ExtResource("1_lab")
+
+[node name="Backdrop" type="CanvasLayer" parent="."]
+layer = -10
+
+[node name="Space" type="ColorRect" parent="Backdrop"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.019608, 0.035294, 0.070588, 1)
+
+[node name="NebulaBand" type="ColorRect" parent="Backdrop"]
+offset_left = 224.0
+offset_top = 64.0
+offset_right = 640.0
+offset_bottom = 214.0
+mouse_filter = 2
+color = Color(0.101961, 0.160784, 0.247059, 0.5)
+
+[node name="DistantPlanet" type="Polygon2D" parent="Backdrop"]
+position = Vector2(546, 112)
+polygon = PackedVector2Array(-32, 0, -28, -16, -16, -28, 0, -32, 16, -28, 28, -16, 32, 0, 28, 16, 16, 28, 0, 32, -16, 28, -28, 16)
+color = Color(0.611765, 0.286275, 0.203922, 0.9)
+
+[node name="PlanetLight" type="Polygon2D" parent="Backdrop/DistantPlanet"]
+polygon = PackedVector2Array(-8, -29, 8, -29, 20, -22, 29, -10, 31, 3, 24, 3, 18, -9, 7, -18, -5, -24)
+color = Color(0.937255, 0.568627, 0.313726, 0.62)
+
+[node name="StarA" type="Polygon2D" parent="Backdrop"]
+position = Vector2(276, 82)
+polygon = PackedVector2Array(0, -2, 2, 0, 0, 2, -2, 0)
+color = Color(0.862745, 0.921569, 1, 0.9)
+
+[node name="StarB" type="Polygon2D" parent="Backdrop"]
+position = Vector2(442, 54)
+polygon = PackedVector2Array(0, -1, 1, 0, 0, 1, -1, 0)
+color = Color(0.862745, 0.921569, 1, 0.75)
+
+[node name="StarC" type="Polygon2D" parent="Backdrop"]
+position = Vector2(604, 174)
+polygon = PackedVector2Array(0, -2, 2, 0, 0, 2, -2, 0)
+color = Color(0.905882, 0.658824, 0.356863, 0.85)
+
+[node name="World" type="Node2D" parent="."]
+
+[node name="HorizonGuide" type="Line2D" parent="World"]
+points = PackedVector2Array(-480, 234, 1260, 234)
+width = 1.0
+default_color = Color(0.352941, 0.737255, 0.760784, 0.25)
+
+[node name="Terrain" type="Node2D" parent="World"]
+
+[node name="Floor" type="StaticBody2D" parent="World/Terrain"]
+position = Vector2(560, 350)
+
+[node name="Visual" type="Polygon2D" parent="World/Terrain/Floor"]
+polygon = PackedVector2Array(-800, -70, 800, -70, 800, 70, -800, 70)
+color = Color(0.090196, 0.137255, 0.180392, 1)
+
+[node name="TopEdge" type="Line2D" parent="World/Terrain/Floor"]
+points = PackedVector2Array(-800, -70, 800, -70)
+width = 3.0
+default_color = Color(0.352941, 0.737255, 0.760784, 0.8)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/Terrain/Floor"]
+shape = SubResource("ShapeFloor")
+
+[node name="LabPad" type="Polygon2D" parent="World/Terrain"]
+polygon = PackedVector2Array(242, 274, 430, 274, 446, 280, 226, 280)
+color = Color(0.905882, 0.658824, 0.356863, 0.9)
+
+[node name="Pillar" type="StaticBody2D" parent="World/Terrain"]
+position = Vector2(590, 241)
+
+[node name="Visual" type="Polygon2D" parent="World/Terrain/Pillar"]
+polygon = PackedVector2Array(-32, -39, 32, -39, 32, 39, -32, 39)
+color = Color(0.141176, 0.196078, 0.239216, 1)
+
+[node name="WarningStripe" type="Polygon2D" parent="World/Terrain/Pillar"]
+polygon = PackedVector2Array(-32, -39, 32, -39, 32, -31, -32, -31)
+color = Color(0.913725, 0.415686, 0.227451, 0.95)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/Terrain/Pillar"]
+shape = SubResource("ShapePillar")
+
+[node name="FlightShip" type="CharacterBody2D" parent="World"]
+unique_name_in_owner = true
+position = Vector2(320, 190)
+script = ExtResource("2_ship")
+
+[node name="ShipSprite" type="Sprite2D" parent="World/FlightShip"]
+texture_filter = 1
+texture = ExtResource("4_ship_texture")
+
+[node name="EngineGlow" type="Polygon2D" parent="World/FlightShip"]
+polygon = PackedVector2Array(-23, -5, -34, 0, -23, 5)
+color = Color(0.905882, 0.658824, 0.356863, 0.92)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/FlightShip"]
+shape = SubResource("ShapeShip")
+
+[node name="FlightCamera" type="Camera2D" parent="World"]
+unique_name_in_owner = true
+position = Vector2(320, 190)
+enabled = true
+
+[node name="FlightDebugHUD" parent="." instance=ExtResource("3_hud")]
+unique_name_in_owner = true

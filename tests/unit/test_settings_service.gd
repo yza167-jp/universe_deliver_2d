@@ -114,6 +114,11 @@ func _expect_default_input_map(failures: Array[String]) -> void:
 		"Actual fullscreen must default to F11.",
 		failures
 	)
+	expect_true(
+		_has_key(InputMap.action_get_events(&"flight_debug_toggle"), KEY_F3),
+		"Flight Lab debug HUD toggle must default to F3.",
+		failures
+	)
 
 
 func _has_physical_key(events: Array[InputEvent], expected_key: Key) -> bool:

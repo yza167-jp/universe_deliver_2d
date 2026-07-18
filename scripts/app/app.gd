@@ -2,6 +2,7 @@ class_name UniverseDeliverApp
 extends Control
 
 const DEBUG_UI_ARGUMENT: String = "--show-debug-ui"
+const DEBUG_FLIGHT_LAB_ARGUMENT: String = "--flight-lab"
 const FULLSCREEN_ACTION: StringName = &"toggle_fullscreen"
 
 @onready var scene_container: Control = %SceneContainer
@@ -17,9 +18,10 @@ func _ready() -> void:
 	if not scene_router.stage_changed.is_connected(_on_stage_changed):
 		scene_router.stage_changed.connect(_on_stage_changed)
 
+	var user_arguments: PackedStringArray = OS.get_cmdline_user_args()
 	debug_layer.visible = should_show_debug_ui(
 		OS.is_debug_build(),
-		OS.get_cmdline_user_args()
+		user_arguments
 	)
 	if debug_layer.visible:
 		_build_debug_stage_switcher()
@@ -29,6 +31,9 @@ func _ready() -> void:
 		return
 	if not scene_router.start():
 		push_error("App could not start scene flow: %s" % scene_router.last_error)
+		return
+	if should_start_in_flight_lab(OS.is_debug_build(), user_arguments):
+		call_deferred("_open_direct_flight_lab")
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -63,6 +68,11 @@ func _on_stage_changed(_previous_stage: int, current_stage: int) -> void:
 	current_stage_label.text = "STAGE: %s" % SceneRouterService.get_stage_name(current_stage)
 
 
+func _open_direct_flight_lab() -> void:
+	if not scene_router.debug_switch_to_stage(SceneRouterService.Stage.FLIGHT):
+		push_error("App could not open Flight Lab: %s" % scene_router.last_error)
+
+
 func toggle_fullscreen() -> bool:
 	var current_mode: int = DisplayServer.window_get_mode()
 	if is_fullscreen_mode(current_mode):
@@ -86,3 +96,10 @@ static func should_show_debug_ui(
 	user_arguments: PackedStringArray
 ) -> bool:
 	return is_debug_build and user_arguments.has(DEBUG_UI_ARGUMENT)
+
+
+static func should_start_in_flight_lab(
+	is_debug_build: bool,
+	user_arguments: PackedStringArray
+) -> bool:
+	return is_debug_build and user_arguments.has(DEBUG_FLIGHT_LAB_ARGUMENT)

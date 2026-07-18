@@ -28,6 +28,7 @@ const SUPPORTED_ACTIONS: Array[StringName] = [
 	&"flight_fire",
 	&"flight_restart",
 	&"flight_route_hint",
+	&"flight_debug_toggle",
 	&"pause",
 ]
 
@@ -333,6 +334,8 @@ static func _build_default_events(action: StringName) -> Array[InputEvent]:
 			events.append(_create_key_event(KEY_R, true))
 		&"flight_route_hint":
 			events.append(_create_key_event(KEY_TAB))
+		&"flight_debug_toggle":
+			events.append(_create_key_event(KEY_F3))
 		&"pause":
 			events.append(_create_key_event(KEY_ESCAPE))
 	return events

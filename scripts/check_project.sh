@@ -106,6 +106,14 @@ run_step \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/debug_settings_panel_smoke_runner.gd
 
 run_step \
+  "Flight Lab direct debug boot smoke test" \
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --quit-after 4 -- --flight-lab
+
+run_step \
+  "Flight Lab scaffold, debug HUD, and reset smoke test" \
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/flight_lab_smoke_runner.gd
+
+run_step \
   "Station hub layout and reachability smoke test" \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/station_hub_smoke_runner.gd
 

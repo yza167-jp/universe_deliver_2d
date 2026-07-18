@@ -64,5 +64,21 @@ func run() -> Array[String]:
 		"Release builds must ignore the debug UI argument.",
 		failures
 	)
+	expect_true(
+		UniverseDeliverApp.should_start_in_flight_lab(
+			true,
+			PackedStringArray([UniverseDeliverApp.DEBUG_FLIGHT_LAB_ARGUMENT])
+		),
+		"The explicit Flight Lab argument must enable the direct debug route.",
+		failures
+	)
+	expect_true(
+		not UniverseDeliverApp.should_start_in_flight_lab(
+			false,
+			PackedStringArray([UniverseDeliverApp.DEBUG_FLIGHT_LAB_ARGUMENT])
+		),
+		"Release builds must ignore the direct Flight Lab argument.",
+		failures
+	)
 	main_scene.free()
 	return failures
