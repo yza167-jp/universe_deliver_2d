@@ -1,0 +1,197 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/flight/red_sand_low_flight_course.gd" id="1_course"]
+[ext_resource type="PackedScene" path="res://scenes/flight/flight_radar_sector.tscn" id="2_sector"]
+[ext_resource type="PackedScene" path="res://scenes/flight/flight_radar_cover.tscn" id="3_cover"]
+
+[node name="RedSandLowFlightCourse" type="Node2D"]
+script = ExtResource("1_course")
+
+[node name="CollisionGeometry" type="Node2D" parent="."]
+unique_name_in_owner = true
+
+[node name="CanyonRidgeA" type="StaticBody2D" parent="CollisionGeometry"]
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="CollisionGeometry/CanyonRidgeA"]
+polygon = PackedVector2Array(2200, 570, 2600, 488, 3100, 444, 3600, 478, 4200, 535, 4200, 820, 2200, 820)
+
+[node name="Visual" type="Polygon2D" parent="CollisionGeometry/CanyonRidgeA"]
+z_index = 1
+color = Color(0.309804, 0.129412, 0.117647, 1)
+
+[node name="ContrastOutline" type="Line2D" parent="CollisionGeometry/CanyonRidgeA"]
+visible = false
+z_index = 7
+width = 4.0
+default_color = Color(1, 0.878431, 0.505882, 0.96)
+
+[node name="PipelineRoof" type="StaticBody2D" parent="CollisionGeometry"]
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="CollisionGeometry/PipelineRoof"]
+polygon = PackedVector2Array(6200, 225, 8200, 225, 8200, 286, 6200, 286)
+
+[node name="Visual" type="Polygon2D" parent="CollisionGeometry/PipelineRoof"]
+z_index = 2
+color = Color(0.0901961, 0.14902, 0.160784, 1)
+
+[node name="ContrastOutline" type="Line2D" parent="CollisionGeometry/PipelineRoof"]
+visible = false
+z_index = 7
+width = 4.0
+default_color = Color(0.670588, 1, 0.941176, 0.98)
+
+[node name="CanyonTunnelRoof" type="StaticBody2D" parent="CollisionGeometry"]
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="CollisionGeometry/CanyonTunnelRoof"]
+polygon = PackedVector2Array(10800, 118, 11400, 94, 12000, 108, 12700, 88, 13200, 116, 13200, 252, 12700, 230, 12000, 246, 11400, 226, 10800, 262)
+
+[node name="Visual" type="Polygon2D" parent="CollisionGeometry/CanyonTunnelRoof"]
+z_index = 1
+color = Color(0.25098, 0.105882, 0.113725, 1)
+
+[node name="ContrastOutline" type="Line2D" parent="CollisionGeometry/CanyonTunnelRoof"]
+visible = false
+z_index = 7
+width = 4.0
+default_color = Color(1, 0.878431, 0.505882, 0.96)
+
+[node name="FacilityGateUpper" type="StaticBody2D" parent="CollisionGeometry"]
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="CollisionGeometry/FacilityGateUpper"]
+polygon = PackedVector2Array(16800, 130, 17700, 130, 17700, 300, 16800, 300)
+
+[node name="Visual" type="Polygon2D" parent="CollisionGeometry/FacilityGateUpper"]
+z_index = 2
+color = Color(0.0823529, 0.137255, 0.156863, 1)
+
+[node name="ContrastOutline" type="Line2D" parent="CollisionGeometry/FacilityGateUpper"]
+visible = false
+z_index = 7
+width = 4.0
+default_color = Color(0.670588, 1, 0.941176, 0.98)
+
+[node name="FacilityGateLower" type="StaticBody2D" parent="CollisionGeometry"]
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="CollisionGeometry/FacilityGateLower"]
+polygon = PackedVector2Array(16800, 392, 17700, 392, 17700, 820, 16800, 820)
+
+[node name="Visual" type="Polygon2D" parent="CollisionGeometry/FacilityGateLower"]
+z_index = 2
+color = Color(0.0823529, 0.137255, 0.156863, 1)
+
+[node name="ContrastOutline" type="Line2D" parent="CollisionGeometry/FacilityGateLower"]
+visible = false
+z_index = 7
+width = 4.0
+default_color = Color(0.670588, 1, 0.941176, 0.98)
+
+[node name="CanyonRidgeB" type="StaticBody2D" parent="CollisionGeometry"]
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="CollisionGeometry/CanyonRidgeB"]
+polygon = PackedVector2Array(20100, 505, 20700, 448, 21400, 418, 22000, 452, 22700, 500, 22700, 820, 20100, 820)
+
+[node name="Visual" type="Polygon2D" parent="CollisionGeometry/CanyonRidgeB"]
+z_index = 1
+color = Color(0.329412, 0.137255, 0.117647, 1)
+
+[node name="ContrastOutline" type="Line2D" parent="CollisionGeometry/CanyonRidgeB"]
+visible = false
+z_index = 7
+width = 4.0
+default_color = Color(1, 0.878431, 0.505882, 0.96)
+
+[node name="FacilityDetails" type="Node2D" parent="."]
+z_index = 3
+
+[node name="PipeStripeA" type="Polygon2D" parent="FacilityDetails"]
+polygon = PackedVector2Array(6460, 236, 6660, 236, 6660, 276, 6460, 276)
+color = Color(0.905882, 0.658824, 0.356863, 0.78)
+
+[node name="PipeStripeB" type="Polygon2D" parent="FacilityDetails"]
+polygon = PackedVector2Array(7760, 236, 7960, 236, 7960, 276, 7760, 276)
+color = Color(0.905882, 0.658824, 0.356863, 0.78)
+
+[node name="GateLampA" type="Polygon2D" parent="FacilityDetails"]
+polygon = PackedVector2Array(16920, 308, 16932, 320, 16920, 332, 16908, 320)
+color = Color(0.309804, 0.847059, 1, 0.96)
+
+[node name="GateLampB" type="Polygon2D" parent="FacilityDetails"]
+polygon = PackedVector2Array(17580, 308, 17592, 320, 17580, 332, 17568, 320)
+color = Color(0.309804, 0.847059, 1, 0.96)
+
+[node name="RadarSectors" type="Node2D" parent="."]
+unique_name_in_owner = true
+
+[node name="SectorA" parent="RadarSectors" instance=ExtResource("2_sector")]
+position = Vector2(4900, 0)
+sector_id = &"red_sand_radar_sector_a"
+sector_width = 8200.0
+safe_altitude_y = 350.0
+full_exposure_height = 130.0
+acquire_rate_multiplier = 1.0
+emitter_y = 505.0
+
+[node name="SectorB" parent="RadarSectors" instance=ExtResource("2_sector")]
+position = Vector2(12500, 0)
+sector_id = &"red_sand_radar_sector_b"
+sector_width = 7000.0
+safe_altitude_y = 340.0
+full_exposure_height = 120.0
+acquire_rate_multiplier = 1.1
+emitter_y = 468.0
+
+[node name="SectorC" parent="RadarSectors" instance=ExtResource("2_sector")]
+position = Vector2(19750, 0)
+sector_id = &"red_sand_radar_sector_c"
+sector_width = 7500.0
+safe_altitude_y = 360.0
+full_exposure_height = 130.0
+acquire_rate_multiplier = 1.15
+emitter_y = 446.0
+
+[node name="RadarCovers" type="Node2D" parent="."]
+unique_name_in_owner = true
+
+[node name="PipelineShadow" parent="RadarCovers" instance=ExtResource("3_cover")]
+position = Vector2(7200, 376)
+cover_id = &"red_sand_cover_pipeline"
+cover_size = Vector2(2000, 180)
+
+[node name="TunnelShadow" parent="RadarCovers" instance=ExtResource("3_cover")]
+position = Vector2(12000, 370)
+cover_id = &"red_sand_cover_tunnel"
+cover_size = Vector2(2400, 220)
+
+[node name="FacilityGateShadow" parent="RadarCovers" instance=ExtResource("3_cover")]
+position = Vector2(17250, 346)
+cover_id = &"red_sand_cover_facility_gate"
+cover_size = Vector2(900, 90)
+
+[node name="RouteHints" type="Node2D" parent="."]
+unique_name_in_owner = true
+z_index = 6
+
+[node name="SafeRouteLine" type="Line2D" parent="RouteHints"]
+points = PackedVector2Array(800, 405, 2300, 402, 3100, 398, 4700, 404, 6200, 382, 7200, 365, 8400, 390, 10600, 388, 12000, 348, 13700, 386, 16200, 376, 17250, 346, 18400, 376, 20500, 382, 22400, 390, 23500, 398)
+width = 3.0
+default_color = Color(0.462745, 0.945098, 1, 0.78)
+
+[node name="ChevronA" type="Polygon2D" parent="RouteHints"]
+position = Vector2(6900, 365)
+polygon = PackedVector2Array(-16, -8, 0, 0, -16, 8, -10, 0)
+color = Color(0.670588, 1, 0.941176, 0.94)
+
+[node name="ChevronB" type="Polygon2D" parent="RouteHints"]
+position = Vector2(11700, 350)
+polygon = PackedVector2Array(-16, -8, 0, 0, -16, 8, -10, 0)
+color = Color(0.670588, 1, 0.941176, 0.94)
+
+[node name="ChevronC" type="Polygon2D" parent="RouteHints"]
+position = Vector2(16950, 346)
+polygon = PackedVector2Array(-16, -8, 0, 0, -16, 8, -10, 0)
+color = Color(0.670588, 1, 0.941176, 0.94)
+
+[node name="ChevronD" type="Polygon2D" parent="RouteHints"]
+position = Vector2(21300, 382)
+polygon = PackedVector2Array(-16, -8, 0, 0, -16, 8, -10, 0)
+color = Color(0.670588, 1, 0.941176, 0.94)

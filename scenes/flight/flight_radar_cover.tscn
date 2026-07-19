@@ -1,0 +1,23 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/flight/flight_radar_cover.gd" id="1_cover"]
+
+[sub_resource type="RectangleShape2D" id="ShapeCover"]
+size = Vector2(1200, 180)
+
+[node name="FlightRadarCover" type="Area2D"]
+collision_layer = 0
+collision_mask = 1
+monitorable = false
+script = ExtResource("1_cover")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+unique_name_in_owner = true
+shape = SubResource("ShapeCover")
+
+[node name="HintOutline" type="Line2D" parent="."]
+unique_name_in_owner = true
+visible = false
+z_index = 5
+width = 2.0
+default_color = Color(0.462745, 0.945098, 1, 0.38)

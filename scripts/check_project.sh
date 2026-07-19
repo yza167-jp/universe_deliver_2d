@@ -126,6 +126,10 @@ run_step \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/red_sand_hazard_smoke_runner.gd
 
 run_step \
+  "Red Sand canyon and radar low-flight smoke test" \
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/red_sand_low_flight_smoke_runner.gd
+
+run_step \
   "Station hub layout and reachability smoke test" \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/station_hub_smoke_runner.gd
 

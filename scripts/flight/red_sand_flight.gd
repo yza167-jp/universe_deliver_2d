@@ -12,6 +12,7 @@ const ENTRY_FINALIZE_SEGMENT_INDEX: int = 7
 @onready var route_visuals: RedSandRouteVisuals = %RouteGeometry
 @onready var hazard_director: RedSandHazardDirector = %Hazards
 @onready var environment_feedback: RedSandEnvironmentFeedback = %EnvironmentFeedback
+@onready var low_flight_course: RedSandLowFlightCourse = %LowFlightCourse
 
 @export var route_definition: FlightRouteDefinition
 @export var data_registry: GameDataRegistry
@@ -48,8 +49,16 @@ func _ready() -> void:
 	):
 		push_error("Red Sand route could not configure its fixed hazards.")
 		return
+	if not low_flight_course.bind(
+		flight_ship,
+		route_origin_x,
+		_resolve_settings_service()
+	):
+		push_error("Red Sand route could not configure its low-flight course.")
+		return
 	_connect_ship_signals()
 	_connect_hazard_signals()
+	_connect_low_flight_signals()
 	_entry_style_tracker.bind_run_state(_resolve_order_run_state())
 	flight_ship.set_laser_enabled(_resolve_laser_enabled_from_loadout())
 	var assist_strength: float = _resolve_assist_strength()
@@ -67,11 +76,13 @@ func _ready() -> void:
 	_maximum_route_distance = 0.0
 	hazard_director.set_active_segment(first_segment.id)
 	environment_feedback.set_segment(first_segment)
+	low_flight_course.set_active_segment(first_segment.id)
 	_sync_order_run_checkpoint(first_segment.checkpoint_id)
 	route_hud.bind(flight_ship, route_definition)
 	_sync_camera_to_ship()
 	_update_route_visuals()
 	_refresh_hud()
+	_sync_low_flight_feedback()
 
 
 func _physics_process(delta: float) -> void:
@@ -79,6 +90,8 @@ func _physics_process(delta: float) -> void:
 		return
 	var wind_acceleration: Vector2 = hazard_director.step_physics(delta)
 	environment_feedback.set_wind_acceleration(wind_acceleration)
+	low_flight_course.step_physics(delta)
+	_sync_low_flight_feedback()
 
 
 func _process(delta: float) -> void:
@@ -123,6 +136,10 @@ func get_hazard_director() -> RedSandHazardDirector:
 
 func get_environment_feedback() -> RedSandEnvironmentFeedback:
 	return environment_feedback
+
+
+func get_low_flight_course() -> RedSandLowFlightCourse:
+	return low_flight_course
 
 
 func get_active_segment_index() -> int:
@@ -234,6 +251,8 @@ func restart_from_checkpoint(is_automatic: bool = false) -> bool:
 	hazard_director.reset_for_checkpoint(_maximum_route_distance)
 	hazard_director.set_active_segment(get_active_segment().id)
 	environment_feedback.set_segment(get_active_segment())
+	low_flight_course.reset_for_checkpoint()
+	low_flight_course.set_active_segment(get_active_segment().id)
 	if (
 		_active_segment_index >= ENTRY_START_SEGMENT_INDEX
 		and _active_segment_index < ENTRY_FINALIZE_SEGMENT_INDEX
@@ -242,6 +261,7 @@ func restart_from_checkpoint(is_automatic: bool = false) -> bool:
 	_sync_camera_to_ship()
 	_update_route_visuals()
 	_refresh_hud()
+	_sync_low_flight_feedback()
 	if is_automatic:
 		route_hud.show_auto_retry(flight_ship.get_checkpoint_id())
 	else:
@@ -257,6 +277,7 @@ func _validate_runtime_dependencies() -> bool:
 		or route_visuals == null
 		or hazard_director == null
 		or environment_feedback == null
+		or low_flight_course == null
 		or route_definition == null
 	):
 		push_error("Red Sand route is missing required scene dependencies.")
@@ -274,6 +295,7 @@ func _enter_segment(segment_index: int) -> void:
 	flight_ship.set_environment_profile(segment.environment_profile, false)
 	hazard_director.set_active_segment(segment.id)
 	environment_feedback.set_segment(segment)
+	low_flight_course.set_active_segment(segment.id)
 	flight_ship.capture_checkpoint(segment.checkpoint_id)
 	_sync_order_run_checkpoint(segment.checkpoint_id)
 	if segment_index == ENTRY_START_SEGMENT_INDEX:
@@ -286,6 +308,8 @@ func _enter_segment(segment_index: int) -> void:
 func _complete_route() -> void:
 	_route_completed = true
 	hazard_director.cancel_slow_motion()
+	low_flight_course.set_active_segment(&"")
+	_sync_low_flight_feedback()
 	_finalize_entry_style()
 	_sync_order_run_resources()
 	route_hud.show_route_complete()
@@ -378,6 +402,13 @@ func _connect_hazard_signals() -> void:
 		hazard_director.lightning_resolved.connect(_on_lightning_resolved)
 
 
+func _connect_low_flight_signals() -> void:
+	if not low_flight_course.notice_requested.is_connected(
+		_on_radar_notice_requested
+	):
+		low_flight_course.notice_requested.connect(_on_radar_notice_requested)
+
+
 func _on_impact_resolved(severity: int, impact_speed: float) -> void:
 	route_hud.show_impact(severity, impact_speed)
 	_start_camera_shake(severity)
@@ -437,6 +468,23 @@ func _on_lightning_resolved(
 		_start_camera_shake(FlightCollisionResult.Severity.HARD)
 	else:
 		route_hud.show_lightning_avoided()
+
+
+func _on_radar_notice_requested(message_key: StringName) -> void:
+	route_hud.show_radar_notice(message_key)
+
+
+func _sync_low_flight_feedback() -> void:
+	if low_flight_course == null or route_hud == null or environment_feedback == null:
+		return
+	route_hud.set_radar_state(
+		low_flight_course.get_radar_state_key(),
+		low_flight_course.get_lock_risk()
+	)
+	environment_feedback.set_radar_pressure(
+		low_flight_course.get_lock_risk(),
+		low_flight_course.is_locked()
+	)
 
 
 func _update_auto_retry(delta: float) -> void:

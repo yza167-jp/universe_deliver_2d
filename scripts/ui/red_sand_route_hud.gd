@@ -10,6 +10,8 @@ const STATUS_DURATION_SECONDS: float = 2.4
 @onready var _stage_label: Label = %StageLabel
 @onready var _progress_label: Label = %ProgressLabel
 @onready var _instruction_label: Label = %InstructionLabel
+@onready var _radar_panel: PanelContainer = %RadarPanel
+@onready var _radar_label: Label = %RadarLabel
 @onready var _status_panel: PanelContainer = %StatusPanel
 @onready var _status_label: Label = %StatusLabel
 
@@ -20,6 +22,8 @@ var _route_distance: float = 0.0
 var _elapsed_seconds: float = 0.0
 var _checkpoint_id: StringName = &""
 var _status_remaining: float = 0.0
+var _radar_state_key: StringName = &""
+var _radar_risk: float = 0.0
 
 
 func _ready() -> void:
@@ -104,6 +108,7 @@ func refresh() -> void:
 		_route_definition.expected_duration_seconds / 60.0,
 	]
 	_instruction_label.text = tr(segment.instruction_key)
+	_refresh_radar()
 
 
 func show_stage_transition(segment: FlightRouteSegment) -> void:
@@ -188,6 +193,18 @@ func show_lightning_avoided() -> void:
 	_show_status(tr("UI_RED_SAND_HAZARD_LIGHTNING_AVOIDED"))
 
 
+func set_radar_state(state_key: StringName, lock_risk: float) -> void:
+	_radar_state_key = state_key
+	_radar_risk = clampf(lock_risk, 0.0, 1.0)
+	_refresh_radar()
+
+
+func show_radar_notice(message_key: StringName) -> void:
+	if message_key.is_empty():
+		return
+	_show_status(tr(message_key), 3.6)
+
+
 func get_stage_text() -> String:
 	return "" if _stage_label == null else _stage_label.text
 
@@ -204,6 +221,10 @@ func get_status_text() -> String:
 	return "" if _status_label == null else _status_label.text
 
 
+func get_radar_text() -> String:
+	return "" if _radar_label == null else _radar_label.text
+
+
 func get_flight_panel_rect() -> Rect2:
 	return _get_visible_rect(_flight_panel)
 
@@ -214,6 +235,10 @@ func get_route_panel_rect() -> Rect2:
 
 func get_status_rect() -> Rect2:
 	return _get_visible_rect(_status_panel)
+
+
+func get_radar_rect() -> Rect2:
+	return _get_visible_rect(_radar_panel)
 
 
 func has_visible_mouse_interception() -> bool:
@@ -232,6 +257,17 @@ func _hide_status() -> void:
 	_status_remaining = 0.0
 	if _status_panel != null:
 		_status_panel.visible = false
+
+
+func _refresh_radar() -> void:
+	if _radar_panel == null or _radar_label == null:
+		return
+	if _radar_state_key.is_empty():
+		_radar_panel.visible = false
+		_radar_label.text = ""
+		return
+	_radar_label.text = tr(_radar_state_key) % roundi(_radar_risk * 100.0)
+	_radar_panel.visible = true
 
 
 func _format_signed(value: float) -> String:

@@ -79,8 +79,27 @@ func run() -> Array[String]:
 		failures
 	)
 	expect_true(
+		route_scene.get_node_or_null(
+			"World/LowFlightCourse"
+		) is RedSandLowFlightCourse
+		and route_scene.find_children(
+			"*",
+			"FlightRadarSector",
+			true,
+			false
+		).size() == 3
+		and route_scene.find_children(
+			"*",
+			"FlightRadarCover",
+			true,
+			false
+		).size() == 3,
+		"T-042 route must bind its fixed canyon radar sectors and terrain covers.",
+		failures
+	)
+	expect_true(
 		route_scene.find_children("*", "CharacterBody2D", true, false).size() == 1,
-		"T-041 must not add enemies or another controllable body.",
+		"T-042 must not add enemies or another controllable body.",
 		failures
 	)
 	route_scene.free()

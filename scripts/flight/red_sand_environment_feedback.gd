@@ -8,10 +8,15 @@ const LIGHTNING_FLASH_SECONDS: float = 0.18
 @onready var _environment_tint: ColorRect = %EnvironmentTint
 @onready var _lightning_flash: ColorRect = %LightningFlash
 @onready var _ambience_audio: AudioStreamPlayer = %AmbienceAudio
+@onready var _radar_pressure_tint: ColorRect = %RadarPressureTint
 @onready var _wind_bands: Array[ColorRect] = [
 	%WindBandA,
 	%WindBandB,
 	%WindBandC,
+]
+@onready var _radar_sweeps: Array[ColorRect] = [
+	%RadarSweepA,
+	%RadarSweepB,
 ]
 
 var _active_environment_id: StringName = &""
@@ -21,12 +26,16 @@ var _wind_acceleration: Vector2 = Vector2.ZERO
 var _wind_elapsed_seconds: float = 0.0
 var _lightning_flash_remaining: float = 0.0
 var _lightning_flash_peak_alpha: float = 0.0
+var _radar_pressure: float = 0.0
+var _radar_locked: bool = false
+var _radar_elapsed_seconds: float = 0.0
 var _base_tint: Color = Color.TRANSPARENT
 
 
 func _ready() -> void:
 	_set_mouse_passthrough(self)
 	_apply_wind_visibility(false)
+	_apply_radar_visibility(false)
 	if _lightning_flash != null:
 		_lightning_flash.color.a = 0.0
 
@@ -34,6 +43,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	var safe_delta: float = maxf(delta, 0.0)
 	_update_wind_bands(safe_delta)
+	_update_radar_feedback(safe_delta)
 	_update_lightning_flash(safe_delta)
 
 
@@ -46,11 +56,26 @@ func set_segment(segment: FlightRouteSegment) -> void:
 	if _environment_tint != null:
 		_environment_tint.color = _base_tint
 	_apply_wind_visibility(segment.id == &"red_sand_storm_layer")
+	if segment.id != &"red_sand_surface_route":
+		set_radar_pressure(0.0, false)
 	_set_ambience_stream(_active_audio_signature)
 
 
 func set_wind_acceleration(acceleration: Vector2) -> void:
 	_wind_acceleration = acceleration
+
+
+func set_radar_pressure(lock_risk: float, locked: bool) -> void:
+	_radar_pressure = clampf(lock_risk, 0.0, 1.0)
+	_radar_locked = locked and _radar_pressure > 0.0
+	_apply_radar_visibility(_radar_pressure > 0.0)
+	if _radar_pressure_tint != null:
+		var tint_color: Color = (
+			Color(0.72, 0.08, 0.13, 0.05 + _radar_pressure * 0.12)
+			if _radar_locked
+			else Color(0.45, 0.12, 0.24, 0.02 + _radar_pressure * 0.07)
+		)
+		_radar_pressure_tint.color = tint_color
 
 
 func flash_lightning(hit_ship: bool) -> void:
@@ -81,12 +106,36 @@ func are_wind_bands_visible() -> bool:
 	return not _wind_bands.is_empty() and _wind_bands[0].visible
 
 
+func is_radar_pressure_visible() -> bool:
+	return (
+		_radar_pressure > 0.0
+		and _radar_pressure_tint != null
+		and _radar_pressure_tint.visible
+	)
+
+
+func get_radar_pressure() -> float:
+	return _radar_pressure
+
+
 func _apply_wind_visibility(visible: bool) -> void:
 	for band: ColorRect in _wind_bands:
 		if band != null:
 			band.visible = visible
 	if not visible:
 		_wind_elapsed_seconds = 0.0
+
+
+func _apply_radar_visibility(visible: bool) -> void:
+	if _radar_pressure_tint != null:
+		_radar_pressure_tint.visible = visible
+		if not visible:
+			_radar_pressure_tint.color.a = 0.0
+	for sweep: ColorRect in _radar_sweeps:
+		if sweep != null:
+			sweep.visible = visible
+	if not visible:
+		_radar_elapsed_seconds = 0.0
 
 
 func _update_wind_bands(delta: float) -> void:
@@ -104,6 +153,26 @@ func _update_wind_bands(delta: float) -> void:
 			760.0
 		) - 80.0
 		band.modulate.a = 0.16 + pressure * 0.24
+
+
+func _update_radar_feedback(delta: float) -> void:
+	if _radar_pressure <= 0.0 or _radar_sweeps.is_empty():
+		return
+	_radar_elapsed_seconds += delta
+	var sweep_speed: float = 90.0 + _radar_pressure * 210.0
+	for index: int in _radar_sweeps.size():
+		var sweep: ColorRect = _radar_sweeps[index]
+		if sweep == null:
+			continue
+		sweep.position.y = fposmod(
+			_radar_elapsed_seconds * sweep_speed + float(index) * 190.0,
+			400.0
+		) - 20.0
+		sweep.modulate.a = (
+			0.52 + _radar_pressure * 0.48
+			if _radar_locked
+			else 0.24 + _radar_pressure * 0.46
+		)
 
 
 func _update_lightning_flash(delta: float) -> void:
