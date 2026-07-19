@@ -419,6 +419,15 @@ Flight Lab 的默认键位由 `SettingsService` 统一写入 Input Map；业务�
 - 雷达使用 Area2D/ShapeCast 与地形遮挡的简化规则，不做完整 AI 感知。
 - 检查点只保存稳定运行状态，不复制场景实例。
 
+### 8.5 赤砂星灰盒路线
+
+T-040 的标准 `FLIGHT` 场景使用 `FlightRouteDefinition` 与连续的
+`FlightRouteSegment` 数据描述八个阶段。阶段边界只切换环境目标、记录当前
+飞船检查点并更新灰盒反馈，不改写飞船位置、速度或姿态；环境数值继续由
+`FlightLabShip` 平滑逼近。路线目标时长、总距离、星球视觉尺度、地表高度和
+允许倒车距离均集中在 Resource 中。独立 Flight Lab 通过 debug 场景覆盖继续
+保留，不与正式赤砂星路线共享 Gate B 任务状态。
+
 ## 9. 大厅与目的地区域
 
 - 玩家使用 `CharacterBody2D`。

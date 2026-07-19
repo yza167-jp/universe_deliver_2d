@@ -1,0 +1,224 @@
+[gd_scene load_steps=14 format=3]
+
+[ext_resource type="Script" path="res://scripts/flight/red_sand_flight.gd" id="1_route_controller"]
+[ext_resource type="Script" path="res://scripts/flight/flight_lab_ship.gd" id="2_ship"]
+[ext_resource type="PackedScene" path="res://scenes/ui/red_sand_route_hud.tscn" id="3_hud"]
+[ext_resource type="Texture2D" path="res://assets/flight_lab_ship_placeholder.svg" id="4_ship_texture"]
+[ext_resource type="Resource" path="res://data/tuning/flight_tuning_m0.tres" id="5_tuning"]
+[ext_resource type="Resource" path="res://data/tuning/flight_environment_deep_space.tres" id="6_deep_space"]
+[ext_resource type="Resource" path="res://data/cargo/red_sand_m0.tres" id="7_cargo"]
+[ext_resource type="Script" path="res://scripts/flight/flight_laser_weapon.gd" id="8_laser_weapon"]
+[ext_resource type="Resource" path="res://data/m0_data_registry.tres" id="9_registry"]
+[ext_resource type="Resource" path="res://data/tuning/flight_route_red_sand_m0.tres" id="10_route"]
+[ext_resource type="Script" path="res://scripts/flight/red_sand_route_visuals.gd" id="11_route_visuals"]
+
+[sub_resource type="RectangleShape2D" id="ShapeShip"]
+size = Vector2(38, 16)
+
+[sub_resource type="ParticleProcessMaterial" id="ParticlesImpactSparks"]
+particle_flag_disable_z = true
+direction = Vector3(-1, 0, 0)
+spread = 180.0
+gravity = Vector3(0, 180, 0)
+initial_velocity_min = 70.0
+initial_velocity_max = 120.0
+scale_min = 1.0
+scale_max = 2.0
+color = Color(1, 0.72549, 0.286275, 1)
+
+[node name="RedSandFlight" type="Node2D"]
+script = ExtResource("1_route_controller")
+route_definition = ExtResource("10_route")
+data_registry = ExtResource("9_registry")
+
+[node name="Backdrop" type="CanvasLayer" parent="."]
+layer = -20
+
+[node name="Space" type="ColorRect" parent="Backdrop"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.0156863, 0.027451, 0.0588235, 1)
+
+[node name="AtmosphereTint" type="ColorRect" parent="Backdrop"]
+unique_name_in_owner = true
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.568627, 0.164706, 0.0823529, 0)
+
+[node name="SurfaceHaze" type="ColorRect" parent="Backdrop"]
+unique_name_in_owner = true
+offset_top = 210.0
+offset_right = 640.0
+offset_bottom = 360.0
+mouse_filter = 2
+color = Color(0.760784, 0.372549, 0.14902, 0)
+
+[node name="PlanetAnchor" type="Node2D" parent="Backdrop"]
+unique_name_in_owner = true
+position = Vector2(548, 106)
+scale = Vector2(0.55, 0.55)
+
+[node name="PlanetDisc" type="Polygon2D" parent="Backdrop/PlanetAnchor"]
+polygon = PackedVector2Array(0, -48, 18, -44, 34, -34, 44, -18, 48, 0, 44, 18, 34, 34, 18, 44, 0, 48, -18, 44, -34, 34, -44, 18, -48, 0, -44, -18, -34, -34, -18, -44)
+color = Color(0.658824, 0.278431, 0.145098, 1)
+
+[node name="PlanetLight" type="Polygon2D" parent="Backdrop/PlanetAnchor"]
+polygon = PackedVector2Array(-8, -46, 10, -44, 28, -35, 42, -18, 47, 3, 34, 1, 24, -16, 9, -31, -7, -40)
+color = Color(0.945098, 0.560784, 0.27451, 0.72)
+
+[node name="PlanetShadow" type="Polygon2D" parent="Backdrop/PlanetAnchor"]
+polygon = PackedVector2Array(-48, 0, -44, -18, -34, -34, -18, -44, 0, -48, -5, -25, -2, 0, -8, 24, -18, 44, -34, 34, -44, 18)
+color = Color(0.184314, 0.0745098, 0.0862745, 0.55)
+
+[node name="BackgroundLayers" type="Node2D" parent="."]
+
+[node name="FarStars" type="Parallax2D" parent="BackgroundLayers"]
+unique_name_in_owner = true
+z_index = -18
+scroll_scale = Vector2(0.08, 0.08)
+repeat_size = Vector2(640, 360)
+repeat_times = 3
+
+[node name="StarA" type="Polygon2D" parent="BackgroundLayers/FarStars"]
+position = Vector2(92, 72)
+polygon = PackedVector2Array(0, -2, 2, 0, 0, 2, -2, 0)
+color = Color(0.858824, 0.921569, 1, 0.9)
+
+[node name="StarB" type="Polygon2D" parent="BackgroundLayers/FarStars"]
+position = Vector2(236, 132)
+polygon = PackedVector2Array(0, -1, 1, 0, 0, 1, -1, 0)
+color = Color(0.858824, 0.921569, 1, 0.72)
+
+[node name="StarC" type="Polygon2D" parent="BackgroundLayers/FarStars"]
+position = Vector2(388, 54)
+polygon = PackedVector2Array(0, -2, 2, 0, 0, 2, -2, 0)
+color = Color(0.905882, 0.658824, 0.356863, 0.82)
+
+[node name="StarD" type="Polygon2D" parent="BackgroundLayers/FarStars"]
+position = Vector2(552, 206)
+polygon = PackedVector2Array(0, -1, 1, 0, 0, 1, -1, 0)
+color = Color(0.858824, 0.921569, 1, 0.68)
+
+[node name="DustBands" type="Parallax2D" parent="BackgroundLayers"]
+unique_name_in_owner = true
+z_index = -16
+scroll_scale = Vector2(0.18, 0.12)
+repeat_size = Vector2(960, 360)
+repeat_times = 3
+modulate = Color(1, 1, 1, 0.18)
+
+[node name="BandA" type="Polygon2D" parent="BackgroundLayers/DustBands"]
+polygon = PackedVector2Array(0, 110, 960, 48, 960, 92, 0, 154)
+color = Color(0.345098, 0.160784, 0.160784, 0.46)
+
+[node name="BandB" type="Polygon2D" parent="BackgroundLayers/DustBands"]
+polygon = PackedVector2Array(0, 236, 960, 178, 960, 204, 0, 262)
+color = Color(0.509804, 0.235294, 0.141176, 0.36)
+
+[node name="LowerHaze" type="Parallax2D" parent="BackgroundLayers"]
+unique_name_in_owner = true
+z_index = -14
+scroll_scale = Vector2(0.34, 0.18)
+repeat_size = Vector2(800, 360)
+repeat_times = 3
+modulate = Color(1, 1, 1, 0)
+
+[node name="CloudA" type="Polygon2D" parent="BackgroundLayers/LowerHaze"]
+polygon = PackedVector2Array(0, 224, 800, 198, 800, 226, 0, 252)
+color = Color(0.862745, 0.498039, 0.278431, 0.36)
+
+[node name="CloudB" type="Polygon2D" parent="BackgroundLayers/LowerHaze"]
+polygon = PackedVector2Array(0, 292, 800, 272, 800, 308, 0, 328)
+color = Color(0.639216, 0.298039, 0.188235, 0.42)
+
+[node name="World" type="Node2D" parent="."]
+
+[node name="RouteGeometry" type="Node2D" parent="World"]
+unique_name_in_owner = true
+script = ExtResource("11_route_visuals")
+planet_anchor_path = NodePath("../../Backdrop/PlanetAnchor")
+atmosphere_tint_path = NodePath("../../Backdrop/AtmosphereTint")
+surface_haze_path = NodePath("../../Backdrop/SurfaceHaze")
+far_stars_path = NodePath("../../BackgroundLayers/FarStars")
+dust_bands_path = NodePath("../../BackgroundLayers/DustBands")
+lower_haze_path = NodePath("../../BackgroundLayers/LowerHaze")
+
+[node name="FlightShip" type="CharacterBody2D" parent="World"]
+unique_name_in_owner = true
+position = Vector2(320, 190)
+collision_mask = 3
+script = ExtResource("2_ship")
+tuning = ExtResource("5_tuning")
+environment_profile = ExtResource("6_deep_space")
+cargo_definition = ExtResource("7_cargo")
+
+[node name="ShipSprite" type="Sprite2D" parent="World/FlightShip"]
+texture_filter = 1
+texture = ExtResource("4_ship_texture")
+
+[node name="EngineGlow" type="Polygon2D" parent="World/FlightShip"]
+polygon = PackedVector2Array(-23, -5, -34, 0, -23, 5)
+color = Color(0.905882, 0.658824, 0.356863, 0.92)
+
+[node name="BoostGlow" type="Polygon2D" parent="World/FlightShip"]
+visible = false
+polygon = PackedVector2Array(-25, -7, -48, 0, -25, 7)
+color = Color(0.309804, 0.847059, 1, 0.94)
+
+[node name="ReverseGlow" type="Polygon2D" parent="World/FlightShip"]
+visible = false
+polygon = PackedVector2Array(23, -5, 35, 0, 23, 5)
+color = Color(0.462745, 0.945098, 1, 0.9)
+
+[node name="ImpactSparks" type="CPUParticles2D" parent="World/FlightShip"]
+emitting = false
+amount = 10
+lifetime = 0.28
+one_shot = true
+explosiveness = 0.92
+process_material = SubResource("ParticlesImpactSparks")
+
+[node name="LaserWeapon" type="Node2D" parent="World/FlightShip"]
+unique_name_in_owner = true
+position = Vector2(22, 0)
+script = ExtResource("8_laser_weapon")
+tuning = ExtResource("5_tuning")
+
+[node name="Beam" type="Line2D" parent="World/FlightShip/LaserWeapon"]
+unique_name_in_owner = true
+visible = false
+z_index = 6
+points = PackedVector2Array(0, 0, 120, 0)
+width = 2.0
+default_color = Color(0.462745, 0.945098, 1, 0.96)
+
+[node name="MuzzleFlash" type="Polygon2D" parent="World/FlightShip/LaserWeapon"]
+unique_name_in_owner = true
+visible = false
+z_index = 7
+polygon = PackedVector2Array(0, -4, 10, 0, 0, 4, 3, 0)
+color = Color(0.811765, 0.984314, 1, 0.96)
+
+[node name="ShotAudio" type="AudioStreamPlayer2D" parent="World/FlightShip/LaserWeapon"]
+unique_name_in_owner = true
+volume_db = -7.0
+max_distance = 720.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/FlightShip"]
+shape = SubResource("ShapeShip")
+
+[node name="FlightCamera" type="Camera2D" parent="World"]
+unique_name_in_owner = true
+position = Vector2(320, 190)
+enabled = true
+
+[node name="RedSandRouteHUD" parent="." instance=ExtResource("3_hud")]
+unique_name_in_owner = true

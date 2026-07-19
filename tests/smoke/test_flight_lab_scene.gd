@@ -14,7 +14,11 @@ func run() -> Array[String]:
 		return failures
 
 	var stage_scene: Node = packed_stage.instantiate()
-	expect_true(stage_scene is FlightLab, "FLIGHT stage must host Flight Lab.", failures)
+	expect_true(
+		stage_scene is RedSandFlight,
+		"Standard FLIGHT stage must host the Red Sand route.",
+		failures
+	)
 	expect_true(stage_scene.name == &"Flight", "FLIGHT stage root must remain Flight.", failures)
 	stage_scene.free()
 

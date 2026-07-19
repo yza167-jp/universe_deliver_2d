@@ -1,5 +1,5 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="PackedScene" path="res://scenes/flight/flight_lab.tscn" id="1_flight_lab"]
+[ext_resource type="PackedScene" path="res://scenes/flight/red_sand_flight.tscn" id="1_red_sand"]
 
-[node name="Flight" instance=ExtResource("1_flight_lab")]
+[node name="Flight" instance=ExtResource("1_red_sand")]

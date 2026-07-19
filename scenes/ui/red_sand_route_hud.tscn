@@ -1,0 +1,124 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/red_sand_route_hud.gd" id="1_hud"]
+
+[sub_resource type="Theme" id="ThemeRoute"]
+default_font_size = 10
+
+[sub_resource type="StyleBoxFlat" id="StylePanel"]
+bg_color = Color(0.027451, 0.0509804, 0.0862745, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.905882, 0.658824, 0.356863, 0.82)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="RedSandRouteHUD" type="CanvasLayer"]
+layer = 30
+script = ExtResource("1_hud")
+
+[node name="FlightPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 264.0
+offset_bottom = 78.0
+theme = SubResource("ThemeRoute")
+theme_override_styles/panel = SubResource("StylePanel")
+
+[node name="Margin" type="MarginContainer" parent="FlightPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 6
+
+[node name="Content" type="VBoxContainer" parent="FlightPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="MotionLabel" type="Label" parent="FlightPanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.945098, 0.972549, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_RED_SAND_ROUTE_HUD_MOTION"
+
+[node name="ResourcesLabel" type="Label" parent="FlightPanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.639216, 0.843137, 0.815686, 1)
+theme_override_font_sizes/font_size = 9
+text = "UI_RED_SAND_ROUTE_HUD_RESOURCES"
+
+[node name="RoutePanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+offset_left = 272.0
+offset_top = 8.0
+offset_right = 632.0
+offset_bottom = 78.0
+theme = SubResource("ThemeRoute")
+theme_override_styles/panel = SubResource("StylePanel")
+
+[node name="Margin" type="MarginContainer" parent="RoutePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 5
+
+[node name="Content" type="VBoxContainer" parent="RoutePanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 1
+
+[node name="StageLabel" type="Label" parent="RoutePanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_RED_SAND_ROUTE_HUD_STAGE"
+
+[node name="ProgressLabel" type="Label" parent="RoutePanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.741176, 0.823529, 0.85098, 1)
+theme_override_font_sizes/font_size = 9
+text = "UI_RED_SAND_ROUTE_HUD_PROGRESS"
+
+[node name="InstructionLabel" type="Label" parent="RoutePanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.945098, 0.972549, 1)
+theme_override_font_sizes/font_size = 9
+text = "UI_RED_SAND_ROUTE_INSTRUCTION_SYSTEM_EDGE"
+text_overrun_behavior = 3
+
+[node name="StatusPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+offset_left = 104.0
+offset_top = 320.0
+offset_right = 536.0
+offset_bottom = 352.0
+theme = SubResource("ThemeRoute")
+theme_override_styles/panel = SubResource("StylePanel")
+
+[node name="Margin" type="MarginContainer" parent="StatusPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 5
+
+[node name="StatusLabel" type="Label" parent="StatusPanel/Margin"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.945098, 0.972549, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_RED_SAND_ROUTE_STATUS_STAGE"
+horizontal_alignment = 1
+text_overrun_behavior = 3

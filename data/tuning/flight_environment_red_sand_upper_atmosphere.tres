@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="FlightEnvironmentProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/flight/flight_environment_profile.gd" id="1_profile"]
+
+[resource]
+script = ExtResource("1_profile")
+id = &"environment_red_sand_upper_atmosphere"
+display_name_key = &"UI_RED_SAND_ROUTE_STAGE_ATMOSPHERE_EDGE"
+planet_gravity = 200.0
+target_gravity_blend = 0.35
+target_air_density = 0.12
+horizontal_drag = 0.06
+vertical_drag = 0.1
+terminal_fall_speed_safety = 480.0
+transition_rate = 0.14

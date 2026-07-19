@@ -74,6 +74,17 @@ func debug_switch_to_stage(requested_stage: int) -> bool:
 	return _change_stage(requested_stage)
 
 
+## Debug-only scene override keeps isolated labs available after a stage gains real content.
+func debug_switch_to_stage_scene(requested_stage: int, scene_path: String) -> bool:
+	if not OS.is_debug_build():
+		return _reject_transition(requested_stage, "Direct stage switching is debug-only.")
+	if not is_valid_stage(requested_stage):
+		return _reject_transition(requested_stage, "Requested debug stage is not defined.")
+	if scene_path.is_empty():
+		return _reject_transition(requested_stage, "Requested debug scene path is empty.")
+	return _change_stage(requested_stage, scene_path)
+
+
 static func get_all_stages() -> PackedInt32Array:
 	return PackedInt32Array([
 		Stage.MAIN_MENU,
@@ -143,11 +154,15 @@ static func get_stage_scene_path(stage: int) -> String:
 			return ""
 
 
-func _change_stage(requested_stage: int) -> bool:
+func _change_stage(requested_stage: int, scene_path_override: String = "") -> bool:
 	if not is_instance_valid(_scene_container):
 		return _reject_transition(requested_stage, "No scene container is registered.")
 
-	var scene_path: String = get_stage_scene_path(requested_stage)
+	var scene_path: String = (
+		scene_path_override
+		if not scene_path_override.is_empty()
+		else get_stage_scene_path(requested_stage)
+	)
 	var scene_resource: Resource = load(scene_path)
 	var packed_scene: PackedScene = scene_resource as PackedScene
 	if packed_scene == null:

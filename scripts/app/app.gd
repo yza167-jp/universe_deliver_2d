@@ -3,6 +3,8 @@ extends Control
 
 const DEBUG_UI_ARGUMENT: String = "--show-debug-ui"
 const DEBUG_FLIGHT_LAB_ARGUMENT: String = "--flight-lab"
+const DEBUG_RED_SAND_ROUTE_ARGUMENT: String = "--red-sand-route"
+const FLIGHT_LAB_SCENE_PATH: String = "res://scenes/flight/flight_lab.tscn"
 const FULLSCREEN_ACTION: StringName = &"toggle_fullscreen"
 
 @onready var scene_container: Control = %SceneContainer
@@ -34,6 +36,8 @@ func _ready() -> void:
 		return
 	if should_start_in_flight_lab(OS.is_debug_build(), user_arguments):
 		call_deferred("_open_direct_flight_lab")
+	elif should_start_in_red_sand_route(OS.is_debug_build(), user_arguments):
+		call_deferred("_open_direct_red_sand_route")
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -69,8 +73,16 @@ func _on_stage_changed(_previous_stage: int, current_stage: int) -> void:
 
 
 func _open_direct_flight_lab() -> void:
-	if not scene_router.debug_switch_to_stage(SceneRouterService.Stage.FLIGHT):
+	if not scene_router.debug_switch_to_stage_scene(
+		SceneRouterService.Stage.FLIGHT,
+		FLIGHT_LAB_SCENE_PATH
+	):
 		push_error("App could not open Flight Lab: %s" % scene_router.last_error)
+
+
+func _open_direct_red_sand_route() -> void:
+	if not scene_router.debug_switch_to_stage(SceneRouterService.Stage.FLIGHT):
+		push_error("App could not open Red Sand route: %s" % scene_router.last_error)
 
 
 func toggle_fullscreen() -> bool:
@@ -103,3 +115,10 @@ static func should_start_in_flight_lab(
 	user_arguments: PackedStringArray
 ) -> bool:
 	return is_debug_build and user_arguments.has(DEBUG_FLIGHT_LAB_ARGUMENT)
+
+
+static func should_start_in_red_sand_route(
+	is_debug_build: bool,
+	user_arguments: PackedStringArray
+) -> bool:
+	return is_debug_build and user_arguments.has(DEBUG_RED_SAND_ROUTE_ARGUMENT)
