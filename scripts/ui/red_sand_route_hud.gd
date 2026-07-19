@@ -165,6 +165,29 @@ func show_route_complete() -> void:
 	_show_status(tr("UI_RED_SAND_ROUTE_STATUS_COMPLETE"), 6.0)
 
 
+func show_lightning_warning(
+	warning_seconds: float,
+	slow_motion_active: bool
+) -> void:
+	var warning_key: StringName = (
+		&"UI_RED_SAND_HAZARD_LIGHTNING_WARNING_SLOW"
+		if slow_motion_active
+		else &"UI_RED_SAND_HAZARD_LIGHTNING_WARNING"
+	)
+	_show_status(
+		tr(warning_key) % maxf(warning_seconds, 0.0),
+		maxf(warning_seconds + 0.1, 1.0)
+	)
+
+
+func show_lightning_hit(damage: float) -> void:
+	_show_status(tr("UI_RED_SAND_HAZARD_LIGHTNING_HIT") % roundi(damage), 2.8)
+
+
+func show_lightning_avoided() -> void:
+	_show_status(tr("UI_RED_SAND_HAZARD_LIGHTNING_AVOIDED"))
+
+
 func get_stage_text() -> String:
 	return "" if _stage_label == null else _stage_label.text
 

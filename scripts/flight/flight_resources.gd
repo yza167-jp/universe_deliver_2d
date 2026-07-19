@@ -125,17 +125,25 @@ func step_propulsion(
 func apply_collision(result: FlightCollisionResult) -> void:
 	if result == null or not result.is_impact():
 		return
-	var remaining_damage: float = maxf(result.total_damage, 0.0)
+	_apply_damage(result.total_damage, result.cargo_damage)
+	if result.should_fail:
+		hull = 0.0
+
+
+func apply_hazard_damage(total_damage: float, hazard_cargo_damage: float = 0.0) -> void:
+	_apply_damage(total_damage, hazard_cargo_damage)
+
+
+func _apply_damage(total_damage: float, applied_cargo_damage: float) -> void:
+	var remaining_damage: float = maxf(total_damage, 0.0)
 	var shield_damage: float = minf(shield, remaining_damage)
 	shield -= shield_damage
 	remaining_damage -= shield_damage
 	hull = maxf(hull - remaining_damage, 0.0)
 	cargo_integrity = maxf(
-		cargo_integrity - maxf(result.cargo_damage, 0.0),
+		cargo_integrity - maxf(applied_cargo_damage, 0.0),
 		0.0
 	)
-	if result.should_fail:
-		hull = 0.0
 
 
 func clear_telemetry() -> void:

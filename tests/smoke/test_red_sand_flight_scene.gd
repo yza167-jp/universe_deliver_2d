@@ -56,9 +56,31 @@ func run() -> Array[String]:
 		"Red Sand scene must bind the validated eight-stage route data.",
 		failures
 	)
+	var asteroid_hazards: Array[Node] = route_scene.find_children(
+		"*",
+		"DestructibleAsteroid",
+		true,
+		false
+	)
+	var lightning_hazards: Array[Node] = route_scene.find_children(
+		"*",
+		"FlightLightningStrike",
+		true,
+		false
+	)
 	expect_true(
-		route_scene.find_children("*", "DestructibleAsteroid", true, false).is_empty(),
-		"T-040 must not pre-implement T-041 asteroid hazards.",
+		asteroid_hazards.size() == 8
+		and lightning_hazards.size() == 4
+		and route_scene.get_node_or_null("World/Hazards") is RedSandHazardDirector
+		and route_scene.get_node_or_null(
+			"EnvironmentFeedback"
+		) is RedSandEnvironmentFeedback,
+		"T-041 route must bind its fixed asteroid, lightning, and feedback components.",
+		failures
+	)
+	expect_true(
+		route_scene.find_children("*", "CharacterBody2D", true, false).size() == 1,
+		"T-041 must not add enemies or another controllable body.",
 		failures
 	)
 	route_scene.free()

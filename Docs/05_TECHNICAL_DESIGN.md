@@ -428,6 +428,17 @@ T-040 的标准 `FLIGHT` 场景使用 `FlightRouteDefinition` 与连续的
 允许倒车距离均集中在 Resource 中。独立 Flight Lab 通过 debug 场景覆盖继续
 保留，不与正式赤砂星路线共享 Gate B 任务状态。
 
+### 8.6 赤砂星固定危险与环境反馈
+
+T-041 的陨石和雷击均由场景中的固定节点编排，不使用随机天气：陨石复用
+`DestructibleAsteroid` 的碰撞层、耐久与检查点重置；`FlightLightningStrike`
+以路线距离触发可见预警，再按固定位置结算一次命中。`RedSandHazardDirector`
+只在雷暴段施加由 `FlightHazardModel` 计算的确定性风力，辅助驾驶按现有强度
+降低风力压力。慢动作辅助只在雷击预警窗口临时调整时间倍率，命中范围、伤害、
+路线状态和叙事结果保持相同，并在命中、重开、离开雷暴或释放场景时恢复原倍率。
+各阶段的占位环境音与屏幕色调由局部反馈组件切换，不引入全局音频 Manager；
+最终音频、粒子和美术仍属于 T-044。
+
 ## 9. 大厅与目的地区域
 
 - 玩家使用 `CharacterBody2D`。

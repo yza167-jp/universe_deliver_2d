@@ -1,0 +1,219 @@
+class_name RedSandEnvironmentFeedback
+extends CanvasLayer
+
+const AMBIENCE_SAMPLE_RATE: int = 11025
+const AMBIENCE_LOOP_SECONDS: float = 1.0
+const LIGHTNING_FLASH_SECONDS: float = 0.18
+
+@onready var _environment_tint: ColorRect = %EnvironmentTint
+@onready var _lightning_flash: ColorRect = %LightningFlash
+@onready var _ambience_audio: AudioStreamPlayer = %AmbienceAudio
+@onready var _wind_bands: Array[ColorRect] = [
+	%WindBandA,
+	%WindBandB,
+	%WindBandC,
+]
+
+var _active_environment_id: StringName = &""
+var _active_audio_signature: StringName = &""
+var _ambience_cache: Dictionary[StringName, AudioStreamWAV] = {}
+var _wind_acceleration: Vector2 = Vector2.ZERO
+var _wind_elapsed_seconds: float = 0.0
+var _lightning_flash_remaining: float = 0.0
+var _lightning_flash_peak_alpha: float = 0.0
+var _base_tint: Color = Color.TRANSPARENT
+
+
+func _ready() -> void:
+	_set_mouse_passthrough(self)
+	_apply_wind_visibility(false)
+	if _lightning_flash != null:
+		_lightning_flash.color.a = 0.0
+
+
+func _process(delta: float) -> void:
+	var safe_delta: float = maxf(delta, 0.0)
+	_update_wind_bands(safe_delta)
+	_update_lightning_flash(safe_delta)
+
+
+func set_segment(segment: FlightRouteSegment) -> void:
+	if segment == null:
+		return
+	_active_environment_id = segment.id
+	_active_audio_signature = _resolve_audio_signature(segment.id)
+	_base_tint = _resolve_tint(segment.id)
+	if _environment_tint != null:
+		_environment_tint.color = _base_tint
+	_apply_wind_visibility(segment.id == &"red_sand_storm_layer")
+	_set_ambience_stream(_active_audio_signature)
+
+
+func set_wind_acceleration(acceleration: Vector2) -> void:
+	_wind_acceleration = acceleration
+
+
+func flash_lightning(hit_ship: bool) -> void:
+	_lightning_flash_remaining = LIGHTNING_FLASH_SECONDS
+	if _lightning_flash != null:
+		var flash_color: Color = (
+			Color(0.96, 0.94, 1.0, 0.68)
+			if hit_ship
+			else Color(0.72, 0.64, 1.0, 0.42)
+		)
+		_lightning_flash_peak_alpha = flash_color.a
+		_lightning_flash.color = flash_color
+
+
+func get_active_environment_id() -> StringName:
+	return _active_environment_id
+
+
+func get_active_audio_signature() -> StringName:
+	return _active_audio_signature
+
+
+func get_environment_tint() -> Color:
+	return Color.TRANSPARENT if _environment_tint == null else _environment_tint.color
+
+
+func are_wind_bands_visible() -> bool:
+	return not _wind_bands.is_empty() and _wind_bands[0].visible
+
+
+func _apply_wind_visibility(visible: bool) -> void:
+	for band: ColorRect in _wind_bands:
+		if band != null:
+			band.visible = visible
+	if not visible:
+		_wind_elapsed_seconds = 0.0
+
+
+func _update_wind_bands(delta: float) -> void:
+	if _wind_bands.is_empty() or not _wind_bands[0].visible:
+		return
+	_wind_elapsed_seconds += delta
+	var pressure: float = clampf(_wind_acceleration.length() / 100.0, 0.15, 1.0)
+	var drift_speed: float = 80.0 + pressure * 180.0
+	for index: int in _wind_bands.size():
+		var band: ColorRect = _wind_bands[index]
+		if band == null:
+			continue
+		band.position.x = fposmod(
+			_wind_elapsed_seconds * drift_speed + float(index) * 250.0,
+			760.0
+		) - 80.0
+		band.modulate.a = 0.16 + pressure * 0.24
+
+
+func _update_lightning_flash(delta: float) -> void:
+	if _lightning_flash == null or _lightning_flash_remaining <= 0.0:
+		return
+	_lightning_flash_remaining = maxf(_lightning_flash_remaining - delta, 0.0)
+	var fade: float = _lightning_flash_remaining / LIGHTNING_FLASH_SECONDS
+	var flash_color: Color = _lightning_flash.color
+	flash_color.a = _lightning_flash_peak_alpha * fade
+	_lightning_flash.color = flash_color
+
+
+func _set_ambience_stream(signature: StringName) -> void:
+	if _ambience_audio == null:
+		return
+	var stream: AudioStreamWAV = _ambience_cache.get(signature) as AudioStreamWAV
+	if stream == null:
+		stream = _create_ambience_stream(signature)
+		_ambience_cache[signature] = stream
+	_ambience_audio.stream = stream
+	if DisplayServer.get_name() != "headless":
+		_ambience_audio.play()
+
+
+func _resolve_audio_signature(segment_id: StringName) -> StringName:
+	match segment_id:
+		&"red_sand_system_edge":
+			return &"space_quiet"
+		&"red_sand_asteroid_lane":
+			return &"debris_tension"
+		&"red_sand_near_orbit":
+			return &"approach_pull"
+		&"red_sand_atmosphere_edge":
+			return &"upper_air"
+		&"red_sand_storm_layer":
+			return &"storm_pressure"
+		&"red_sand_lower_clouds":
+			return &"lower_wind"
+		&"red_sand_surface_route":
+			return &"surface_dust"
+		&"red_sand_landing_approach":
+			return &"landing_beacon"
+	return &"space_quiet"
+
+
+func _resolve_tint(segment_id: StringName) -> Color:
+	match segment_id:
+		&"red_sand_asteroid_lane":
+			return Color(0.08, 0.1, 0.18, 0.035)
+		&"red_sand_near_orbit":
+			return Color(0.08, 0.2, 0.26, 0.035)
+		&"red_sand_atmosphere_edge":
+			return Color(0.58, 0.2, 0.08, 0.055)
+		&"red_sand_storm_layer":
+			return Color(0.24, 0.12, 0.36, 0.13)
+		&"red_sand_lower_clouds":
+			return Color(0.56, 0.22, 0.09, 0.075)
+		&"red_sand_surface_route", &"red_sand_landing_approach":
+			return Color(0.48, 0.18, 0.07, 0.06)
+	return Color.TRANSPARENT
+
+
+func _create_ambience_stream(signature: StringName) -> AudioStreamWAV:
+	var stream: AudioStreamWAV = AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = AMBIENCE_SAMPLE_RATE
+	stream.stereo = false
+	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	var frame_count: int = maxi(int(AMBIENCE_SAMPLE_RATE * AMBIENCE_LOOP_SECONDS), 1)
+	stream.loop_begin = 0
+	stream.loop_end = frame_count
+	var tone_settings: Vector2 = _resolve_tone_settings(signature)
+	var audio_data: PackedByteArray = PackedByteArray()
+	audio_data.resize(frame_count * 2)
+	for frame_index: int in frame_count:
+		var time_seconds: float = float(frame_index) / float(AMBIENCE_SAMPLE_RATE)
+		var base_tone: float = sin(TAU * tone_settings.x * time_seconds) * 0.12
+		var texture: float = (
+			sin(TAU * tone_settings.x * 2.03 * time_seconds + 0.4)
+			+ sin(TAU * tone_settings.x * 3.17 * time_seconds + 1.1) * 0.45
+		) * tone_settings.y
+		var sample: float = clampf(base_tone + texture, -0.45, 0.45)
+		var encoded_sample: int = int(round(sample * 32767.0)) & 0xffff
+		audio_data[frame_index * 2] = encoded_sample & 0xff
+		audio_data[frame_index * 2 + 1] = (encoded_sample >> 8) & 0xff
+	stream.data = audio_data
+	return stream
+
+
+func _resolve_tone_settings(signature: StringName) -> Vector2:
+	match signature:
+		&"debris_tension":
+			return Vector2(61.0, 0.045)
+		&"approach_pull":
+			return Vector2(72.0, 0.05)
+		&"upper_air":
+			return Vector2(88.0, 0.075)
+		&"storm_pressure":
+			return Vector2(43.0, 0.15)
+		&"lower_wind":
+			return Vector2(67.0, 0.1)
+		&"surface_dust":
+			return Vector2(54.0, 0.08)
+		&"landing_beacon":
+			return Vector2(82.0, 0.06)
+	return Vector2(48.0, 0.025)
+
+
+func _set_mouse_passthrough(node: Node) -> void:
+	if node is Control:
+		(node as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for child: Node in node.get_children():
+		_set_mouse_passthrough(child)

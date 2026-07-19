@@ -12,6 +12,11 @@ signal laser_target_hit(
 	target_destroyed: bool
 )
 signal boost_blocked(reason_key: StringName)
+signal environment_damage_resolved(
+	reason_key: StringName,
+	damage: float,
+	cargo_damage: float
+)
 
 const THROTTLE_ACTION: StringName = &"flight_throttle"
 const BRAKE_ACTION: StringName = &"flight_brake"
@@ -373,6 +378,31 @@ func resolve_impact(
 	)
 	_apply_collision_result(result)
 	return result
+
+
+func apply_environment_damage(
+	damage: float,
+	hazard_cargo_damage: float,
+	reason_key: StringName
+) -> bool:
+	var safe_damage: float = maxf(damage, 0.0)
+	var safe_cargo_damage: float = maxf(hazard_cargo_damage, 0.0)
+	if is_failed or (safe_damage <= 0.0 and safe_cargo_damage <= 0.0):
+		return false
+	var previous_cargo_integrity: float = cargo_integrity
+	resources.apply_hazard_damage(safe_damage, safe_cargo_damage)
+	if _impact_sparks != null:
+		_impact_sparks.restart()
+		_impact_sparks.emitting = true
+	environment_damage_resolved.emit(reason_key, safe_damage, safe_cargo_damage)
+	_emit_cargo_warning_if_needed(previous_cargo_integrity)
+	if hull <= 0.0:
+		is_failed = true
+		velocity = Vector2.ZERO
+		angular_velocity = 0.0
+		_clear_control_inputs()
+		flight_failed.emit(reason_key)
+	return true
 
 
 func set_environment_profile(

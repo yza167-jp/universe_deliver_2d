@@ -10,6 +10,8 @@ const ENTRY_FINALIZE_SEGMENT_INDEX: int = 7
 @onready var flight_camera: Camera2D = %FlightCamera
 @onready var route_hud: RedSandRouteHUD = %RedSandRouteHUD
 @onready var route_visuals: RedSandRouteVisuals = %RouteGeometry
+@onready var hazard_director: RedSandHazardDirector = %Hazards
+@onready var environment_feedback: RedSandEnvironmentFeedback = %EnvironmentFeedback
 
 @export var route_definition: FlightRouteDefinition
 @export var data_registry: GameDataRegistry
@@ -39,7 +41,15 @@ func _ready() -> void:
 	if not route_visuals.configure(route_definition, route_origin_x):
 		push_error("Red Sand route could not build its graybox visuals.")
 		return
+	if not hazard_director.bind(
+		flight_ship,
+		route_origin_x,
+		_resolve_settings_service()
+	):
+		push_error("Red Sand route could not configure its fixed hazards.")
+		return
 	_connect_ship_signals()
+	_connect_hazard_signals()
 	_entry_style_tracker.bind_run_state(_resolve_order_run_state())
 	flight_ship.set_laser_enabled(_resolve_laser_enabled_from_loadout())
 	var assist_strength: float = _resolve_assist_strength()
@@ -55,11 +65,20 @@ func _ready() -> void:
 	flight_ship.restore_checkpoint()
 	_active_segment_index = 0
 	_maximum_route_distance = 0.0
+	hazard_director.set_active_segment(first_segment.id)
+	environment_feedback.set_segment(first_segment)
 	_sync_order_run_checkpoint(first_segment.checkpoint_id)
 	route_hud.bind(flight_ship, route_definition)
 	_sync_camera_to_ship()
 	_update_route_visuals()
 	_refresh_hud()
+
+
+func _physics_process(delta: float) -> void:
+	if hazard_director == null or environment_feedback == null:
+		return
+	var wind_acceleration: Vector2 = hazard_director.step_physics(delta)
+	environment_feedback.set_wind_acceleration(wind_acceleration)
 
 
 func _process(delta: float) -> void:
@@ -69,6 +88,7 @@ func _process(delta: float) -> void:
 		_update_entry_style_tracking(delta)
 	advance_route_state()
 	enforce_forward_route_limit()
+	hazard_director.advance_hazards(delta, _maximum_route_distance)
 	_sync_camera_to_ship()
 	_update_camera_shake(delta)
 	_update_route_visuals()
@@ -95,6 +115,14 @@ func get_route_hud() -> RedSandRouteHUD:
 
 func get_route_definition() -> FlightRouteDefinition:
 	return route_definition
+
+
+func get_hazard_director() -> RedSandHazardDirector:
+	return hazard_director
+
+
+func get_environment_feedback() -> RedSandEnvironmentFeedback:
+	return environment_feedback
 
 
 func get_active_segment_index() -> int:
@@ -203,6 +231,9 @@ func restart_from_checkpoint(is_automatic: bool = false) -> bool:
 		get_active_segment().start_distance
 	)
 	_route_completed = false
+	hazard_director.reset_for_checkpoint(_maximum_route_distance)
+	hazard_director.set_active_segment(get_active_segment().id)
+	environment_feedback.set_segment(get_active_segment())
 	if (
 		_active_segment_index >= ENTRY_START_SEGMENT_INDEX
 		and _active_segment_index < ENTRY_FINALIZE_SEGMENT_INDEX
@@ -224,6 +255,8 @@ func _validate_runtime_dependencies() -> bool:
 		or flight_camera == null
 		or route_hud == null
 		or route_visuals == null
+		or hazard_director == null
+		or environment_feedback == null
 		or route_definition == null
 	):
 		push_error("Red Sand route is missing required scene dependencies.")
@@ -239,6 +272,8 @@ func _validate_runtime_dependencies() -> bool:
 func _enter_segment(segment_index: int) -> void:
 	var segment: FlightRouteSegment = route_definition.segments[segment_index]
 	flight_ship.set_environment_profile(segment.environment_profile, false)
+	hazard_director.set_active_segment(segment.id)
+	environment_feedback.set_segment(segment)
 	flight_ship.capture_checkpoint(segment.checkpoint_id)
 	_sync_order_run_checkpoint(segment.checkpoint_id)
 	if segment_index == ENTRY_START_SEGMENT_INDEX:
@@ -250,6 +285,7 @@ func _enter_segment(segment_index: int) -> void:
 
 func _complete_route() -> void:
 	_route_completed = true
+	hazard_director.cancel_slow_motion()
 	_finalize_entry_style()
 	_sync_order_run_resources()
 	route_hud.show_route_complete()
@@ -329,12 +365,26 @@ func _connect_ship_signals() -> void:
 		flight_ship.boost_blocked.connect(_on_boost_blocked)
 
 
+func _connect_hazard_signals() -> void:
+	if not hazard_director.lightning_warning_started.is_connected(
+		_on_lightning_warning_started
+	):
+		hazard_director.lightning_warning_started.connect(
+			_on_lightning_warning_started
+		)
+	if not hazard_director.lightning_resolved.is_connected(
+		_on_lightning_resolved
+	):
+		hazard_director.lightning_resolved.connect(_on_lightning_resolved)
+
+
 func _on_impact_resolved(severity: int, impact_speed: float) -> void:
 	route_hud.show_impact(severity, impact_speed)
 	_start_camera_shake(severity)
 
 
 func _on_flight_failed(reason_key: StringName) -> void:
+	hazard_director.cancel_slow_motion()
 	var retry_delay: float = maxf(
 		flight_ship.tuning.failure_retry_delay_seconds
 		if flight_ship.tuning != null
@@ -366,6 +416,27 @@ func _on_laser_fired(hit_target: bool) -> void:
 
 func _on_boost_blocked(reason_key: StringName) -> void:
 	route_hud.show_boost_blocked(reason_key)
+
+
+func _on_lightning_warning_started(
+	_strike_id: StringName,
+	warning_seconds: float,
+	slow_motion_active: bool
+) -> void:
+	route_hud.show_lightning_warning(warning_seconds, slow_motion_active)
+
+
+func _on_lightning_resolved(
+	_strike_id: StringName,
+	hit_ship: bool,
+	damage: float
+) -> void:
+	environment_feedback.flash_lightning(hit_ship)
+	if hit_ship:
+		route_hud.show_lightning_hit(damage)
+		_start_camera_shake(FlightCollisionResult.Severity.HARD)
+	else:
+		route_hud.show_lightning_avoided()
 
 
 func _update_auto_retry(delta: float) -> void:
@@ -424,21 +495,23 @@ func _clear_camera_shake() -> void:
 
 
 func _resolve_assist_strength() -> float:
-	var settings_service: SettingsServiceModel = settings_service_override
-	if settings_service == null:
-		settings_service = get_node_or_null("/root/SettingsService") as SettingsServiceModel
+	var settings_service: SettingsServiceModel = _resolve_settings_service()
 	if settings_service == null:
 		return FlightLabShip.DEFAULT_ASSIST_STRENGTH
 	return settings_service.settings.flight_assist_strength
 
 
 func _resolve_screen_shake_strength() -> float:
-	var settings_service: SettingsServiceModel = settings_service_override
-	if settings_service == null:
-		settings_service = get_node_or_null("/root/SettingsService") as SettingsServiceModel
+	var settings_service: SettingsServiceModel = _resolve_settings_service()
 	if settings_service == null:
 		return LocalSettingsData.DEFAULT_SCREEN_SHAKE_STRENGTH
 	return clampf(settings_service.settings.screen_shake_strength, 0.0, 1.0)
+
+
+func _resolve_settings_service() -> SettingsServiceModel:
+	if settings_service_override != null:
+		return settings_service_override
+	return get_node_or_null("/root/SettingsService") as SettingsServiceModel
 
 
 func _resolve_game_state() -> GameStateModel:
