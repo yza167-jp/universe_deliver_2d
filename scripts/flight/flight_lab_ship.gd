@@ -33,6 +33,10 @@ const FLIGHT_FAILURE_KEY: StringName = &"UI_FLIGHT_LAB_FAILURE_COLLISION"
 const ENGINE_IDLE_SCALE: float = 0.55
 const ENGINE_FULL_SCALE: float = 1.35
 const ENGINE_IDLE_ALPHA: float = 0.35
+const FEEDBACK_AUDIO_SAMPLE_RATE: int = 11025
+const ENGINE_LOOP_SECONDS: float = 1.0
+const BOOST_SOUND_SECONDS: float = 0.32
+const COLLISION_SOUND_SECONDS: float = 0.2
 
 @export var stable_start_position: Vector2 = Vector2(320.0, 190.0)
 @export var tuning: FlightTuning = FlightTuning.new()
@@ -94,15 +98,33 @@ var effective_reverse_input: float = 0.0
 @onready var _reverse_glow: Polygon2D = $ReverseGlow
 @onready var _impact_sparks: CPUParticles2D = $ImpactSparks
 @onready var _laser_weapon: FlightLaserWeapon = %LaserWeapon
+@onready var _engine_trail_particles: CPUParticles2D = get_node_or_null(
+	"EngineTrailParticles"
+) as CPUParticles2D
+@onready var _boost_trail_particles: CPUParticles2D = get_node_or_null(
+	"BoostTrailParticles"
+) as CPUParticles2D
+@onready var _engine_audio: AudioStreamPlayer2D = get_node_or_null(
+	"EngineAudio"
+) as AudioStreamPlayer2D
+@onready var _boost_audio: AudioStreamPlayer2D = get_node_or_null(
+	"BoostAudio"
+) as AudioStreamPlayer2D
+@onready var _collision_audio: AudioStreamPlayer2D = get_node_or_null(
+	"CollisionAudio"
+) as AudioStreamPlayer2D
 
 var _checkpoint_state: FlightCheckpointState
 var _collision_feedback_cooldown_remaining: float = 0.0
 var _triggered_cargo_warning_keys: Dictionary[StringName, bool] = {}
 var _fire_input_held: bool = false
 var _reverse_boost_warning_latched: bool = false
+var _boost_feedback_active: bool = false
 
 
 func _ready() -> void:
+	_initialize_audio_feedback()
+	_update_engine_feedback()
 	if _laser_weapon == null:
 		return
 	_laser_weapon.tuning = tuning
@@ -544,6 +566,26 @@ func get_laser_weapon() -> FlightLaserWeapon:
 	return _laser_weapon
 
 
+func get_engine_trail_particles() -> CPUParticles2D:
+	return _engine_trail_particles
+
+
+func get_boost_trail_particles() -> CPUParticles2D:
+	return _boost_trail_particles
+
+
+func get_engine_audio() -> AudioStreamPlayer2D:
+	return _engine_audio
+
+
+func get_boost_audio() -> AudioStreamPlayer2D:
+	return _boost_audio
+
+
+func get_collision_audio() -> AudioStreamPlayer2D:
+	return _collision_audio
+
+
 func request_laser_fire() -> FlightLaserWeapon.FireResult:
 	if _laser_weapon == null:
 		return FlightLaserWeapon.FireResult.UNAVAILABLE
@@ -630,24 +672,196 @@ func _clear_environment_telemetry() -> void:
 
 
 func _update_engine_feedback() -> void:
-	if _engine_glow == null:
-		return
 	var engine_strength: float = maxf(
 		effective_throttle_input,
 		effective_boost_input
 	)
-	_engine_glow.scale.x = lerpf(
-		ENGINE_IDLE_SCALE,
-		ENGINE_FULL_SCALE,
-		engine_strength
-	)
-	_engine_glow.modulate.a = lerpf(ENGINE_IDLE_ALPHA, 1.0, engine_strength)
+	var feedback_active: bool = not is_failed and not is_landed
+	if _engine_glow != null:
+		_engine_glow.scale.x = lerpf(
+			ENGINE_IDLE_SCALE,
+			ENGINE_FULL_SCALE,
+			engine_strength
+		)
+		_engine_glow.modulate.a = (
+			lerpf(ENGINE_IDLE_ALPHA, 1.0, engine_strength)
+			if feedback_active
+			else 0.0
+		)
 	if _boost_glow != null:
-		_boost_glow.visible = effective_boost_input > 0.0
+		_boost_glow.visible = feedback_active and effective_boost_input > 0.0
 		_boost_glow.scale.x = lerpf(0.8, 1.5, effective_boost_input)
 	if _reverse_glow != null:
-		_reverse_glow.visible = effective_reverse_input > 0.0
+		_reverse_glow.visible = feedback_active and effective_reverse_input > 0.0
 		_reverse_glow.scale.x = lerpf(0.75, 1.25, effective_reverse_input)
+	if _engine_trail_particles != null:
+		_engine_trail_particles.emitting = (
+			feedback_active and effective_throttle_input > 0.04
+		)
+		_engine_trail_particles.speed_scale = lerpf(
+			0.7,
+			1.35,
+			effective_throttle_input
+		)
+	if _boost_trail_particles != null:
+		_boost_trail_particles.emitting = (
+			feedback_active and effective_boost_input > 0.04
+		)
+		_boost_trail_particles.speed_scale = lerpf(
+			0.85,
+			1.5,
+			effective_boost_input
+		)
+	_update_engine_audio(feedback_active, engine_strength)
+	_update_boost_audio(feedback_active)
+
+
+func _initialize_audio_feedback() -> void:
+	if _engine_audio != null:
+		_engine_audio.stream = _create_engine_stream()
+	if _boost_audio != null:
+		_boost_audio.stream = _create_boost_stream()
+	if _collision_audio != null:
+		_collision_audio.stream = _create_collision_stream()
+
+
+func _update_engine_audio(feedback_active: bool, engine_strength: float) -> void:
+	if _engine_audio == null:
+		return
+	if not feedback_active:
+		_engine_audio.stop()
+		return
+	_engine_audio.volume_db = lerpf(-28.0, -13.0, engine_strength)
+	_engine_audio.pitch_scale = lerpf(
+		0.88,
+		1.18,
+		maxf(engine_strength, effective_reverse_input * 0.65)
+	)
+	if not _engine_audio.playing and DisplayServer.get_name() != "headless":
+		_engine_audio.play()
+
+
+func _update_boost_audio(feedback_active: bool) -> void:
+	var boost_active: bool = feedback_active and effective_boost_input > 0.04
+	if boost_active and not _boost_feedback_active:
+		if _boost_audio != null and DisplayServer.get_name() != "headless":
+			_boost_audio.play()
+	_boost_feedback_active = boost_active
+
+
+func _play_collision_audio(severity: int) -> void:
+	if _collision_audio == null:
+		return
+	_collision_audio.pitch_scale = 1.12
+	_collision_audio.volume_db = -10.0
+	match severity:
+		FlightCollisionResult.Severity.HARD:
+			_collision_audio.pitch_scale = 0.92
+			_collision_audio.volume_db = -7.0
+		FlightCollisionResult.Severity.FATAL:
+			_collision_audio.pitch_scale = 0.72
+			_collision_audio.volume_db = -4.0
+	if DisplayServer.get_name() != "headless":
+		_collision_audio.play()
+
+
+func _create_engine_stream() -> AudioStreamWAV:
+	var stream: AudioStreamWAV = AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = FEEDBACK_AUDIO_SAMPLE_RATE
+	stream.stereo = false
+	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	var frame_count: int = maxi(
+		int(FEEDBACK_AUDIO_SAMPLE_RATE * ENGINE_LOOP_SECONDS),
+		1
+	)
+	stream.loop_begin = 0
+	stream.loop_end = frame_count
+	var audio_data: PackedByteArray = PackedByteArray()
+	audio_data.resize(frame_count * 2)
+	for frame_index: int in frame_count:
+		var time_seconds: float = (
+			float(frame_index) / float(FEEDBACK_AUDIO_SAMPLE_RATE)
+		)
+		var engine_hum: float = sin(TAU * 54.0 * time_seconds) * 0.2
+		var harmonic: float = sin(TAU * 108.0 * time_seconds + 0.2) * 0.08
+		var turbine: float = (
+			sin(TAU * 162.0 * time_seconds) * sin(TAU * 3.0 * time_seconds) * 0.035
+		)
+		_write_audio_sample(
+			audio_data,
+			frame_index,
+			clampf(engine_hum + harmonic + turbine, -0.42, 0.42)
+		)
+	stream.data = audio_data
+	return stream
+
+
+func _create_boost_stream() -> AudioStreamWAV:
+	var stream: AudioStreamWAV = AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = FEEDBACK_AUDIO_SAMPLE_RATE
+	stream.stereo = false
+	var frame_count: int = maxi(
+		int(FEEDBACK_AUDIO_SAMPLE_RATE * BOOST_SOUND_SECONDS),
+		1
+	)
+	var audio_data: PackedByteArray = PackedByteArray()
+	audio_data.resize(frame_count * 2)
+	for frame_index: int in frame_count:
+		var progress: float = float(frame_index) / float(frame_count)
+		var time_seconds: float = (
+			float(frame_index) / float(FEEDBACK_AUDIO_SAMPLE_RATE)
+		)
+		var envelope: float = sin(PI * progress) * (1.0 - progress * 0.35)
+		var frequency: float = lerpf(92.0, 236.0, progress)
+		var tone: float = sin(TAU * frequency * time_seconds) * 0.36
+		var shimmer: float = sin(TAU * frequency * 3.0 * time_seconds) * 0.11
+		_write_audio_sample(
+			audio_data,
+			frame_index,
+			clampf((tone + shimmer) * envelope, -0.68, 0.68)
+		)
+	stream.data = audio_data
+	return stream
+
+
+func _create_collision_stream() -> AudioStreamWAV:
+	var stream: AudioStreamWAV = AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = FEEDBACK_AUDIO_SAMPLE_RATE
+	stream.stereo = false
+	var frame_count: int = maxi(
+		int(FEEDBACK_AUDIO_SAMPLE_RATE * COLLISION_SOUND_SECONDS),
+		1
+	)
+	var audio_data: PackedByteArray = PackedByteArray()
+	audio_data.resize(frame_count * 2)
+	for frame_index: int in frame_count:
+		var progress: float = float(frame_index) / float(frame_count)
+		var time_seconds: float = (
+			float(frame_index) / float(FEEDBACK_AUDIO_SAMPLE_RATE)
+		)
+		var envelope: float = (1.0 - progress) * (1.0 - progress)
+		var impact: float = sin(TAU * lerpf(148.0, 58.0, progress) * time_seconds)
+		var metal: float = sin(TAU * (760.0 + progress * 980.0) * time_seconds)
+		_write_audio_sample(
+			audio_data,
+			frame_index,
+			clampf((impact * 0.42 + metal * 0.2) * envelope, -0.72, 0.72)
+		)
+	stream.data = audio_data
+	return stream
+
+
+func _write_audio_sample(
+	audio_data: PackedByteArray,
+	frame_index: int,
+	sample: float
+) -> void:
+	var encoded_sample: int = int(round(sample * 32767.0)) & 0xffff
+	audio_data[frame_index * 2] = encoded_sample & 0xff
+	audio_data[frame_index * 2 + 1] = (encoded_sample >> 8) & 0xff
 
 
 func _resolve_slide_collisions(incoming_velocity: Vector2) -> void:
@@ -689,6 +903,7 @@ func _apply_collision_result(result: FlightCollisionResult) -> void:
 	if _impact_sparks != null:
 		_impact_sparks.restart()
 		_impact_sparks.emitting = true
+	_play_collision_audio(result.severity)
 	impact_resolved.emit(result.severity, result.impact_speed)
 	_emit_cargo_warning_if_needed(previous_cargo_integrity)
 	if result.should_fail:

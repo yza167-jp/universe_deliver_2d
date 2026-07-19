@@ -10,6 +10,8 @@ const STAGE_LABEL_Y: float = 94.0
 @export var far_stars_path: NodePath
 @export var dust_bands_path: NodePath
 @export var lower_haze_path: NodePath
+@export var far_terrain_path: NodePath
+@export var near_facilities_path: NodePath
 
 @onready var _planet_anchor: Node2D = get_node_or_null(planet_anchor_path) as Node2D
 @onready var _atmosphere_tint: ColorRect = get_node_or_null(
@@ -19,6 +21,12 @@ const STAGE_LABEL_Y: float = 94.0
 @onready var _far_stars: Parallax2D = get_node_or_null(far_stars_path) as Parallax2D
 @onready var _dust_bands: Parallax2D = get_node_or_null(dust_bands_path) as Parallax2D
 @onready var _lower_haze: Parallax2D = get_node_or_null(lower_haze_path) as Parallax2D
+@onready var _far_terrain: Parallax2D = get_node_or_null(
+	far_terrain_path
+) as Parallax2D
+@onready var _near_facilities: Parallax2D = get_node_or_null(
+	near_facilities_path
+) as Parallax2D
 
 var _route_definition: FlightRouteDefinition
 var _route_origin_x: float = 0.0
@@ -65,6 +73,10 @@ func update_visuals(route_distance: float) -> void:
 		_dust_bands.modulate.a = lerpf(0.18, 0.78, progress)
 	if _lower_haze != null:
 		_lower_haze.modulate.a = clampf((progress - 0.45) / 0.55, 0.0, 1.0)
+	if _far_terrain != null:
+		_far_terrain.modulate.a = clampf((progress - 0.48) / 0.3, 0.0, 1.0)
+	if _near_facilities != null:
+		_near_facilities.modulate.a = clampf((progress - 0.7) / 0.22, 0.0, 1.0)
 
 
 func get_planet_scale() -> float:
@@ -118,6 +130,17 @@ func _build_segment_graybox(segment: FlightRouteSegment, index: int) -> void:
 	])
 	floor_visual.color = segment.graybox_color
 	add_child(floor_visual)
+
+	var floor_edge: Line2D = Line2D.new()
+	floor_edge.name = "FloorEdge%02d" % (index + 1)
+	floor_edge.z_index = 2
+	floor_edge.points = PackedVector2Array([
+		Vector2(start_x, start_floor_y),
+		Vector2(end_x, end_floor_y),
+	])
+	floor_edge.width = 3.0
+	floor_edge.default_color = _resolve_floor_edge_color(index)
+	add_child(floor_edge)
 
 	var floor_body: StaticBody2D = StaticBody2D.new()
 	floor_body.name = "FloorBody%02d" % (index + 1)
@@ -325,6 +348,16 @@ func _build_landing_guides(segment: FlightRouteSegment, index: int) -> void:
 		marker.default_color = Color(0.462745, 0.945098, 1.0, 0.76)
 		container.add_child(marker)
 	add_child(container)
+
+
+func _resolve_floor_edge_color(index: int) -> Color:
+	if index <= 2:
+		return Color(0.462745, 0.945098, 1.0, 0.34)
+	if index == 4:
+		return Color(0.760784, 0.678431, 1.0, 0.58)
+	if index >= 6:
+		return Color(0.905882, 0.658824, 0.356863, 0.8)
+	return Color(1.0, 0.494118, 0.219608, 0.64)
 
 
 func _refresh_stage_labels() -> void:

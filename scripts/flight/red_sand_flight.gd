@@ -352,6 +352,7 @@ func _complete_landing(
 		return
 	if not flight_ship.complete_landing(landed_global_position):
 		return
+	environment_feedback.burst_landing_dust()
 	var applied_cargo_damage: float = flight_ship.apply_delivery_cargo_damage(cargo_damage)
 	_route_completed = true
 	_maximum_route_distance = route_definition.get_total_distance()
@@ -414,9 +415,16 @@ func _sync_camera_to_ship() -> void:
 
 
 func _update_route_visuals() -> void:
-	if route_visuals == null:
-		return
-	route_visuals.update_visuals(_maximum_route_distance)
+	if route_visuals != null:
+		route_visuals.update_visuals(_maximum_route_distance)
+	if environment_feedback != null and flight_ship != null:
+		environment_feedback.set_ship_feedback(
+			flight_ship.get_speed(),
+			flight_ship.effective_throttle_input,
+			flight_ship.effective_boost_input,
+			flight_ship.air_density,
+			flight_ship.is_failed or flight_ship.is_landed or _route_completed
+		)
 
 
 func _refresh_hud() -> void:

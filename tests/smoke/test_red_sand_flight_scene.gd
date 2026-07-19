@@ -39,8 +39,10 @@ func run() -> Array[String]:
 	expect_true(
 		route_scene.get_node_or_null("BackgroundLayers/FarStars") is Parallax2D
 		and route_scene.get_node_or_null("BackgroundLayers/DustBands") is Parallax2D
-		and route_scene.get_node_or_null("BackgroundLayers/LowerHaze") is Parallax2D,
-		"Red Sand route must provide three distinct parallax depth layers.",
+		and route_scene.get_node_or_null("BackgroundLayers/LowerHaze") is Parallax2D
+		and route_scene.get_node_or_null("BackgroundLayers/FarTerrain") is Parallax2D
+		and route_scene.get_node_or_null("BackgroundLayers/NearFacilities") is Parallax2D,
+		"Red Sand route must provide five distinct parallax depth layers.",
 		failures
 	)
 	expect_true(
@@ -106,6 +108,34 @@ func run() -> Array[String]:
 			"World/LandingZone/ApproachSensor"
 		) is Area2D,
 		"T-043 route must bind one explicit landing zone and collidable pad.",
+		failures
+	)
+	expect_true(
+		flight_ship.get_node_or_null("EngineTrailParticles") is CPUParticles2D
+		and flight_ship.get_node_or_null("BoostTrailParticles") is CPUParticles2D
+		and flight_ship.get_node_or_null("EngineAudio") is AudioStreamPlayer2D
+		and flight_ship.get_node_or_null("BoostAudio") is AudioStreamPlayer2D
+		and flight_ship.get_node_or_null("CollisionAudio") is AudioStreamPlayer2D,
+		"T-044 route ship must bind propulsion particles and synthesized feedback audio.",
+		failures
+	)
+	var environment_feedback: RedSandEnvironmentFeedback = route_scene.get_node_or_null(
+		"EnvironmentFeedback"
+	) as RedSandEnvironmentFeedback
+	expect_true(
+		environment_feedback != null
+		and environment_feedback.get_node_or_null("MusicAudio") is AudioStreamPlayer
+		and environment_feedback.get_node_or_null(
+			"SpeedStreakParticles"
+		) is CPUParticles2D
+		and environment_feedback.get_node_or_null(
+			"AtmosphereEntryParticles"
+		) is CPUParticles2D
+		and environment_feedback.get_node_or_null("StormParticles") is CPUParticles2D
+		and environment_feedback.get_node_or_null(
+			"LandingDustParticles"
+		) is CPUParticles2D,
+		"T-044 route must bind music and stage-specific environment particles.",
 		failures
 	)
 	expect_true(

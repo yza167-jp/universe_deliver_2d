@@ -134,6 +134,10 @@ run_step \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/red_sand_landing_smoke_runner.gd
 
 run_step \
+  "Red Sand parallax, particles, audio, and dynamic music smoke test" \
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/red_sand_atmosphere_smoke_runner.gd
+
+run_step \
   "Station hub layout and reachability smoke test" \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/station_hub_smoke_runner.gd
 

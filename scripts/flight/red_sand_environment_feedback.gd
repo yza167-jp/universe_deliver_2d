@@ -3,12 +3,22 @@ extends CanvasLayer
 
 const AMBIENCE_SAMPLE_RATE: int = 11025
 const AMBIENCE_LOOP_SECONDS: float = 1.0
+const MUSIC_SAMPLE_RATE: int = 11025
+const MUSIC_LOOP_SECONDS: float = 4.0
 const LIGHTNING_FLASH_SECONDS: float = 0.18
+const MUSIC_QUIET_VOLUME_DB: float = -30.0
+const MUSIC_DANGER_VOLUME_DB: float = -17.0
 
 @onready var _environment_tint: ColorRect = %EnvironmentTint
 @onready var _lightning_flash: ColorRect = %LightningFlash
 @onready var _ambience_audio: AudioStreamPlayer = %AmbienceAudio
+@onready var _music_audio: AudioStreamPlayer = %MusicAudio
 @onready var _radar_pressure_tint: ColorRect = %RadarPressureTint
+@onready var _speed_streak_particles: CPUParticles2D = %SpeedStreakParticles
+@onready var _entry_particles: CPUParticles2D = %AtmosphereEntryParticles
+@onready var _storm_particles: CPUParticles2D = %StormParticles
+@onready var _landing_dust_particles: CPUParticles2D = %LandingDustParticles
+@onready var _landing_burst_particles: CPUParticles2D = %LandingBurstParticles
 @onready var _wind_bands: Array[ColorRect] = [
 	%WindBandA,
 	%WindBandB,
@@ -30,14 +40,23 @@ var _radar_pressure: float = 0.0
 var _radar_locked: bool = false
 var _radar_elapsed_seconds: float = 0.0
 var _base_tint: Color = Color.TRANSPARENT
+var _segment_music_intensity: float = 0.0
+var _target_music_intensity: float = 0.0
+var _music_intensity: float = 0.0
 
 
 func _ready() -> void:
 	_set_mouse_passthrough(self)
 	_apply_wind_visibility(false)
 	_apply_radar_visibility(false)
+	_set_environment_particles(&"")
 	if _lightning_flash != null:
 		_lightning_flash.color.a = 0.0
+	if _music_audio != null:
+		_music_audio.stream = _create_music_stream()
+		_music_audio.volume_db = MUSIC_QUIET_VOLUME_DB
+		if DisplayServer.get_name() != "headless":
+			_music_audio.play()
 
 
 func _process(delta: float) -> void:
@@ -45,6 +64,7 @@ func _process(delta: float) -> void:
 	_update_wind_bands(safe_delta)
 	_update_radar_feedback(safe_delta)
 	_update_lightning_flash(safe_delta)
+	_update_music_mix(safe_delta)
 
 
 func set_segment(segment: FlightRouteSegment) -> void:
@@ -53,9 +73,12 @@ func set_segment(segment: FlightRouteSegment) -> void:
 	_active_environment_id = segment.id
 	_active_audio_signature = _resolve_audio_signature(segment.id)
 	_base_tint = _resolve_tint(segment.id)
+	_segment_music_intensity = _resolve_music_intensity(segment.id)
+	_refresh_music_target()
 	if _environment_tint != null:
 		_environment_tint.color = _base_tint
 	_apply_wind_visibility(segment.id == &"red_sand_storm_layer")
+	_set_environment_particles(segment.id)
 	if segment.id != &"red_sand_surface_route":
 		set_radar_pressure(0.0, false)
 	_set_ambience_stream(_active_audio_signature)
@@ -63,6 +86,51 @@ func set_segment(segment: FlightRouteSegment) -> void:
 
 func set_wind_acceleration(acceleration: Vector2) -> void:
 	_wind_acceleration = acceleration
+
+
+func set_ship_feedback(
+	speed: float,
+	throttle_strength: float,
+	boost_strength: float,
+	air_density: float,
+	inactive: bool
+) -> void:
+	if _speed_streak_particles == null:
+		return
+	var normalized_speed: float = clampf(maxf(speed, 0.0) / 520.0, 0.0, 1.0)
+	var propulsion_strength: float = clampf(
+		maxf(throttle_strength, boost_strength),
+		0.0,
+		1.0
+	)
+	_speed_streak_particles.emitting = (
+		not inactive
+		and normalized_speed >= 0.16
+		and (normalized_speed >= 0.34 or propulsion_strength > 0.05)
+	)
+	_speed_streak_particles.speed_scale = lerpf(0.62, 1.5, normalized_speed)
+	_speed_streak_particles.modulate.a = lerpf(
+		0.22,
+		0.7,
+		maxf(normalized_speed, clampf(air_density, 0.0, 1.0) * 0.72)
+	)
+
+
+func burst_landing_dust() -> void:
+	if _landing_dust_particles != null:
+		_landing_dust_particles.emitting = false
+	if _landing_burst_particles != null:
+		_landing_burst_particles.restart()
+		_landing_burst_particles.emitting = true
+
+
+func stop_travel_feedback() -> void:
+	if _speed_streak_particles != null:
+		_speed_streak_particles.emitting = false
+	if _entry_particles != null:
+		_entry_particles.emitting = false
+	if _storm_particles != null:
+		_storm_particles.emitting = false
 
 
 func set_radar_pressure(lock_risk: float, locked: bool) -> void:
@@ -76,6 +144,7 @@ func set_radar_pressure(lock_risk: float, locked: bool) -> void:
 			else Color(0.45, 0.12, 0.24, 0.02 + _radar_pressure * 0.07)
 		)
 		_radar_pressure_tint.color = tint_color
+	_refresh_music_target()
 
 
 func flash_lightning(hit_ship: bool) -> void:
@@ -118,6 +187,41 @@ func get_radar_pressure() -> float:
 	return _radar_pressure
 
 
+func get_music_intensity() -> float:
+	return _music_intensity
+
+
+func get_target_music_intensity() -> float:
+	return _target_music_intensity
+
+
+func get_music_audio() -> AudioStreamPlayer:
+	return _music_audio
+
+
+func are_speed_streaks_emitting() -> bool:
+	return _speed_streak_particles != null and _speed_streak_particles.emitting
+
+
+func are_entry_particles_emitting() -> bool:
+	return _entry_particles != null and _entry_particles.emitting
+
+
+func are_storm_particles_emitting() -> bool:
+	return _storm_particles != null and _storm_particles.emitting
+
+
+func are_landing_particles_emitting() -> bool:
+	return (
+		_landing_dust_particles != null
+		and _landing_dust_particles.emitting
+	)
+
+
+func is_landing_burst_emitting() -> bool:
+	return _landing_burst_particles != null and _landing_burst_particles.emitting
+
+
 func _apply_wind_visibility(visible: bool) -> void:
 	for band: ColorRect in _wind_bands:
 		if band != null:
@@ -136,6 +240,43 @@ func _apply_radar_visibility(visible: bool) -> void:
 			sweep.visible = visible
 	if not visible:
 		_radar_elapsed_seconds = 0.0
+
+
+func _set_environment_particles(segment_id: StringName) -> void:
+	if _entry_particles != null:
+		_entry_particles.emitting = segment_id == &"red_sand_atmosphere_edge"
+	if _storm_particles != null:
+		_storm_particles.emitting = segment_id == &"red_sand_storm_layer"
+	if _landing_dust_particles != null:
+		_landing_dust_particles.emitting = (
+			segment_id == &"red_sand_landing_approach"
+		)
+	if _landing_burst_particles != null and segment_id.is_empty():
+		_landing_burst_particles.emitting = false
+
+
+func _refresh_music_target() -> void:
+	_target_music_intensity = maxf(
+		_segment_music_intensity,
+		_radar_pressure * (1.0 if _radar_locked else 0.82)
+	)
+	_target_music_intensity = clampf(_target_music_intensity, 0.0, 1.0)
+
+
+func _update_music_mix(delta: float) -> void:
+	_music_intensity = move_toward(
+		_music_intensity,
+		_target_music_intensity,
+		maxf(delta, 0.0) * 0.9
+	)
+	if _music_audio == null:
+		return
+	_music_audio.volume_db = lerpf(
+		MUSIC_QUIET_VOLUME_DB,
+		MUSIC_DANGER_VOLUME_DB,
+		_music_intensity
+	)
+	_music_audio.pitch_scale = lerpf(0.94, 1.06, _music_intensity)
 
 
 func _update_wind_bands(delta: float) -> void:
@@ -218,6 +359,27 @@ func _resolve_audio_signature(segment_id: StringName) -> StringName:
 	return &"space_quiet"
 
 
+func _resolve_music_intensity(segment_id: StringName) -> float:
+	match segment_id:
+		&"red_sand_system_edge":
+			return 0.08
+		&"red_sand_asteroid_lane":
+			return 0.55
+		&"red_sand_near_orbit":
+			return 0.28
+		&"red_sand_atmosphere_edge":
+			return 0.62
+		&"red_sand_storm_layer":
+			return 1.0
+		&"red_sand_lower_clouds":
+			return 0.52
+		&"red_sand_surface_route":
+			return 0.68
+		&"red_sand_landing_approach":
+			return 0.32
+	return 0.08
+
+
 func _resolve_tint(segment_id: StringName) -> Color:
 	match segment_id:
 		&"red_sand_asteroid_lane":
@@ -279,6 +441,57 @@ func _resolve_tone_settings(signature: StringName) -> Vector2:
 		&"landing_beacon":
 			return Vector2(82.0, 0.06)
 	return Vector2(48.0, 0.025)
+
+
+func _create_music_stream() -> AudioStreamWAV:
+	var stream: AudioStreamWAV = AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = MUSIC_SAMPLE_RATE
+	stream.stereo = false
+	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	var frame_count: int = maxi(int(MUSIC_SAMPLE_RATE * MUSIC_LOOP_SECONDS), 1)
+	stream.loop_begin = 0
+	stream.loop_end = frame_count
+	var roots: PackedFloat32Array = PackedFloat32Array([
+		55.0,
+		55.0,
+		65.406,
+		65.406,
+		73.416,
+		73.416,
+		49.0,
+		49.0,
+	])
+	var intervals: PackedFloat32Array = PackedFloat32Array([2.0, 2.5, 3.0, 2.25])
+	var audio_data: PackedByteArray = PackedByteArray()
+	audio_data.resize(frame_count * 2)
+	for frame_index: int in frame_count:
+		var time_seconds: float = float(frame_index) / float(MUSIC_SAMPLE_RATE)
+		var step_position: float = fmod(time_seconds, 0.5) / 0.5
+		var step_index: int = mini(int(time_seconds / 0.5), roots.size() - 1)
+		var root_frequency: float = roots[step_index]
+		var pulse_envelope: float = exp(-step_position * 4.8)
+		var low_tone: float = sin(TAU * root_frequency * time_seconds) * 0.14
+		var fifth_tone: float = (
+			sin(TAU * root_frequency * 1.5 * time_seconds + 0.25) * 0.055
+		)
+		var arpeggio_frequency: float = root_frequency * intervals[step_index % 4]
+		var arpeggio: float = (
+			sin(TAU * arpeggio_frequency * time_seconds) * pulse_envelope * 0.075
+		)
+		var shimmer: float = (
+			sin(TAU * 0.25 * time_seconds) * sin(TAU * 220.0 * time_seconds) * 0.018
+		)
+		var sample: float = clampf(
+			low_tone + fifth_tone + arpeggio + shimmer,
+			-0.48,
+			0.48
+		)
+		var encoded_sample: int = int(round(sample * 32767.0)) & 0xffff
+		audio_data[frame_index * 2] = encoded_sample & 0xff
+		audio_data[frame_index * 2 + 1] = (encoded_sample >> 8) & 0xff
+	stream.data = audio_data
+	return stream
 
 
 func _set_mouse_passthrough(node: Node) -> void:

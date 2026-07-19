@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3]
+[gd_scene load_steps=28 format=3]
 
 [ext_resource type="Script" path="res://scripts/flight/red_sand_flight.gd" id="1_route_controller"]
 [ext_resource type="Script" path="res://scripts/flight/flight_lab_ship.gd" id="2_ship"]
@@ -17,6 +17,8 @@
 [ext_resource type="Script" path="res://scripts/flight/red_sand_environment_feedback.gd" id="15_environment_feedback"]
 [ext_resource type="PackedScene" path="res://scenes/flight/red_sand_low_flight_course.tscn" id="16_low_flight"]
 [ext_resource type="PackedScene" path="res://scenes/flight/red_sand_landing_zone.tscn" id="17_landing"]
+[ext_resource type="Texture2D" path="res://assets/flight_particle_streak.svg" id="18_streak_texture"]
+[ext_resource type="Texture2D" path="res://assets/flight_particle_mote.svg" id="19_mote_texture"]
 
 [sub_resource type="RectangleShape2D" id="ShapeShip"]
 size = Vector2(38, 16)
@@ -31,6 +33,80 @@ initial_velocity_max = 120.0
 scale_min = 1.0
 scale_max = 2.0
 color = Color(1, 0.72549, 0.286275, 1)
+
+[sub_resource type="ParticleProcessMaterial" id="ParticlesEngineTrail"]
+particle_flag_disable_z = true
+direction = Vector3(-1, 0, 0)
+spread = 12.0
+gravity = Vector3(0, 0, 0)
+initial_velocity_min = 48.0
+initial_velocity_max = 86.0
+scale_min = 0.35
+scale_max = 0.7
+color = Color(0.905882, 0.658824, 0.356863, 0.78)
+
+[sub_resource type="ParticleProcessMaterial" id="ParticlesBoostTrail"]
+particle_flag_disable_z = true
+direction = Vector3(-1, 0, 0)
+spread = 7.0
+gravity = Vector3(0, 0, 0)
+initial_velocity_min = 120.0
+initial_velocity_max = 210.0
+scale_min = 0.55
+scale_max = 1.0
+color = Color(0.462745, 0.945098, 1, 0.9)
+
+[sub_resource type="ParticleProcessMaterial" id="ParticlesSpeedStreak"]
+particle_flag_disable_z = true
+emission_shape = 3
+emission_box_extents = Vector3(14, 168, 1)
+direction = Vector3(-1, 0, 0)
+spread = 4.0
+gravity = Vector3(0, 0, 0)
+initial_velocity_min = 290.0
+initial_velocity_max = 430.0
+scale_min = 0.3
+scale_max = 0.85
+color = Color(0.858824, 0.921569, 1, 0.38)
+
+[sub_resource type="ParticleProcessMaterial" id="ParticlesEntryHeat"]
+particle_flag_disable_z = true
+emission_shape = 3
+emission_box_extents = Vector3(18, 150, 1)
+direction = Vector3(-1, 0.2, 0)
+spread = 14.0
+gravity = Vector3(0, 14, 0)
+initial_velocity_min = 210.0
+initial_velocity_max = 360.0
+scale_min = 0.45
+scale_max = 1.15
+color = Color(1, 0.494118, 0.219608, 0.72)
+
+[sub_resource type="ParticleProcessMaterial" id="ParticlesStormDust"]
+particle_flag_disable_z = true
+emission_shape = 3
+emission_box_extents = Vector3(18, 170, 1)
+direction = Vector3(-1, 0.18, 0)
+spread = 22.0
+gravity = Vector3(0, 24, 0)
+initial_velocity_min = 125.0
+initial_velocity_max = 245.0
+scale_min = 0.8
+scale_max = 1.8
+color = Color(0.760784, 0.678431, 1, 0.52)
+
+[sub_resource type="ParticleProcessMaterial" id="ParticlesLandingDust"]
+particle_flag_disable_z = true
+emission_shape = 3
+emission_box_extents = Vector3(250, 8, 1)
+direction = Vector3(0, -1, 0)
+spread = 62.0
+gravity = Vector3(0, 22, 0)
+initial_velocity_min = 28.0
+initial_velocity_max = 72.0
+scale_min = 0.8
+scale_max = 1.7
+color = Color(0.905882, 0.658824, 0.356863, 0.56)
 
 [node name="RedSandFlight" type="Node2D"]
 script = ExtResource("1_route_controller")
@@ -145,6 +221,57 @@ color = Color(0.862745, 0.498039, 0.278431, 0.36)
 polygon = PackedVector2Array(0, 292, 800, 272, 800, 308, 0, 328)
 color = Color(0.639216, 0.298039, 0.188235, 0.42)
 
+[node name="FarTerrain" type="Parallax2D" parent="BackgroundLayers"]
+unique_name_in_owner = true
+z_index = -12
+scroll_scale = Vector2(0.48, 0.3)
+repeat_size = Vector2(960, 360)
+repeat_times = 3
+modulate = Color(1, 1, 1, 0)
+
+[node name="DistantMesaA" type="Polygon2D" parent="BackgroundLayers/FarTerrain"]
+polygon = PackedVector2Array(0, 284, 92, 278, 122, 224, 246, 218, 284, 272, 430, 268, 486, 202, 628, 202, 680, 272, 842, 254, 960, 266, 960, 360, 0, 360)
+color = Color(0.270588, 0.121569, 0.145098, 0.88)
+
+[node name="DistantMesaLight" type="Polygon2D" parent="BackgroundLayers/FarTerrain"]
+polygon = PackedVector2Array(0, 304, 168, 288, 250, 260, 394, 274, 522, 242, 698, 252, 802, 286, 960, 276, 960, 360, 0, 360)
+color = Color(0.490196, 0.215686, 0.145098, 0.72)
+
+[node name="FarStrataA" type="Line2D" parent="BackgroundLayers/FarTerrain"]
+points = PackedVector2Array(0, 305, 160, 292, 320, 298, 480, 276, 640, 286, 800, 276, 960, 286)
+width = 2.0
+default_color = Color(0.905882, 0.658824, 0.356863, 0.28)
+
+[node name="NearFacilities" type="Parallax2D" parent="BackgroundLayers"]
+unique_name_in_owner = true
+z_index = -10
+scroll_scale = Vector2(0.72, 0.56)
+repeat_size = Vector2(1280, 360)
+repeat_times = 3
+modulate = Color(1, 1, 1, 0)
+
+[node name="FacilityBlockA" type="Polygon2D" parent="BackgroundLayers/NearFacilities"]
+polygon = PackedVector2Array(72, 360, 72, 286, 112, 286, 112, 244, 176, 244, 176, 360)
+color = Color(0.0705882, 0.101961, 0.129412, 0.9)
+
+[node name="FacilityBlockB" type="Polygon2D" parent="BackgroundLayers/NearFacilities"]
+polygon = PackedVector2Array(452, 360, 452, 270, 492, 270, 492, 220, 512, 204, 532, 220, 532, 360)
+color = Color(0.0823529, 0.121569, 0.14902, 0.92)
+
+[node name="FacilityBlockC" type="Polygon2D" parent="BackgroundLayers/NearFacilities"]
+polygon = PackedVector2Array(876, 360, 876, 292, 936, 292, 936, 250, 1022, 250, 1022, 360)
+color = Color(0.0705882, 0.101961, 0.129412, 0.9)
+
+[node name="IndustrialPipe" type="Line2D" parent="BackgroundLayers/NearFacilities"]
+points = PackedVector2Array(0, 314, 222, 314, 242, 294, 388, 294, 408, 314, 720, 314, 744, 282, 862, 282, 886, 314, 1280, 314)
+width = 7.0
+default_color = Color(0.105882, 0.160784, 0.184314, 0.92)
+
+[node name="FacilityLights" type="Line2D" parent="BackgroundLayers/NearFacilities"]
+points = PackedVector2Array(94, 280, 134, 280, 474, 264, 510, 264, 902, 286, 976, 286)
+width = 2.0
+default_color = Color(0.462745, 0.945098, 1, 0.84)
+
 [node name="EnvironmentFeedback" type="CanvasLayer" parent="."]
 unique_name_in_owner = true
 layer = 20
@@ -231,7 +358,78 @@ color = Color(0.956863, 0.941176, 1, 0)
 
 [node name="AmbienceAudio" type="AudioStreamPlayer" parent="EnvironmentFeedback"]
 unique_name_in_owner = true
-volume_db = -20.0
+volume_db = -22.0
+
+[node name="MusicAudio" type="AudioStreamPlayer" parent="EnvironmentFeedback"]
+unique_name_in_owner = true
+volume_db = -30.0
+
+[node name="SpeedStreakParticles" type="CPUParticles2D" parent="EnvironmentFeedback"]
+unique_name_in_owner = true
+position = Vector2(664, 180)
+emitting = false
+amount = 34
+lifetime = 1.7
+randomness = 0.72
+visibility_rect = Rect2(-700, -190, 720, 380)
+modulate = Color(0.858824, 0.921569, 1, 0.42)
+texture_filter = 1
+process_material = SubResource("ParticlesSpeedStreak")
+texture = ExtResource("18_streak_texture")
+
+[node name="AtmosphereEntryParticles" type="CPUParticles2D" parent="EnvironmentFeedback"]
+unique_name_in_owner = true
+position = Vector2(662, 174)
+emitting = false
+amount = 58
+lifetime = 2.1
+randomness = 0.66
+visibility_rect = Rect2(-700, -210, 730, 420)
+modulate = Color(1, 0.494118, 0.219608, 0.76)
+texture_filter = 1
+process_material = SubResource("ParticlesEntryHeat")
+texture = ExtResource("18_streak_texture")
+
+[node name="StormParticles" type="CPUParticles2D" parent="EnvironmentFeedback"]
+unique_name_in_owner = true
+position = Vector2(662, 180)
+emitting = false
+amount = 72
+lifetime = 3.0
+randomness = 0.78
+visibility_rect = Rect2(-700, -210, 730, 420)
+modulate = Color(0.760784, 0.678431, 1, 0.5)
+texture_filter = 1
+process_material = SubResource("ParticlesStormDust")
+texture = ExtResource("19_mote_texture")
+
+[node name="LandingDustParticles" type="CPUParticles2D" parent="EnvironmentFeedback"]
+unique_name_in_owner = true
+position = Vector2(320, 346)
+emitting = false
+amount = 22
+lifetime = 1.5
+randomness = 0.8
+visibility_rect = Rect2(-340, -180, 680, 190)
+modulate = Color(0.905882, 0.658824, 0.356863, 0.52)
+texture_filter = 1
+process_material = SubResource("ParticlesLandingDust")
+texture = ExtResource("19_mote_texture")
+
+[node name="LandingBurstParticles" type="CPUParticles2D" parent="EnvironmentFeedback"]
+unique_name_in_owner = true
+position = Vector2(320, 346)
+emitting = false
+amount = 54
+lifetime = 1.2
+one_shot = true
+explosiveness = 0.88
+randomness = 0.82
+visibility_rect = Rect2(-340, -190, 680, 200)
+modulate = Color(0.905882, 0.658824, 0.356863, 0.62)
+texture_filter = 1
+process_material = SubResource("ParticlesLandingDust")
+texture = ExtResource("19_mote_texture")
 
 [node name="World" type="Node2D" parent="."]
 
@@ -244,6 +442,8 @@ surface_haze_path = NodePath("../../Backdrop/SurfaceHaze")
 far_stars_path = NodePath("../../BackgroundLayers/FarStars")
 dust_bands_path = NodePath("../../BackgroundLayers/DustBands")
 lower_haze_path = NodePath("../../BackgroundLayers/LowerHaze")
+far_terrain_path = NodePath("../../BackgroundLayers/FarTerrain")
+near_facilities_path = NodePath("../../BackgroundLayers/NearFacilities")
 
 [node name="Hazards" type="Node2D" parent="World"]
 unique_name_in_owner = true
@@ -353,6 +553,30 @@ visible = false
 polygon = PackedVector2Array(23, -5, 35, 0, 23, 5)
 color = Color(0.462745, 0.945098, 1, 0.9)
 
+[node name="EngineTrailParticles" type="CPUParticles2D" parent="World/FlightShip"]
+unique_name_in_owner = true
+position = Vector2(-26, 0)
+emitting = false
+amount = 7
+lifetime = 0.32
+randomness = 0.62
+modulate = Color(0.905882, 0.658824, 0.356863, 0.82)
+texture_filter = 1
+process_material = SubResource("ParticlesEngineTrail")
+texture = ExtResource("18_streak_texture")
+
+[node name="BoostTrailParticles" type="CPUParticles2D" parent="World/FlightShip"]
+unique_name_in_owner = true
+position = Vector2(-30, 0)
+emitting = false
+amount = 10
+lifetime = 0.28
+randomness = 0.5
+modulate = Color(0.462745, 0.945098, 1, 0.86)
+texture_filter = 1
+process_material = SubResource("ParticlesBoostTrail")
+texture = ExtResource("18_streak_texture")
+
 [node name="ImpactSparks" type="CPUParticles2D" parent="World/FlightShip"]
 emitting = false
 amount = 10
@@ -360,6 +584,21 @@ lifetime = 0.28
 one_shot = true
 explosiveness = 0.92
 process_material = SubResource("ParticlesImpactSparks")
+
+[node name="EngineAudio" type="AudioStreamPlayer2D" parent="World/FlightShip"]
+unique_name_in_owner = true
+volume_db = -28.0
+max_distance = 760.0
+
+[node name="BoostAudio" type="AudioStreamPlayer2D" parent="World/FlightShip"]
+unique_name_in_owner = true
+volume_db = -9.0
+max_distance = 820.0
+
+[node name="CollisionAudio" type="AudioStreamPlayer2D" parent="World/FlightShip"]
+unique_name_in_owner = true
+volume_db = -7.0
+max_distance = 900.0
 
 [node name="LaserWeapon" type="Node2D" parent="World/FlightShip"]
 unique_name_in_owner = true
