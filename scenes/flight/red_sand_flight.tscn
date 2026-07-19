@@ -1,4 +1,4 @@
-[gd_scene load_steps=28 format=3]
+[gd_scene load_steps=30 format=3]
 
 [ext_resource type="Script" path="res://scripts/flight/red_sand_flight.gd" id="1_route_controller"]
 [ext_resource type="Script" path="res://scripts/flight/flight_lab_ship.gd" id="2_ship"]
@@ -19,9 +19,13 @@
 [ext_resource type="PackedScene" path="res://scenes/flight/red_sand_landing_zone.tscn" id="17_landing"]
 [ext_resource type="Texture2D" path="res://assets/flight_particle_streak.svg" id="18_streak_texture"]
 [ext_resource type="Texture2D" path="res://assets/flight_particle_mote.svg" id="19_mote_texture"]
+[ext_resource type="Script" path="res://scripts/flight/flight_scenic_trigger.gd" id="20_scenic_trigger"]
 
 [sub_resource type="RectangleShape2D" id="ShapeShip"]
 size = Vector2(38, 16)
+
+[sub_resource type="RectangleShape2D" id="ShapeScenicTrigger"]
+size = Vector2(240, 150)
 
 [sub_resource type="ParticleProcessMaterial" id="ParticlesImpactSparks"]
 particle_flag_disable_z = true
@@ -525,6 +529,33 @@ unique_name_in_owner = true
 
 [node name="LandingZone" parent="World" instance=ExtResource("17_landing")]
 unique_name_in_owner = true
+
+[node name="ScenicTriggers" type="Node2D" parent="World"]
+unique_name_in_owner = true
+
+[node name="AtmosphereHorizon" type="Area2D" parent="World/ScenicTriggers"]
+position = Vector2(62000, 190)
+collision_layer = 0
+collision_mask = 1
+script = ExtResource("20_scenic_trigger")
+trigger_id = &"scenic_red_sand_atmosphere_horizon"
+
+[node name="VisualRoot" type="Node2D" parent="World/ScenicTriggers/AtmosphereHorizon"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/ScenicTriggers/AtmosphereHorizon"]
+shape = SubResource("ShapeScenicTrigger")
+
+[node name="LowerCloudVista" type="Area2D" parent="World/ScenicTriggers"]
+position = Vector2(96500, 210)
+collision_layer = 0
+collision_mask = 1
+script = ExtResource("20_scenic_trigger")
+trigger_id = &"scenic_red_sand_lower_cloud_vista"
+
+[node name="VisualRoot" type="Node2D" parent="World/ScenicTriggers/LowerCloudVista"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/ScenicTriggers/LowerCloudVista"]
+shape = SubResource("ShapeScenicTrigger")
 
 [node name="FlightShip" type="CharacterBody2D" parent="World"]
 unique_name_in_owner = true

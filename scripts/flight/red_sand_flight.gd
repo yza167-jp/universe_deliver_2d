@@ -15,6 +15,7 @@ const ENTRY_FINALIZE_SEGMENT_INDEX: int = 7
 @onready var environment_feedback: RedSandEnvironmentFeedback = %EnvironmentFeedback
 @onready var low_flight_course: RedSandLowFlightCourse = %LowFlightCourse
 @onready var landing_zone: RedSandLandingZone = %LandingZone
+@onready var scenic_triggers: Node2D = %ScenicTriggers
 
 @export var route_definition: FlightRouteDefinition
 @export var data_registry: GameDataRegistry
@@ -72,6 +73,7 @@ func _ready() -> void:
 	_connect_hazard_signals()
 	_connect_low_flight_signals()
 	_connect_landing_signals()
+	_connect_scenic_triggers()
 	_entry_style_tracker.bind_run_state(_resolve_order_run_state())
 	flight_ship.set_laser_enabled(_resolve_laser_enabled_from_loadout())
 	var assist_strength: float = _resolve_assist_strength()
@@ -314,6 +316,7 @@ func _validate_runtime_dependencies() -> bool:
 		or environment_feedback == null
 		or low_flight_course == null
 		or landing_zone == null
+		or scenic_triggers == null
 		or route_definition == null
 	):
 		push_error("Red Sand route is missing required scene dependencies.")
@@ -377,7 +380,8 @@ func _complete_landing(
 func _begin_entry_style_tracking() -> void:
 	if _entry_style_tracker.is_tracking():
 		return
-	_entry_style_tracker.begin(_resolve_order_run_state())
+	if _entry_style_tracker.begin(_resolve_order_run_state()):
+		_reset_scenic_triggers()
 
 
 func _finalize_entry_style() -> void:
@@ -482,9 +486,34 @@ func _connect_landing_signals() -> void:
 		landing_zone.landing_failed.connect(_on_landing_failed)
 
 
+func _connect_scenic_triggers() -> void:
+	if scenic_triggers == null:
+		return
+	for child: Node in scenic_triggers.get_children():
+		if not child is FlightScenicTrigger:
+			continue
+		var trigger: FlightScenicTrigger = child as FlightScenicTrigger
+		if not trigger.triggered.is_connected(_on_scenic_triggered):
+			trigger.triggered.connect(_on_scenic_triggered)
+
+
+func _reset_scenic_triggers() -> void:
+	if scenic_triggers == null:
+		return
+	for child: Node in scenic_triggers.get_children():
+		if child is FlightScenicTrigger:
+			(child as FlightScenicTrigger).reset_trigger()
+
+
 func _on_impact_resolved(severity: int, impact_speed: float) -> void:
+	if severity != FlightCollisionResult.Severity.NONE:
+		_entry_style_tracker.record_collision()
 	route_hud.show_impact(severity, impact_speed)
 	_start_camera_shake(severity)
+
+
+func _on_scenic_triggered(trigger_id: StringName) -> void:
+	_entry_style_tracker.record_scenic_trigger(trigger_id)
 
 
 func _on_flight_failed(reason_key: StringName) -> void:
