@@ -18,12 +18,12 @@ func _initialize() -> void:
 
 func _run_smoke() -> void:
 	var packed_scene: PackedScene = load(ROUTE_SCENE_PATH) as PackedScene
-	_check(packed_scene != null, "Gate C Round 2 route scene could not load.")
+	_check(packed_scene != null, "Gate C Round 3 route scene could not load.")
 	if packed_scene == null:
 		_finish()
 		return
 	var route: RedSandFlight = packed_scene.instantiate() as RedSandFlight
-	_check(route != null, "Gate C Round 2 route controller is missing.")
+	_check(route != null, "Gate C Round 3 route controller is missing.")
 	if route == null:
 		_finish()
 		return
@@ -39,11 +39,11 @@ func _run_smoke() -> void:
 		"World/RouteGeometry"
 	) as RedSandRouteVisuals
 	var hazards: RedSandHazardDirector = route.get_hazard_director()
-	_check(ship != null, "Gate C Round 2 ship is missing.")
-	_check(definition != null, "Gate C Round 2 route data is missing.")
-	_check(hud != null, "Gate C Round 2 HUD is missing.")
-	_check(visuals != null, "Gate C Round 2 background controller is missing.")
-	_check(hazards != null, "Gate C Round 2 hazards are missing.")
+	_check(ship != null, "Gate C Round 3 ship is missing.")
+	_check(definition != null, "Gate C Round 3 route data is missing.")
+	_check(hud != null, "Gate C Round 3 HUD is missing.")
+	_check(visuals != null, "Gate C Round 3 background controller is missing.")
+	_check(hazards != null, "Gate C Round 3 hazards are missing.")
 	if ship == null or definition == null or hud == null or visuals == null or hazards == null:
 		route.queue_free()
 		await process_frame
@@ -69,7 +69,7 @@ func _run_smoke() -> void:
 	_test_boost_and_emergency_thrust(ship, definition)
 
 	print(
-		"[gate-c-round-2] measured "
+		"[gate-c-round-3] measured "
 		+ "fast=%.1fs/%.1f fuel, balanced=%.1fs/%.1f fuel, scenic=%.1fs/%.1f fuel"
 		% [
 			profile_results[&"fast"].x,
@@ -143,6 +143,23 @@ func _test_help_reopen_and_test_tools(
 		not route.is_controls_help_open() and not paused,
 		"Second C input did not close help cleanly."
 	)
+	var diagnostics_event: InputEventAction = InputEventAction.new()
+	diagnostics_event.action = RedSandFlight.HUD_TOGGLE_ACTION
+	diagnostics_event.pressed = true
+	route._unhandled_input(diagnostics_event)
+	_check(
+		hud.is_full_diagnostics_visible()
+		and hud.get_diagnostics_text().contains("完整诊断")
+		and hud.get_diagnostics_text().contains("路线")
+		and hud.get_navigation_text().contains("距着陆点"),
+		"H did not open full diagnostics while preserving Essential navigation."
+	)
+	route._unhandled_input(diagnostics_event)
+	_check(
+		not hud.is_full_diagnostics_visible()
+		and hud.get_diagnostics_rect() == Rect2(),
+		"Second H input did not close full diagnostics."
+	)
 	var fuel_before_test_tools: float = ship.fuel
 	_check(
 		route.toggle_test_laser_loadout()
@@ -189,15 +206,29 @@ func _test_planet_stages_and_checkpoint(
 	var atmosphere: FlightRouteSegment = definition.segments[3]
 	ship.position.x = route.route_origin_x + atmosphere.start_distance + 1.0
 	route.advance_route_state()
-	route._process(0.3)
+	route._process(0.45)
 	_check(
-		visuals.get_planet_alpha() > 0.0 and visuals.get_planet_alpha() < 1.0,
-		"Atmosphere entry did not begin the 0.55-second horizon transition."
+		visuals.is_full_planet_visible()
+		and visuals.get_planet_transition_progress() > 0.0
+		and visuals.get_planet_transition_progress() < 1.0
+		and visuals.get_planet_scale() > stage_three_scale
+		and visuals.get_atmosphere_horizon_alpha() > 0.0
+		and visuals.get_atmosphere_horizon_alpha() < 1.0,
+		"Atmosphere entry did not continuously grow the disc into a curved horizon."
 	)
-	route._process(0.3)
+	route._process(0.5)
 	_check(
-		not visuals.is_full_planet_visible(),
-		"Full planet disc remained after the atmosphere horizon transition."
+		not visuals.is_full_planet_visible()
+		and is_equal_approx(visuals.get_planet_transition_progress(), 1.0)
+		and is_equal_approx(visuals.get_atmosphere_horizon_alpha(), 1.0),
+		"The 0.9-second disc-to-horizon handoff did not finish continuously."
+	)
+	_check(route.restart_from_checkpoint(false), "Atmosphere checkpoint did not restore.")
+	_check(
+		visuals.is_full_planet_visible()
+		and is_zero_approx(visuals.get_planet_transition_progress())
+		and is_zero_approx(visuals.get_atmosphere_horizon_alpha()),
+		"Atmosphere retry did not restore the start of the visual transition."
 	)
 	var storm: FlightRouteSegment = definition.segments[4]
 	ship.fuel = 1.0
@@ -205,13 +236,15 @@ func _test_planet_stages_and_checkpoint(
 	route.advance_route_state()
 	route._process(0.0)
 	_check(
-		not visuals.is_full_planet_visible(),
-		"Stages 5-8 must not display the complete planet disc."
+		not visuals.is_full_planet_visible()
+		and is_equal_approx(visuals.get_atmosphere_horizon_alpha(), 1.0),
+		"Stage 5 must hide the full disc while retaining atmospheric curvature."
 	)
 	_check(route.restart_from_checkpoint(false), "Storm checkpoint did not restore.")
 	_check(
 		ship.fuel >= storm.checkpoint_fuel_floor
-		and not visuals.is_full_planet_visible(),
+		and not visuals.is_full_planet_visible()
+		and is_equal_approx(visuals.get_atmosphere_horizon_alpha(), 1.0),
 		"Checkpoint retry did not restore safe fuel and background state."
 	)
 
@@ -471,7 +504,7 @@ func _test_boost_and_emergency_thrust(
 		"Zero fuel did not preserve emergency thrust while disabling Boost."
 	)
 	print(
-		"[gate-c-round-2] 1s speed delta normal=%.1f boost=%.1f"
+		"[gate-c-round-3] 1s speed delta normal=%.1f boost=%.1f"
 		% [normal_speed_delta, boost_speed_delta]
 	)
 
@@ -486,13 +519,13 @@ func _finish() -> void:
 	TranslationServer.set_locale(_original_locale)
 	if _failures.is_empty():
 		print(
-			"[gate-c-round-2] PASS: help pause, 1-3 minute profiles, fuel floors, "
+			"[gate-c-round-3] PASS: help pause, 1-3 minute profiles, fuel floors, "
 			+ "planet horizon, local trails, continuous beam, tracking lightning, "
 			+ "Boost feedback, emergency thrust, and retry cleanup."
 		)
 		quit(0)
 		return
-	printerr("[gate-c-round-2] FAILED with %d error(s):" % _failures.size())
+	printerr("[gate-c-round-3] FAILED with %d error(s):" % _failures.size())
 	for failure: String in _failures:
 		printerr("  - %s" % failure)
 	quit(1)

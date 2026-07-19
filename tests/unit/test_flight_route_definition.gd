@@ -93,6 +93,11 @@ func run() -> Array[String]:
 			failures
 		)
 		expect_true(
+			segment.terrain_surface_enabled == (index >= 5),
+			"Only lower-cloud, surface-route, and landing stages may expose terrain.",
+			failures
+		)
+		expect_true(
 			segment.environment_profile.target_gravity_blend
 			>= previous_gravity_blend
 			and segment.environment_profile.target_air_density >= previous_air_density,
@@ -132,6 +137,13 @@ func run() -> Array[String]:
 	expect_true(
 		route.reverse_allowance_distance <= 640.0 * 1.5,
 		"Reverse allowance must remain a short correction distance.",
+		failures
+	)
+	expect_true(
+		is_equal_approx(route.get_altitude_reference_y(0.0), 1000.0)
+		and route.get_altitude_reference_y(18000.0) > 540.0
+		and is_equal_approx(route.get_altitude_reference_y(38000.0), 350.0),
+		"HUD altitude datum must descend continuously without creating early collision.",
 		failures
 	)
 	return failures

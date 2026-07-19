@@ -98,6 +98,7 @@ environment_profile = ExtResource("7_lower")
 planet_scale_start = 1.55
 planet_scale_end = 1.55
 floor_y = 540.0
+terrain_surface_enabled = true
 graybox_color = Color(0.266667, 0.137255, 0.129412, 1)
 
 [sub_resource type="Resource" id="SegmentSurfaceRoute"]
@@ -113,6 +114,7 @@ environment_profile = ExtResource("8_surface")
 planet_scale_start = 1.55
 planet_scale_end = 1.55
 floor_y = 440.0
+terrain_surface_enabled = true
 graybox_color = Color(0.337255, 0.164706, 0.137255, 1)
 
 [sub_resource type="Resource" id="SegmentLandingApproach"]
@@ -128,6 +130,7 @@ environment_profile = ExtResource("9_landing")
 planet_scale_start = 1.55
 planet_scale_end = 1.55
 floor_y = 350.0
+terrain_surface_enabled = true
 graybox_color = Color(0.423529, 0.196078, 0.141176, 1)
 
 [resource]

@@ -55,6 +55,28 @@ func run() -> Array[String]:
 		failures
 	)
 	expect_true(
+		route_scene.get_node_or_null("Backdrop/AtmosphereHorizon") is Node2D
+		and route_scene.get_node_or_null(
+			"Backdrop/AtmosphereHorizon/CurvedSurface"
+		) is Polygon2D
+		and route_scene.get_node_or_null(
+			"Backdrop/AtmosphereHorizon/HorizonGlow"
+		) is Line2D,
+		"Orbit-to-atmosphere handoff must bind one centralized curved-horizon layer.",
+		failures
+	)
+	expect_true(
+		route_scene.get_node_or_null("RedSandRouteHUD/FlightPanel") is PanelContainer
+		and route_scene.get_node_or_null(
+			"RedSandRouteHUD/DiagnosticsPanel"
+		) is PanelContainer
+		and route_scene.get_node_or_null(
+			"RedSandRouteHUD/FlightPanel/Margin/Content/SafetyLabel"
+		) is Label,
+		"Route HUD must separate always-on essentials from H full diagnostics.",
+		failures
+	)
+	expect_true(
 		route_scene.route_definition != null
 		and route_scene.route_definition.segments.size() == 8
 		and route_scene.route_definition.validate().is_empty(),

@@ -17,6 +17,8 @@ var planet_scale_start: float = 1.0
 var planet_scale_end: float = 1.0
 @export_range(-2000.0, 2000.0, 1.0)
 var floor_y: float = 1000.0
+## Controls both the visible terrain surface and its collision body for this segment.
+@export var terrain_surface_enabled: bool = false
 @export var graybox_color: Color = Color(0.12, 0.16, 0.2, 1.0)
 
 

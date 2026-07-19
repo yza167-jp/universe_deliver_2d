@@ -6,9 +6,12 @@ signal controls_help_close_requested
 const STATUS_DURATION_SECONDS: float = 2.4
 
 @onready var _flight_panel: PanelContainer = %FlightPanel
+@onready var _diagnostics_panel: PanelContainer = %DiagnosticsPanel
 @onready var _route_panel: PanelContainer = %RoutePanel
 @onready var _motion_label: Label = %MotionLabel
+@onready var _safety_label: Label = %SafetyLabel
 @onready var _resources_label: Label = %ResourcesLabel
+@onready var _diagnostics_label: Label = %DiagnosticsLabel
 @onready var _stage_label: Label = %StageLabel
 @onready var _progress_label: Label = %ProgressLabel
 @onready var _instruction_label: Label = %InstructionLabel
@@ -30,6 +33,9 @@ var _checkpoint_id: StringName = &""
 var _status_remaining: float = 0.0
 var _radar_state_key: StringName = &""
 var _radar_risk: float = 0.0
+var _radar_altitude: float = 0.0
+var _radar_safe_height: float = 0.0
+var _landing_buffer_active: bool = false
 var _landing_state_key: StringName = &""
 var _landing_metrics: Vector3 = Vector3.ZERO
 var _landing_tuning: FlightTuning
@@ -47,7 +53,9 @@ func _ready() -> void:
 	):
 		_controls_help.close_requested.connect(_on_controls_help_close_requested)
 	if _flight_panel != null:
-		_flight_panel.visible = _full_diagnostics_visible
+		_flight_panel.visible = true
+	if _diagnostics_panel != null:
+		_diagnostics_panel.visible = _full_diagnostics_visible
 	_hide_status()
 	refresh()
 
@@ -98,18 +106,21 @@ func refresh() -> void:
 	var segment: FlightRouteSegment = _route_definition.segments[safe_segment_index]
 	if segment == null:
 		return
-	var forward_speed: float = _flight_ship.get_forward_speed()
-	var speed_key: StringName = (
-		&"UI_FLIGHT_HUD_REVERSE_SPEED"
-		if forward_speed < 0.0
-		else &"UI_FLIGHT_HUD_FORWARD_SPEED"
+	var distance_remaining: float = maxf(
+		_route_definition.get_total_distance() - _route_distance,
+		0.0
 	)
-	_motion_label.text = (tr("UI_RED_SAND_ROUTE_HUD_MOTION") % [
-		tr(speed_key) % _format_signed(forward_speed),
-		_format_signed(_flight_ship.get_vertical_speed()),
-		_format_signed(_flight_ship.get_pitch_degrees()),
-		tr(FlightAssistMode.get_display_name_key(_flight_ship.assist_strength)),
-	]).replace("\\n", "\n")
+	var altitude: float = maxf(
+		_route_definition.get_altitude_reference_y(_route_distance)
+		- _flight_ship.position.y,
+		0.0
+	)
+	_motion_label.text = tr("UI_RED_SAND_ROUTE_HUD_NAVIGATION") % [
+		_format_distance(distance_remaining),
+		roundi(_flight_ship.get_speed()),
+		roundi(altitude),
+	]
+	_refresh_safety_label(altitude)
 	var boost_state_key: StringName = (
 		&"UI_RED_SAND_ROUTE_BOOST_ACTIVE"
 		if _flight_ship.get_boost_feedback_strength() > 0.04
@@ -139,6 +150,7 @@ func refresh() -> void:
 	_instruction_label.visible = _route_details_visible
 	_refresh_radar()
 	_refresh_landing()
+	_refresh_diagnostics(segment, distance_remaining, altitude)
 
 
 func show_stage_transition(segment: FlightRouteSegment) -> void:
@@ -243,16 +255,36 @@ func show_lightning_avoided() -> void:
 	_show_status(tr("UI_RED_SAND_HAZARD_LIGHTNING_AVOIDED"))
 
 
-func set_radar_state(state_key: StringName, lock_risk: float) -> void:
+func set_radar_state(
+	state_key: StringName,
+	lock_risk: float,
+	altitude: float = 0.0,
+	safe_height: float = 0.0,
+	landing_buffer_active: bool = false
+) -> void:
 	_radar_state_key = state_key
 	_radar_risk = clampf(lock_risk, 0.0, 1.0)
+	_radar_altitude = maxf(altitude, 0.0)
+	_radar_safe_height = maxf(safe_height, 0.0)
+	_landing_buffer_active = landing_buffer_active
 	_refresh_radar()
+	refresh()
 
 
 func show_radar_notice(message_key: StringName) -> void:
 	if message_key.is_empty():
 		return
 	_show_status(tr(message_key), 3.6)
+
+
+func show_radar_consequence(damage: float, cargo_damage: float) -> void:
+	_show_status(
+		tr("UI_RED_SAND_RADAR_LOCK_CONSEQUENCE") % [
+			roundi(maxf(damage, 0.0)),
+			roundi(maxf(cargo_damage, 0.0)),
+		],
+		4.2
+	)
 
 
 func set_landing_guidance(
@@ -290,6 +322,18 @@ func get_landing_text() -> String:
 	return "" if _landing_label == null else _landing_label.text
 
 
+func get_navigation_text() -> String:
+	return "" if _motion_label == null else _motion_label.text
+
+
+func get_safety_text() -> String:
+	return "" if _safety_label == null else _safety_label.text
+
+
+func get_diagnostics_text() -> String:
+	return "" if _diagnostics_label == null else _diagnostics_label.text
+
+
 func get_controls_help() -> FlightControlsHelp:
 	return _controls_help
 
@@ -311,8 +355,8 @@ func update_controls_help_laser_state(installed: bool) -> void:
 
 func toggle_full_diagnostics() -> bool:
 	_full_diagnostics_visible = not _full_diagnostics_visible
-	if _flight_panel != null:
-		_flight_panel.visible = _full_diagnostics_visible
+	if _diagnostics_panel != null:
+		_diagnostics_panel.visible = _full_diagnostics_visible
 	return _full_diagnostics_visible
 
 
@@ -328,6 +372,10 @@ func toggle_route_details() -> bool:
 
 func get_flight_panel_rect() -> Rect2:
 	return _get_visible_rect(_flight_panel)
+
+
+func get_diagnostics_rect() -> Rect2:
+	return _get_visible_rect(_diagnostics_panel)
 
 
 func get_route_panel_rect() -> Rect2:
@@ -371,7 +419,11 @@ func _refresh_radar() -> void:
 		_radar_panel.visible = false
 		_radar_label.text = ""
 		return
-	_radar_label.text = tr(_radar_state_key) % roundi(_radar_risk * 100.0)
+	_radar_label.text = (
+		tr(_radar_state_key)
+		if _landing_buffer_active
+		else tr(_radar_state_key) % roundi(_radar_risk * 100.0)
+	)
 	_radar_panel.visible = true
 
 
@@ -393,6 +445,127 @@ func _refresh_landing() -> void:
 	]).replace("\\n", "\n")
 	_landing_panel.visible = true
 	_landing_panel.queue_sort()
+
+
+func _refresh_safety_label(altitude: float) -> void:
+	if _safety_label == null:
+		return
+	if _landing_buffer_active:
+		_safety_label.text = tr("UI_RED_SAND_ROUTE_HUD_LANDING_BUFFER")
+		_safety_label.add_theme_color_override(
+			"font_color",
+			Color(0.670588, 1.0, 0.941176, 1.0)
+		)
+		return
+	if not _radar_state_key.is_empty():
+		_safety_label.text = tr("UI_RED_SAND_ROUTE_HUD_RADAR_SAFETY") % [
+			roundi(_radar_safe_height),
+			roundi(maxf(_radar_altitude, altitude)),
+		]
+		_safety_label.add_theme_color_override(
+			"font_color",
+			Color(1.0, 0.494118, 0.219608, 1.0)
+			if _radar_altitude > _radar_safe_height + 0.5
+			else Color(0.670588, 1.0, 0.941176, 1.0)
+		)
+		return
+	_safety_label.text = tr("UI_RED_SAND_ROUTE_HUD_SAFETY") % tr(
+		FlightAssistMode.get_display_name_key(_flight_ship.assist_strength)
+	)
+	_safety_label.add_theme_color_override(
+		"font_color",
+		Color(0.639216, 0.843137, 0.815686, 1.0)
+	)
+
+
+func _refresh_diagnostics(
+	segment: FlightRouteSegment,
+	distance_remaining: float,
+	altitude: float
+) -> void:
+	if _diagnostics_label == null or segment == null:
+		return
+	var laser_loadout_key: StringName = &"UI_FLIGHT_LASER_LOADOUT_UNINSTALLED"
+	var laser_state_text: String = tr("UI_FLIGHT_LASER_STATE_UNAVAILABLE")
+	if _flight_ship.is_laser_enabled():
+		laser_loadout_key = &"UI_FLIGHT_LASER_LOADOUT_INSTALLED"
+		if _flight_ship.is_laser_ready():
+			laser_state_text = tr("UI_FLIGHT_LASER_STATE_READY")
+		else:
+			laser_state_text = tr("UI_FLIGHT_LASER_STATE_COOLDOWN") % (
+				_flight_ship.get_laser_cooldown_remaining()
+			)
+	var radar_state_text: String = "—"
+	if not _radar_state_key.is_empty():
+		radar_state_text = (
+			tr(_radar_state_key)
+			if _landing_buffer_active
+			else tr(_radar_state_key) % roundi(_radar_risk * 100.0)
+		)
+	var lines: PackedStringArray = PackedStringArray([
+		tr("UI_RED_SAND_ROUTE_DIAGNOSTICS_HINT"),
+		tr("UI_FLIGHT_DEBUG_SPEED") % _flight_ship.get_speed(),
+		tr("UI_FLIGHT_DEBUG_VERTICAL_SPEED") % _flight_ship.get_vertical_speed(),
+		tr("UI_FLIGHT_DEBUG_PITCH") % _flight_ship.get_pitch_degrees(),
+		tr("UI_FLIGHT_DEBUG_ANGULAR_VELOCITY") % _flight_ship.get_angular_velocity(),
+		tr("UI_FLIGHT_DEBUG_ZONE") % tr(_flight_ship.environment_zone_key),
+		tr("UI_FLIGHT_DEBUG_ENVIRONMENT") % [
+			roundi(_flight_ship.air_density * 100.0),
+			roundi(_flight_ship.gravity_blend * 100.0),
+		],
+		tr("UI_FLIGHT_DEBUG_GRAVITY") % _flight_ship.gravity_acceleration,
+		tr("UI_FLIGHT_DEBUG_TERMINAL") % [
+			_flight_ship.natural_terminal_fall_speed,
+			_flight_ship.get_terminal_fall_speed_safety(),
+		],
+		tr("UI_FLIGHT_DEBUG_DURABILITY") % [
+			roundi(_flight_ship.hull),
+			roundi(_flight_ship.shield),
+			roundi(_flight_ship.cargo_integrity),
+		],
+		tr("UI_FLIGHT_DEBUG_FUEL") % [
+			roundi(_flight_ship.fuel),
+			_flight_ship.propulsion_fuel_cost_rate,
+		],
+		tr("UI_FLIGHT_DEBUG_BOOST") % [
+			roundi(_flight_ship.boost_energy),
+			_flight_ship.resources.boost_energy_cost_rate,
+			_flight_ship.resources.boost_recovery_rate,
+		],
+		tr("UI_FLIGHT_DEBUG_ASSIST") % [
+			tr(FlightAssistMode.get_display_name_key(_flight_ship.assist_strength)),
+			roundi(_flight_ship.assist_strength * 100.0),
+			roundi(_flight_ship.effective_assist_strength * 100.0),
+		],
+		tr("UI_FLIGHT_DEBUG_LASER") % [
+			tr(laser_loadout_key),
+			laser_state_text,
+		],
+		tr("UI_FLIGHT_DEBUG_COLLISION") % [
+			tr(_flight_ship.collision_state_key),
+			_flight_ship.last_impact_speed,
+		],
+		tr("UI_RED_SAND_ROUTE_DIAGNOSTICS_ROUTE") % [
+			_segment_index + 1,
+			_route_definition.segments.size(),
+			_route_distance,
+			_format_distance(distance_remaining),
+			roundi(altitude),
+		],
+		tr("UI_RED_SAND_ROUTE_DIAGNOSTICS_RADAR") % [
+			radar_state_text,
+			roundi(_radar_risk * 100.0),
+		],
+		tr("UI_FLIGHT_DEBUG_CHECKPOINT") % String(_checkpoint_id),
+	])
+	_diagnostics_label.text = "\n".join(lines)
+
+
+func _format_distance(distance_meters: float) -> String:
+	var safe_distance: float = maxf(distance_meters, 0.0)
+	if safe_distance >= 1000.0:
+		return "%.1f km" % (safe_distance / 1000.0)
+	return "%d m" % roundi(safe_distance)
 
 
 func _format_signed(value: float) -> String:

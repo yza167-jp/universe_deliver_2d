@@ -142,6 +142,29 @@ color = Color(0.945098, 0.560784, 0.27451, 0.72)
 polygon = PackedVector2Array(-48, 0, -44, -18, -34, -34, -18, -44, 0, -48, -5, -25, -2, 0, -8, 24, -18, 44, -34, 34, -44, 18)
 color = Color(0.184314, 0.0745098, 0.0862745, 0.55)
 
+[node name="AtmosphereHorizon" type="Node2D" parent="Backdrop"]
+unique_name_in_owner = true
+visible = false
+modulate = Color(1, 1, 1, 0)
+
+[node name="UpperAtmosphereBand" type="Polygon2D" parent="Backdrop/AtmosphereHorizon"]
+polygon = PackedVector2Array(0, 298, 80, 266, 160, 238, 240, 218, 320, 208, 400, 210, 480, 222, 560, 244, 640, 274, 640, 316, 560, 286, 480, 264, 400, 252, 320, 250, 240, 260, 160, 280, 80, 308, 0, 340)
+color = Color(1, 0.494118, 0.219608, 0.18)
+
+[node name="CurvedSurface" type="Polygon2D" parent="Backdrop/AtmosphereHorizon"]
+polygon = PackedVector2Array(0, 332, 80, 300, 160, 272, 240, 252, 320, 242, 400, 244, 480, 256, 560, 278, 640, 308, 640, 360, 0, 360)
+color = Color(0.384314, 0.137255, 0.117647, 0.96)
+
+[node name="HorizonGlow" type="Line2D" parent="Backdrop/AtmosphereHorizon"]
+points = PackedVector2Array(0, 332, 80, 300, 160, 272, 240, 252, 320, 242, 400, 244, 480, 256, 560, 278, 640, 308)
+width = 4.0
+default_color = Color(1, 0.690196, 0.333333, 0.82)
+
+[node name="HighCloudVeil" type="Line2D" parent="Backdrop/AtmosphereHorizon"]
+points = PackedVector2Array(-40, 286, 90, 260, 220, 244, 350, 238, 480, 248, 610, 274, 680, 296)
+width = 11.0
+default_color = Color(0.941176, 0.643137, 0.407843, 0.2)
+
 [node name="BackgroundLayers" type="Node2D" parent="."]
 
 [node name="FarStars" type="Parallax2D" parent="BackgroundLayers"]
@@ -419,6 +442,7 @@ texture = ExtResource("19_mote_texture")
 unique_name_in_owner = true
 script = ExtResource("11_route_visuals")
 planet_anchor_path = NodePath("../../Backdrop/PlanetAnchor")
+atmosphere_horizon_path = NodePath("../../Backdrop/AtmosphereHorizon")
 atmosphere_tint_path = NodePath("../../Backdrop/AtmosphereTint")
 surface_haze_path = NodePath("../../Backdrop/SurfaceHaze")
 far_stars_path = NodePath("../../BackgroundLayers/FarStars")

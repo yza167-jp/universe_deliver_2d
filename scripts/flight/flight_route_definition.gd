@@ -136,3 +136,20 @@ func get_planet_scale(route_distance: float) -> float:
 	if segment == null:
 		return 1.0
 	return segment.get_planet_scale(route_distance)
+
+
+## Returns the compressed flight-altitude datum used by the route HUD.
+## It remains available before physical terrain appears, but never creates collision.
+func get_altitude_reference_y(route_distance: float) -> float:
+	var segment_index: int = get_segment_index(route_distance)
+	if segment_index < 0:
+		return 0.0
+	var segment: FlightRouteSegment = segments[segment_index]
+	if segment == null:
+		return 0.0
+	var start_y: float = (
+		segment.floor_y
+		if segment_index == 0 or segments[segment_index - 1] == null
+		else segments[segment_index - 1].floor_y
+	)
+	return lerpf(start_y, segment.floor_y, segment.get_progress(route_distance))

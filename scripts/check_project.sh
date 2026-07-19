@@ -142,7 +142,7 @@ run_step \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/red_sand_gate_c_smoke_runner.gd
 
 run_step \
-  "Gate C Round 2 route timing, controls, fuel, and feedback smoke test" \
+  "Gate C Round 3 route rework and flight-baseline regression smoke test" \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/red_sand_gate_c_round_2_smoke_runner.gd
 
 run_step \

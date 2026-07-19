@@ -3,9 +3,15 @@ extends Node2D
 
 const FLOOR_BODY_DEPTH: float = 600.0
 const STAGE_LABEL_Y: float = 94.0
-const PLANET_HORIZON_TRANSITION_SECONDS: float = 0.55
+const ATMOSPHERE_SEGMENT_INDEX: int = 3
+const STORM_SEGMENT_INDEX: int = 4
+const LOWER_CLOUDS_SEGMENT_INDEX: int = 5
+const PLANET_HORIZON_TRANSITION_SECONDS: float = 0.9
+const PLANET_CURVATURE_SCALE: float = 5.8
+const PLANET_CURVATURE_POSITION: Vector2 = Vector2(350.0, 620.0)
 
 @export var planet_anchor_path: NodePath
+@export var atmosphere_horizon_path: NodePath
 @export var atmosphere_tint_path: NodePath
 @export var surface_haze_path: NodePath
 @export var far_stars_path: NodePath
@@ -15,6 +21,9 @@ const PLANET_HORIZON_TRANSITION_SECONDS: float = 0.55
 @export var near_facilities_path: NodePath
 
 @onready var _planet_anchor: Node2D = get_node_or_null(planet_anchor_path) as Node2D
+@onready var _atmosphere_horizon: Node2D = get_node_or_null(
+	atmosphere_horizon_path
+) as Node2D
 @onready var _atmosphere_tint: ColorRect = get_node_or_null(
 	atmosphere_tint_path
 ) as ColorRect
@@ -32,8 +41,9 @@ const PLANET_HORIZON_TRANSITION_SECONDS: float = 0.55
 var _route_definition: FlightRouteDefinition
 var _route_origin_x: float = 0.0
 var _last_segment_index: int = -1
-var _planet_transition_remaining: float = 0.0
+var _planet_transition_elapsed: float = 0.0
 var _planet_alpha: float = 1.0
+var _horizon_alpha: float = 0.0
 
 
 func _notification(what: int) -> void:
@@ -62,18 +72,22 @@ func update_visuals(route_distance: float, delta: float = 0.0) -> void:
 	var segment: FlightRouteSegment = _route_definition.get_segment(route_distance)
 	if segment == null:
 		return
+	var segment_progress: float = segment.get_progress(route_distance)
 	if segment_index != _last_segment_index:
 		_begin_planet_stage(segment_index)
 		_last_segment_index = segment_index
 	var planet_scale: float = _route_definition.get_planet_scale(route_distance)
-	_planet_anchor.scale = Vector2.ONE * planet_scale
-	_planet_anchor.position = _get_planet_position(
+	_update_planet_transition(
+		maxf(delta, 0.0),
 		segment_index,
-		segment.get_progress(route_distance)
+		segment_progress
 	)
-	_update_planet_transition(maxf(delta, 0.0), segment_index)
+	_apply_planet_transform(segment_index, segment_progress, planet_scale)
 	_planet_anchor.modulate.a = _planet_alpha
 	_planet_anchor.visible = _planet_alpha > 0.001
+	if _atmosphere_horizon != null:
+		_atmosphere_horizon.modulate.a = _horizon_alpha
+		_atmosphere_horizon.visible = _horizon_alpha > 0.001
 	if _atmosphere_tint != null:
 		var atmosphere_color: Color = _atmosphere_tint.color
 		atmosphere_color.a = clampf((progress - 0.3) / 0.7, 0.0, 1.0) * 0.62
@@ -95,9 +109,21 @@ func update_visuals(route_distance: float, delta: float = 0.0) -> void:
 
 
 func reset_to_distance(route_distance: float) -> void:
-	_last_segment_index = -1
-	_planet_transition_remaining = 0.0
+	if _route_definition == null:
+		return
+	var segment_index: int = _route_definition.get_segment_index(route_distance)
+	var segment: FlightRouteSegment = _route_definition.get_segment(route_distance)
+	_last_segment_index = segment_index
+	_planet_transition_elapsed = 0.0
 	_planet_alpha = 1.0
+	_horizon_alpha = 0.0
+	if segment_index == ATMOSPHERE_SEGMENT_INDEX and segment != null:
+		if segment.get_progress(route_distance) > 0.02:
+			_planet_transition_elapsed = PLANET_HORIZON_TRANSITION_SECONDS
+	elif segment_index >= STORM_SEGMENT_INDEX:
+		_planet_transition_elapsed = PLANET_HORIZON_TRANSITION_SECONDS
+		_planet_alpha = 0.0
+		_horizon_alpha = 1.0 if segment_index <= LOWER_CLOUDS_SEGMENT_INDEX else 0.0
 	update_visuals(route_distance, 0.0)
 
 
@@ -115,41 +141,102 @@ func get_planet_alpha() -> float:
 	return _planet_alpha
 
 
+func get_atmosphere_horizon_alpha() -> float:
+	return _horizon_alpha
+
+
+func get_planet_transition_progress() -> float:
+	return clampf(
+		_planet_transition_elapsed / PLANET_HORIZON_TRANSITION_SECONDS,
+		0.0,
+		1.0
+	)
+
+
+func get_terrain_surface_stage_indices() -> PackedInt32Array:
+	var stage_indices: PackedInt32Array = PackedInt32Array()
+	for child: Node in get_children():
+		if child is StaticBody2D and child.has_meta(&"route_segment_index"):
+			stage_indices.append(int(child.get_meta(&"route_segment_index")))
+	return stage_indices
+
+
 func is_full_planet_visible() -> bool:
 	return _planet_anchor != null and _planet_anchor.visible
 
 
 func _begin_planet_stage(segment_index: int) -> void:
-	if segment_index <= 2:
+	if segment_index < ATMOSPHERE_SEGMENT_INDEX:
 		_planet_alpha = 1.0
-		_planet_transition_remaining = 0.0
-	elif segment_index == 3:
+		_horizon_alpha = 0.0
+		_planet_transition_elapsed = 0.0
+	elif segment_index == ATMOSPHERE_SEGMENT_INDEX:
 		_planet_alpha = 1.0
-		_planet_transition_remaining = PLANET_HORIZON_TRANSITION_SECONDS
+		_horizon_alpha = 0.0
+		_planet_transition_elapsed = 0.0
 	else:
 		_planet_alpha = 0.0
-		_planet_transition_remaining = 0.0
+		_horizon_alpha = 1.0 if segment_index <= LOWER_CLOUDS_SEGMENT_INDEX else 0.0
+		_planet_transition_elapsed = PLANET_HORIZON_TRANSITION_SECONDS
 
 
-func _update_planet_transition(delta: float, segment_index: int) -> void:
-	if segment_index <= 2:
+func _update_planet_transition(
+	delta: float,
+	segment_index: int,
+	segment_progress: float
+) -> void:
+	if segment_index < ATMOSPHERE_SEGMENT_INDEX:
 		_planet_alpha = 1.0
+		_horizon_alpha = 0.0
 		return
-	if segment_index >= 4:
+	if segment_index == ATMOSPHERE_SEGMENT_INDEX:
+		_planet_transition_elapsed = minf(
+			_planet_transition_elapsed + delta,
+			PLANET_HORIZON_TRANSITION_SECONDS
+		)
+		var transition_progress: float = get_planet_transition_progress()
+		_horizon_alpha = smoothstep(0.0, 0.72, transition_progress)
+		_planet_alpha = 1.0 - smoothstep(0.52, 1.0, transition_progress)
+		return
+	if segment_index == STORM_SEGMENT_INDEX:
 		_planet_alpha = 0.0
+		_horizon_alpha = 1.0
 		return
-	if _planet_transition_remaining <= 0.0:
+	if segment_index == LOWER_CLOUDS_SEGMENT_INDEX:
 		_planet_alpha = 0.0
+		_horizon_alpha = 1.0 - smoothstep(0.35, 1.0, segment_progress)
 		return
-	_planet_transition_remaining = maxf(
-		_planet_transition_remaining - delta,
-		0.0
-	)
-	_planet_alpha = clampf(
-		_planet_transition_remaining / PLANET_HORIZON_TRANSITION_SECONDS,
-		0.0,
-		1.0
-	)
+	_planet_alpha = 0.0
+	_horizon_alpha = 0.0
+
+
+func _apply_planet_transform(
+	segment_index: int,
+	segment_progress: float,
+	route_planet_scale: float
+) -> void:
+	if segment_index < ATMOSPHERE_SEGMENT_INDEX:
+		_planet_anchor.scale = Vector2.ONE * route_planet_scale
+		_planet_anchor.position = _get_planet_position(segment_index, segment_progress)
+		return
+	if segment_index == ATMOSPHERE_SEGMENT_INDEX:
+		var transition_progress: float = smoothstep(
+			0.0,
+			1.0,
+			get_planet_transition_progress()
+		)
+		_planet_anchor.scale = Vector2.ONE * lerpf(
+			route_planet_scale,
+			PLANET_CURVATURE_SCALE,
+			transition_progress
+		)
+		_planet_anchor.position = _get_planet_position(
+			segment_index,
+			segment_progress
+		).lerp(PLANET_CURVATURE_POSITION, transition_progress)
+		return
+	_planet_anchor.scale = Vector2.ONE * PLANET_CURVATURE_SCALE
+	_planet_anchor.position = PLANET_CURVATURE_POSITION
 
 
 func _get_planet_position(segment_index: int, segment_progress: float) -> Vector2:
@@ -200,42 +287,15 @@ func _build_segment_graybox(segment: FlightRouteSegment, index: int) -> void:
 	stage_band.color = band_color
 	add_child(stage_band)
 
-	var floor_visual: Polygon2D = Polygon2D.new()
-	floor_visual.name = "FloorVisual%02d" % (index + 1)
-	floor_visual.z_index = -1
-	floor_visual.polygon = PackedVector2Array([
-		Vector2(start_x, start_floor_y),
-		Vector2(end_x, end_floor_y),
-		Vector2(end_x, end_floor_y + FLOOR_BODY_DEPTH),
-		Vector2(start_x, start_floor_y + FLOOR_BODY_DEPTH),
-	])
-	floor_visual.color = segment.graybox_color
-	add_child(floor_visual)
-
-	var floor_edge: Line2D = Line2D.new()
-	floor_edge.name = "FloorEdge%02d" % (index + 1)
-	floor_edge.z_index = 2
-	floor_edge.points = PackedVector2Array([
-		Vector2(start_x, start_floor_y),
-		Vector2(end_x, end_floor_y),
-	])
-	floor_edge.width = 3.0
-	floor_edge.default_color = _resolve_floor_edge_color(index)
-	add_child(floor_edge)
-
-	var floor_body: StaticBody2D = StaticBody2D.new()
-	floor_body.name = "FloorBody%02d" % (index + 1)
-	floor_body.collision_layer = FlightWeaponRules.WORLD_COLLISION_LAYER
-	floor_body.collision_mask = 0
-	var floor_collision: CollisionPolygon2D = CollisionPolygon2D.new()
-	floor_collision.polygon = PackedVector2Array([
-		Vector2(start_x, start_floor_y),
-		Vector2(end_x, end_floor_y),
-		Vector2(end_x, end_floor_y + FLOOR_BODY_DEPTH),
-		Vector2(start_x, start_floor_y + FLOOR_BODY_DEPTH),
-	])
-	floor_body.add_child(floor_collision)
-	add_child(floor_body)
+	if segment.terrain_surface_enabled:
+		_build_terrain_surface(
+			segment,
+			index,
+			start_x,
+			end_x,
+			start_floor_y,
+			end_floor_y
+		)
 
 	var divider: Line2D = Line2D.new()
 	divider.name = "StageDivider%02d" % (index + 1)
@@ -259,6 +319,49 @@ func _build_segment_graybox(segment: FlightRouteSegment, index: int) -> void:
 	)
 	stage_label.set_meta(&"route_segment_index", index)
 	add_child(stage_label)
+
+
+func _build_terrain_surface(
+	segment: FlightRouteSegment,
+	index: int,
+	start_x: float,
+	end_x: float,
+	start_floor_y: float,
+	end_floor_y: float
+) -> void:
+	var surface_polygon: PackedVector2Array = PackedVector2Array([
+		Vector2(start_x, start_floor_y),
+		Vector2(end_x, end_floor_y),
+		Vector2(end_x, end_floor_y + FLOOR_BODY_DEPTH),
+		Vector2(start_x, start_floor_y + FLOOR_BODY_DEPTH),
+	])
+	var floor_visual: Polygon2D = Polygon2D.new()
+	floor_visual.name = "FloorVisual%02d" % (index + 1)
+	floor_visual.z_index = -1
+	floor_visual.polygon = surface_polygon
+	floor_visual.color = segment.graybox_color
+	add_child(floor_visual)
+
+	var floor_edge: Line2D = Line2D.new()
+	floor_edge.name = "FloorEdge%02d" % (index + 1)
+	floor_edge.z_index = 2
+	floor_edge.points = PackedVector2Array([
+		Vector2(start_x, start_floor_y),
+		Vector2(end_x, end_floor_y),
+	])
+	floor_edge.width = 3.0
+	floor_edge.default_color = _resolve_floor_edge_color(index)
+	add_child(floor_edge)
+
+	var floor_body: StaticBody2D = StaticBody2D.new()
+	floor_body.name = "FloorBody%02d" % (index + 1)
+	floor_body.collision_layer = FlightWeaponRules.WORLD_COLLISION_LAYER
+	floor_body.collision_mask = 0
+	floor_body.set_meta(&"route_segment_index", index)
+	var floor_collision: CollisionPolygon2D = CollisionPolygon2D.new()
+	floor_collision.polygon = surface_polygon
+	floor_body.add_child(floor_collision)
+	add_child(floor_body)
 
 
 func _build_finish_beacon() -> void:

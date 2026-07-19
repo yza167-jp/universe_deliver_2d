@@ -60,10 +60,13 @@ func _run_smoke() -> void:
 	_test_fixed_course_structure(course)
 	await _enter_surface_route(route, ship, definition)
 	_test_accessibility_defaults(course, hud)
+	await _test_safe_low_route(route, ship, course, hud)
+	_test_checkpoint_reset(route, course, hud)
 	await _test_high_route_lock(route, ship, course, feedback, hud)
 	await _test_cover_breaks_lock(route, ship, course, feedback, hud)
 	_test_accessibility_toggles(course, settings_service)
 	_test_checkpoint_reset(route, course, hud)
+	_test_landing_preparation_buffer(route, ship, course, hud, definition)
 
 	route.queue_free()
 	await process_frame
@@ -151,6 +154,37 @@ func _test_accessibility_defaults(
 	)
 
 
+func _test_safe_low_route(
+	route: RedSandFlight,
+	ship: FlightLabShip,
+	course: RedSandLowFlightCourse,
+	hud: RedSandRouteHUD
+) -> void:
+	var hull_before: float = ship.hull
+	var shield_before: float = ship.shield
+	var cargo_before: float = ship.cargo_integrity
+	ship.global_position = course.global_position + Vector2(1200.0, 405.0)
+	var camera: Camera2D = route.get_flight_camera()
+	if camera != null:
+		camera.position = ship.position
+	route._physics_process(3.0)
+	_check(
+		not course.is_locked()
+		and is_zero_approx(course.get_lock_risk())
+		and course.get_radar_state() == RedSandLowFlightCourse.RadarState.LOW_PROFILE
+		and hud.get_safety_text().contains("雷达安全高度")
+		and hud.get_safety_text().contains("当前"),
+		"Safe low flight did not remain visibly below the radar height limit."
+	)
+	_check(
+		is_equal_approx(ship.hull, hull_before)
+		and is_equal_approx(ship.shield, shield_before)
+		and is_equal_approx(ship.cargo_integrity, cargo_before),
+		"Safe low flight incorrectly applied the high-altitude lock consequence."
+	)
+	await process_frame
+
+
 func _test_high_route_lock(
 	route: RedSandFlight,
 	ship: FlightLabShip,
@@ -172,19 +206,23 @@ func _test_high_route_lock(
 		and is_equal_approx(course.get_lock_risk(), 1.0)
 		and course.get_radar_state() == RedSandLowFlightCourse.RadarState.LOCKED
 		and hud.get_radar_text().contains("已锁定")
-		and hud.get_status_text().contains("不含隐私")
+		and hud.get_status_text().contains("锁定脉冲命中")
+		and hud.get_safety_text().contains("雷达安全高度")
 		and feedback.is_radar_pressure_visible()
 		and is_equal_approx(feedback.get_radar_pressure(), 1.0),
 		"High route did not produce a readable fixed-sector radar lock."
 	)
 	_check(
 		is_equal_approx(ship.hull, hull_before)
-		and is_equal_approx(ship.shield, shield_before)
-		and is_equal_approx(ship.cargo_integrity, cargo_before)
+		and is_equal_approx(ship.shield, shield_before - course.lock_damage)
+		and is_equal_approx(
+			ship.cargo_integrity,
+			cargo_before - course.lock_cargo_damage
+		)
 		and ship.get_checkpoint_id() == checkpoint_before
 		and route.get_active_segment_index() == SURFACE_SEGMENT_INDEX
 		and not route.is_route_completed(),
-		"Radar pressure must not become combat damage or change route/story outcome."
+		"High-altitude lock did not apply its one-shot shield and cargo consequence."
 	)
 	await process_frame
 	await process_frame
@@ -272,6 +310,48 @@ func _test_checkpoint_reset(
 	)
 
 
+func _test_landing_preparation_buffer(
+	route: RedSandFlight,
+	ship: FlightLabShip,
+	course: RedSandLowFlightCourse,
+	hud: RedSandRouteHUD,
+	definition: FlightRouteDefinition
+) -> void:
+	ship.position = Vector2(
+		route.route_origin_x + course.get_radar_exit_route_distance() + 1.0,
+		300.0
+	)
+	route._physics_process(0.1)
+	var landing_zone: RedSandLandingZone = route.get_landing_zone()
+	var pad_start_distance: float = (
+		landing_zone.landing_center_route_distance
+		- landing_zone.get_pad_width() * 0.5
+	)
+	_check(
+		course.is_landing_buffer_active()
+		and course.get_radar_state()
+		== RedSandLowFlightCourse.RadarState.LANDING_BUFFER
+		and is_zero_approx(course.get_lock_risk())
+		and hud.get_radar_text().contains("已脱离")
+		and hud.get_safety_text().contains("抬升")
+		and pad_start_distance - course.get_radar_exit_route_distance() >= 2500.0,
+		"Low flight did not release into a readable climb/slow/align buffer."
+	)
+	var landing_segment: FlightRouteSegment = definition.segments[7]
+	ship.position.x = route.route_origin_x + landing_segment.start_distance + 1.0
+	_check(route.advance_route_state(), "Landing preparation stage did not begin.")
+	route._physics_process(0.0)
+	_check(
+		course.is_landing_buffer_active()
+		and hud.get_radar_text().contains("着陆准备走廊")
+		and not hud.get_landing_text().is_empty()
+		and not hud.get_radar_rect().intersects(hud.get_landing_rect())
+		and VIEWPORT_RECT.encloses(hud.get_radar_rect())
+		and VIEWPORT_RECT.encloses(hud.get_landing_rect()),
+		"Landing stage did not preserve the radar-clear handoff beside landing guidance."
+	)
+
+
 func _check(condition: bool, message: String) -> void:
 	if not condition:
 		_failures.append(message)
@@ -281,8 +361,8 @@ func _finish() -> void:
 	TranslationServer.set_locale(_original_locale)
 	if _failures.is_empty():
 		print(
-			"[red-sand-low-flight] PASS: fixed canyon routes, high-route radar pressure, "
-			+ "terrain-cover lock breaks, accessibility visuals, and non-combat outcomes."
+			"[red-sand-low-flight] PASS: safe low route, one-shot high-lock consequence, "
+			+ "terrain-cover breaks, accessibility, and landing preparation buffer."
 		)
 		quit(0)
 		return

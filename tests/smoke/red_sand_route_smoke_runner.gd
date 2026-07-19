@@ -72,7 +72,19 @@ func _run_smoke() -> void:
 		route.get_node("World/RouteGeometry").get_child_count() >= 41,
 		"Runtime graybox did not build stage bands, floors, markers, and the finish beacon."
 	)
-	var route_geometry: Node = route.get_node("World/RouteGeometry")
+	var route_geometry: RedSandRouteVisuals = route.get_node(
+		"World/RouteGeometry"
+	) as RedSandRouteVisuals
+	_check(
+		route_geometry != null
+		and route_geometry.get_terrain_surface_stage_indices()
+		== PackedInt32Array([5, 6, 7])
+		and route_geometry.get_node_or_null("FloorVisual01") == null
+		and route_geometry.get_node_or_null("FloorVisual04") == null
+		and route_geometry.get_node_or_null("FloorBody01") == null
+		and route_geometry.get_node_or_null("FloorBody04") == null,
+		"Only lower-cloud, surface-route, and landing stages may build terrain collision."
+	)
 	var landmark_names: PackedStringArray = [
 		"AsteroidSilhouettes02",
 		"ApproachGuides03",
@@ -91,20 +103,44 @@ func _run_smoke() -> void:
 		)
 	var viewport_bounds: Rect2 = Rect2(Vector2.ZERO, Vector2(640.0, 360.0))
 	_check(
-		route_hud.get_flight_panel_rect() == Rect2()
+		viewport_bounds.encloses(route_hud.get_flight_panel_rect())
+		and route_hud.get_diagnostics_rect() == Rect2()
 		and viewport_bounds.encloses(route_hud.get_route_panel_rect())
+		and route_hud.get_navigation_text().contains("距着陆点")
+		and route_hud.get_navigation_text().contains("m/s")
+		and route_hud.get_navigation_text().contains("高度")
+		and not route_hud.get_navigation_text().contains("前向")
 		and not route_hud.has_visible_mouse_interception(),
-		"Red Sand Essential HUD is outside 640x360 or blocks mouse input."
+		"Red Sand Essential HUD omitted labeled navigation units or blocks input."
+	)
+	route_hud.toggle_full_diagnostics()
+	route_hud.show_stage_transition(definition.segments[0])
+	_check(
+		viewport_bounds.encloses(route_hud.get_diagnostics_rect()),
+		"Full route diagnostics escaped the 640x360 viewport."
+	)
+	_check(
+		route_hud.get_diagnostics_text().contains("完整诊断")
+		and route_hud.get_diagnostics_text().contains("px/s")
+		and route_hud.get_diagnostics_text().contains("检查点"),
+		"H did not expose complete route telemetry text."
+	)
+	_check(
+		not route_hud.get_diagnostics_rect().intersects(
+			route_hud.get_route_panel_rect()
+		)
+		and viewport_bounds.encloses(route_hud.get_status_rect())
+		and not route_hud.get_diagnostics_rect().intersects(
+			route_hud.get_status_rect()
+		),
+		"Full diagnostics overlapped route or transient status data."
 	)
 	route_hud.toggle_full_diagnostics()
 	_check(
-		viewport_bounds.encloses(route_hud.get_flight_panel_rect())
-		and not route_hud.get_flight_panel_rect().intersects(
-			route_hud.get_route_panel_rect()
-		),
-		"H diagnostics did not stay inside the viewport without overlapping route data."
+		route_hud.get_diagnostics_rect() == Rect2()
+		and not route_hud.is_full_diagnostics_visible(),
+		"Second H toggle did not close full route diagnostics."
 	)
-	route_hud.toggle_full_diagnostics()
 
 	var previous_planet_scale: float = route.get_planet_visual_scale()
 	var checkpoint_position: Vector2 = Vector2.ZERO
@@ -205,10 +241,11 @@ func _run_smoke() -> void:
 		and flight_ship.position == completion_position
 		and flight_ship.velocity == completion_velocity
 		and is_equal_approx(route.get_route_progress(), 1.0)
-		and is_equal_approx(route.get_planet_visual_scale(), 1.55)
+		and route.get_planet_visual_scale() >= 5.0
 		and not (
-			route.get_node("World/RouteGeometry") as RedSandRouteVisuals
-		).is_full_planet_visible(),
+			route_geometry.is_full_planet_visible()
+		)
+		and is_zero_approx(route_geometry.get_atmosphere_horizon_alpha()),
 		"Flying past the route distance must not replace a real touchdown."
 	)
 

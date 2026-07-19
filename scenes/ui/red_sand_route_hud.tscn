@@ -24,7 +24,6 @@ script = ExtResource("1_hud")
 
 [node name="FlightPanel" type="PanelContainer" parent="."]
 unique_name_in_owner = true
-visible = false
 offset_left = 8.0
 offset_top = 8.0
 offset_right = 264.0
@@ -47,15 +46,49 @@ theme_override_constants/separation = 3
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.905882, 0.945098, 0.972549, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 9
 text = "UI_RED_SAND_ROUTE_HUD_MOTION"
 
-[node name="ResourcesLabel" type="Label" parent="FlightPanel/Margin/Content"]
+[node name="SafetyLabel" type="Label" parent="FlightPanel/Margin/Content"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.639216, 0.843137, 0.815686, 1)
 theme_override_font_sizes/font_size = 9
+text = "UI_RED_SAND_ROUTE_HUD_SAFETY"
+
+[node name="ResourcesLabel" type="Label" parent="FlightPanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.741176, 0.823529, 0.85098, 1)
+theme_override_font_sizes/font_size = 8
 text = "UI_RED_SAND_ROUTE_HUD_RESOURCES"
+
+[node name="DiagnosticsPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+offset_left = 8.0
+offset_top = 84.0
+offset_right = 264.0
+offset_bottom = 314.0
+theme = SubResource("ThemeRoute")
+theme_override_styles/panel = SubResource("StylePanel")
+
+[node name="Margin" type="MarginContainer" parent="DiagnosticsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 6
+
+[node name="DiagnosticsLabel" type="Label" parent="DiagnosticsPanel/Margin"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 214)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.831373, 0.87451, 0.890196, 1)
+theme_override_font_sizes/font_size = 7
+text = "UI_RED_SAND_ROUTE_DIAGNOSTICS_HINT"
+autowrap_mode = 0
+text_overrun_behavior = 3
 
 [node name="RoutePanel" type="PanelContainer" parent="."]
 unique_name_in_owner = true
@@ -109,10 +142,10 @@ text = "UI_FLIGHT_CONTROLS_HINT"
 [node name="RadarPanel" type="PanelContainer" parent="."]
 unique_name_in_owner = true
 visible = false
-offset_left = 8.0
+offset_left = 272.0
 offset_top = 84.0
-offset_right = 264.0
-offset_bottom = 110.0
+offset_right = 632.0
+offset_bottom = 112.0
 theme = SubResource("ThemeRoute")
 theme_override_styles/panel = SubResource("StylePanel")
 
@@ -134,10 +167,10 @@ text_overrun_behavior = 3
 [node name="LandingPanel" type="PanelContainer" parent="."]
 unique_name_in_owner = true
 visible = false
-offset_left = 8.0
-offset_top = 84.0
-offset_right = 344.0
-offset_bottom = 124.0
+offset_left = 272.0
+offset_top = 116.0
+offset_right = 632.0
+offset_bottom = 156.0
 theme = SubResource("ThemeRoute")
 theme_override_styles/panel = SubResource("StylePanel")
 
@@ -161,9 +194,9 @@ text_overrun_behavior = 3
 [node name="StatusPanel" type="PanelContainer" parent="."]
 unique_name_in_owner = true
 visible = false
-offset_left = 104.0
+offset_left = 272.0
 offset_top = 320.0
-offset_right = 536.0
+offset_right = 632.0
 offset_bottom = 352.0
 theme = SubResource("ThemeRoute")
 theme_override_styles/panel = SubResource("StylePanel")

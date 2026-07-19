@@ -2,6 +2,11 @@ class_name RedSandLowFlightCourse
 extends Node2D
 
 signal notice_requested(message_key: StringName)
+signal lock_consequence_requested(
+	damage: float,
+	cargo_damage: float,
+	reason_key: StringName
+)
 
 enum RadarState {
 	INACTIVE,
@@ -9,20 +14,27 @@ enum RadarState {
 	TRACKING,
 	COVERED,
 	LOCKED,
+	LANDING_BUFFER,
 }
 
 const TRACKING_NOTICE_KEY: StringName = &"UI_RED_SAND_RADAR_NOTICE_TRACKING"
 const LOCKED_NOTICE_KEY: StringName = &"UI_RED_SAND_RADAR_NOTICE_LOCKED"
 const LOCK_LOST_NOTICE_KEY: StringName = &"UI_RED_SAND_RADAR_NOTICE_LOST"
+const LOCK_CONSEQUENCE_REASON_KEY: StringName = &"UI_RED_SAND_RADAR_LOCK_FAILURE"
 
 @export var surface_segment_id: StringName = &"red_sand_surface_route"
+@export var landing_segment_id: StringName = &"red_sand_landing_approach"
 @export_range(0.0, 1000000.0, 1.0, "or_greater")
 var surface_start_route_distance: float = 27500.0
+@export_range(0.0, 1000000.0, 1.0, "or_greater")
+var radar_exit_route_distance: float = 32650.0
 @export_range(0.05, 1.0, 0.01) var horizontal_distance_scale: float = 0.22
 @export_range(0.01, 4.0, 0.01, "or_greater") var lock_acquire_rate: float = 0.55
 @export_range(0.01, 4.0, 0.01, "or_greater") var lock_decay_rate: float = 0.8
 @export_range(0.0, 1.0, 0.01) var lock_release_threshold: float = 0.5
 @export_range(0.0, 1.0, 0.01) var tracking_notice_threshold: float = 0.18
+@export_range(0.0, 100.0, 1.0) var lock_damage: float = 12.0
+@export_range(0.0, 100.0, 1.0) var lock_cargo_damage: float = 2.0
 
 @onready var _collision_geometry: Node2D = %CollisionGeometry
 @onready var _radar_sectors: Node2D = %RadarSectors
@@ -31,7 +43,9 @@ var surface_start_route_distance: float = 27500.0
 
 var _flight_ship: FlightLabShip
 var _settings_service: SettingsServiceModel
+var _route_origin_x: float = 0.0
 var _surface_active: bool = false
+var _landing_buffer_active: bool = false
 var _lock_risk: float = 0.0
 var _locked: bool = false
 var _radar_state: RadarState = RadarState.INACTIVE
@@ -40,6 +54,7 @@ var _active_cover_id: StringName = &""
 var _scan_elapsed_seconds: float = 0.0
 var _tracking_notice_emitted: bool = false
 var _lock_notice_emitted: bool = false
+var _lock_consequence_emitted: bool = false
 var _route_hints_visible: bool = false
 var _high_contrast_enabled: bool = false
 
@@ -57,6 +72,7 @@ func bind(
 ) -> bool:
 	_flight_ship = flight_ship
 	_settings_service = settings_service
+	_route_origin_x = route_origin_x
 	position.x = route_origin_x + surface_start_route_distance
 	scale.x = clampf(horizontal_distance_scale, 0.05, 1.0)
 	var validation_errors: PackedStringArray = validate()
@@ -88,6 +104,12 @@ func validate() -> PackedStringArray:
 		errors.append("Route hint container is missing.")
 	if surface_segment_id.is_empty():
 		errors.append("Surface segment ID is empty.")
+	if landing_segment_id.is_empty():
+		errors.append("Landing segment ID is empty.")
+	if radar_exit_route_distance <= surface_start_route_distance:
+		errors.append("Radar exit must follow the low-flight course start.")
+	if lock_damage <= 0.0 and lock_cargo_damage <= 0.0:
+		errors.append("Radar lock must have a visible resource consequence.")
 	if lock_acquire_rate <= 0.0 or lock_decay_rate <= 0.0:
 		errors.append("Radar acquisition and decay rates must be positive.")
 	if _collision_geometry != null and get_obstacle_count() < 5:
@@ -117,8 +139,12 @@ func validate() -> PackedStringArray:
 
 func set_active_segment(segment_id: StringName) -> void:
 	_surface_active = segment_id == surface_segment_id
-	if not _surface_active:
+	_landing_buffer_active = segment_id == landing_segment_id
+	if not _surface_active and not _landing_buffer_active:
 		_clear_radar_runtime()
+	elif _landing_buffer_active:
+		_clear_radar_runtime()
+		_radar_state = RadarState.LANDING_BUFFER
 	else:
 		_radar_state = RadarState.LOW_PROFILE
 	_update_radar_visuals()
@@ -131,6 +157,9 @@ func step_physics(delta: float) -> void:
 		or _flight_ship.is_failed
 		or delta <= 0.0
 	):
+		return
+	if _landing_buffer_active or _get_route_distance() >= radar_exit_route_distance:
+		_enter_landing_buffer()
 		return
 	_scan_elapsed_seconds += delta
 	var ship_position: Vector2 = _flight_ship.global_position
@@ -172,6 +201,8 @@ func reset_for_checkpoint() -> void:
 	_scan_elapsed_seconds = 0.0
 	_tracking_notice_emitted = false
 	_lock_notice_emitted = false
+	_lock_consequence_emitted = false
+	_landing_buffer_active = false
 	_radar_state = RadarState.LOW_PROFILE if _surface_active else RadarState.INACTIVE
 	_update_radar_visuals()
 
@@ -216,6 +247,8 @@ func get_radar_state_key() -> StringName:
 			return &"UI_RED_SAND_RADAR_STATE_COVERED"
 		RadarState.LOCKED:
 			return &"UI_RED_SAND_RADAR_STATE_LOCKED"
+		RadarState.LANDING_BUFFER:
+			return &"UI_RED_SAND_RADAR_STATE_LANDING_BUFFER"
 	return &""
 
 
@@ -225,6 +258,36 @@ func get_lock_risk() -> float:
 
 func is_locked() -> bool:
 	return _locked
+
+
+func is_landing_buffer_active() -> bool:
+	return _landing_buffer_active
+
+
+func get_radar_exit_route_distance() -> float:
+	return radar_exit_route_distance
+
+
+func get_safe_altitude_y() -> float:
+	var sector: FlightRadarSector = null
+	if _flight_ship != null:
+		sector = _find_sector(_flight_ship.global_position)
+	if sector == null:
+		var nearest_distance: float = INF
+		for candidate: FlightRadarSector in get_radar_sectors():
+			var distance: float = (
+				absf(candidate.global_position.x - _flight_ship.global_position.x)
+				if _flight_ship != null
+				else absf(candidate.global_position.x)
+			)
+			if distance < nearest_distance:
+				nearest_distance = distance
+				sector = candidate
+	return 0.0 if sector == null else sector.safe_altitude_y
+
+
+func get_safe_height_ceiling(altitude_reference_y: float) -> float:
+	return maxf(altitude_reference_y - get_safe_altitude_y(), 0.0)
 
 
 func get_active_sector_id() -> StringName:
@@ -286,6 +349,8 @@ func _resolve_radar_state(
 	cover: FlightRadarCover,
 	exposure: float
 ) -> RadarState:
+	if _landing_buffer_active:
+		return RadarState.LANDING_BUFFER
 	if not _surface_active:
 		return RadarState.INACTIVE
 	if cover != null:
@@ -308,6 +373,13 @@ func _emit_radar_notices(was_locked: bool, exposure: float) -> void:
 	if _locked and not _lock_notice_emitted:
 		_lock_notice_emitted = true
 		notice_requested.emit(LOCKED_NOTICE_KEY)
+	if _locked and not _lock_consequence_emitted:
+		_lock_consequence_emitted = true
+		lock_consequence_requested.emit(
+			lock_damage,
+			lock_cargo_damage,
+			LOCK_CONSEQUENCE_REASON_KEY
+		)
 	if was_locked and not _locked:
 		notice_requested.emit(LOCK_LOST_NOTICE_KEY)
 
@@ -319,6 +391,24 @@ func _update_radar_visuals() -> void:
 			_lock_risk,
 			_scan_elapsed_seconds
 		)
+
+
+func _enter_landing_buffer() -> void:
+	if _landing_buffer_active and _radar_state == RadarState.LANDING_BUFFER:
+		return
+	_landing_buffer_active = true
+	var had_lock_pressure: bool = _locked or _lock_risk > 0.0
+	_clear_radar_runtime()
+	_radar_state = RadarState.LANDING_BUFFER
+	if had_lock_pressure:
+		notice_requested.emit(LOCK_LOST_NOTICE_KEY)
+	_update_radar_visuals()
+
+
+func _get_route_distance() -> float:
+	if _flight_ship == null:
+		return 0.0
+	return maxf(_flight_ship.global_position.x - _route_origin_x, 0.0)
 
 
 func _find_sector(global_point: Vector2) -> FlightRadarSector:

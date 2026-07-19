@@ -621,6 +621,12 @@ func _connect_low_flight_signals() -> void:
 		_on_radar_notice_requested
 	):
 		low_flight_course.notice_requested.connect(_on_radar_notice_requested)
+	if not low_flight_course.lock_consequence_requested.is_connected(
+		_on_radar_lock_consequence_requested
+	):
+		low_flight_course.lock_consequence_requested.connect(
+			_on_radar_lock_consequence_requested
+		)
 
 
 func _connect_landing_signals() -> void:
@@ -720,6 +726,18 @@ func _on_radar_notice_requested(message_key: StringName) -> void:
 	route_hud.show_radar_notice(message_key)
 
 
+func _on_radar_lock_consequence_requested(
+	damage: float,
+	cargo_damage: float,
+	reason_key: StringName
+) -> void:
+	if flight_ship == null:
+		return
+	if flight_ship.apply_environment_damage(damage, cargo_damage, reason_key):
+		route_hud.show_radar_consequence(damage, cargo_damage)
+		_start_camera_shake(FlightCollisionResult.Severity.GRAZE)
+
+
 func _on_landing_resolved(
 	quality: int,
 	cargo_damage: float,
@@ -740,9 +758,19 @@ func _on_landing_failed(reason_key: StringName) -> void:
 func _sync_low_flight_feedback() -> void:
 	if low_flight_course == null or route_hud == null or environment_feedback == null:
 		return
+	var altitude_reference_y: float = route_definition.get_altitude_reference_y(
+		get_route_distance()
+	)
+	var altitude: float = maxf(
+		altitude_reference_y - flight_ship.position.y,
+		0.0
+	)
 	route_hud.set_radar_state(
 		low_flight_course.get_radar_state_key(),
-		low_flight_course.get_lock_risk()
+		low_flight_course.get_lock_risk(),
+		altitude,
+		low_flight_course.get_safe_height_ceiling(altitude_reference_y),
+		low_flight_course.is_landing_buffer_active()
 	)
 	environment_feedback.set_radar_pressure(
 		low_flight_course.get_lock_risk(),

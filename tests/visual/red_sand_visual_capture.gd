@@ -1,10 +1,12 @@
 extends SceneTree
 
 const ROUTE_SCENE_PATH: String = "res://scenes/flight/red_sand_flight.tscn"
-const CAPTURE_DIRECTORY: String = "res://.omx/artifacts/t045_gate_c_round_2"
+const CAPTURE_DIRECTORY: String = "res://.omx/artifacts/t045_gate_c_round_3"
 const SYSTEM_EDGE_SEGMENT_INDEX: int = 0
 const NEAR_ORBIT_SEGMENT_INDEX: int = 2
+const ATMOSPHERE_SEGMENT_INDEX: int = 3
 const STORM_SEGMENT_INDEX: int = 4
+const SURFACE_SEGMENT_INDEX: int = 6
 const LANDING_SEGMENT_INDEX: int = 7
 
 
@@ -57,12 +59,45 @@ func _capture_route_frames() -> void:
 		return
 
 	_prepare_stage_frame(
+		route, ship, ATMOSPHERE_SEGMENT_INDEX, 0.02, 176.0, 0.9, 0.0
+	)
+	route._process(0.45)
+	await _settle_particles(12)
+	if not _save_frame("stage_4_transition_mid.png"):
+		quit(1)
+		return
+	route._process(0.5)
+	await _settle_particles(12)
+	if not _save_frame("stage_4_atmosphere_horizon.png"):
+		quit(1)
+		return
+
+	_prepare_stage_frame(
 		route, ship, STORM_SEGMENT_INDEX, 0.55, 142.0, 0.82, 0.0
 	)
 	await _settle_particles(90)
 	if not _save_frame("stage_5_storm_layer.png"):
 		quit(1)
 		return
+
+	if hud != null:
+		hud.visible = true
+	_prepare_stage_frame(
+		route, ship, SURFACE_SEGMENT_INDEX, 0.24, 405.0, 0.45, 0.0
+	)
+	await _settle_particles(12)
+	if not _save_frame("stage_7_essential_hud.png"):
+		quit(1)
+		return
+	if hud != null:
+		hud.toggle_full_diagnostics()
+	await _settle_particles(2)
+	if not _save_frame("stage_7_full_diagnostics.png"):
+		quit(1)
+		return
+	if hud != null:
+		hud.toggle_full_diagnostics()
+		hud.visible = false
 
 	_prepare_stage_frame(
 		route, ship, LANDING_SEGMENT_INDEX, 0.55, 264.0, 0.34, 0.0
@@ -73,8 +108,8 @@ func _capture_route_frames() -> void:
 		return
 
 	print(
-		"[red-sand-visual] PASS: saved stage 1, 3, 5, and 8 "
-		+ "640x360 no-HUD route frames."
+		"[red-sand-visual] PASS: saved orbit/atmosphere transition, Essential HUD, "
+		+ "Full Diagnostics, storm, and landing 640x360 frames."
 	)
 	route.queue_free()
 	await process_frame
