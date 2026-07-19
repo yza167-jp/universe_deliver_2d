@@ -29,6 +29,7 @@ func _run_smoke() -> void:
 	root.add_child(route)
 	await process_frame
 	await process_frame
+	route.close_controls_help()
 	route.set_process(false)
 	route.set_physics_process(false)
 
@@ -99,8 +100,7 @@ func _test_ship_feedback(ship: FlightLabShip) -> void:
 		and _stream_has_signal(collision_audio.stream as AudioStreamWAV),
 		"Engine, Boost, and collision feedback must use generated audio streams."
 	)
-	ship.effective_throttle_input = 0.8
-	ship.effective_boost_input = 1.0
+	ship.integrate_motion(0.8, 0.0, 0.0, 0.2, 1.0)
 	ship._update_engine_feedback()
 	_check(
 		engine_particles != null
@@ -109,9 +109,7 @@ func _test_ship_feedback(ship: FlightLabShip) -> void:
 		and boost_particles.emitting,
 		"Throttle and Boost must activate distinct propulsion particle trails."
 	)
-	ship.effective_throttle_input = 0.0
-	ship.effective_boost_input = 0.0
-	ship._update_engine_feedback()
+	ship.clear_propulsion_feedback()
 
 
 func _test_stage_feedback(

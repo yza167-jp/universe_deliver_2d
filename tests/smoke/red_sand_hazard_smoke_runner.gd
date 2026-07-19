@@ -36,6 +36,7 @@ func _run_smoke() -> void:
 	root.add_child(route)
 	await process_frame
 	await process_frame
+	route.close_controls_help()
 	route.set_process(false)
 	route.set_physics_process(false)
 
@@ -209,12 +210,20 @@ func _test_lightning_warning_and_assist(
 		return
 	var strike: FlightLightningStrike = strikes[0]
 	_check(
-		strike.warning_seconds >= 1.2
+		strike.tracking_seconds >= 0.6
+		and strike.tracking_seconds <= 1.0
+		and strike.lock_seconds >= 0.4
+		and strike.lock_seconds <= 0.8
+		and strike.strike_seconds >= 0.1
+		and strike.strike_seconds <= 0.25
 		and strike.strike_route_distance - strike.trigger_route_distance >= 400.0,
-		"Lightning must expose a readable visual and travel-distance warning window."
+		"Lightning must expose readable tracking, lock, and strike windows."
 	)
 
-	ship.position = strike.global_position
+	ship.position = Vector2(
+		route.route_origin_x + strike.trigger_route_distance,
+		120.0
+	)
 	ship.velocity = Vector2.ZERO
 	ship.shield = 100.0
 	var flight_camera: Camera2D = route.get_flight_camera()
@@ -225,10 +234,11 @@ func _test_lightning_warning_and_assist(
 	hazards.advance_hazards(0.0, strike.trigger_route_distance + 1.0)
 	var warning_visual: Node2D = strike.get_node_or_null("WarningVisual") as Node2D
 	_check(
-		strike.get_state() == FlightLightningStrike.State.WARNING
+		strike.get_state() == FlightLightningStrike.State.TRACKING
 		and strike.get_warning_remaining() >= 1.2
 		and warning_visual != null
 		and warning_visual.visible
+		and not strike.is_position_in_hit_zone(ship.global_position)
 		and hazards.is_slow_motion_active()
 		and is_equal_approx(Engine.time_scale, hazards.slow_motion_time_scale)
 		and hud.get_status_text().contains("慢动作辅助"),
@@ -243,16 +253,45 @@ func _test_lightning_warning_and_assist(
 		not hud.has_visible_mouse_interception(),
 		"Lightning warning HUD must pass mouse input through."
 	)
+	var tracking_target_before: Vector2 = strike.get_target_global_position()
+	ship.position.y = 260.0
+	hazards.advance_hazards(0.2, strike.trigger_route_distance + 1.0)
+	var tracking_target_after: Vector2 = strike.get_target_global_position()
+	_check(
+		tracking_target_after.y > tracking_target_before.y
+		and absf(tracking_target_after.y - flight_camera.position.y) <= 120.0,
+		"TRACKING did not follow the ship inside the camera safe area."
+	)
 	await process_frame
 	await process_frame
 	hazards.advance_hazards(
-		strike.warning_seconds + 0.01,
+		strike.tracking_seconds,
+		strike.trigger_route_distance + 1.0
+	)
+	var locked_target: Vector2 = strike.get_target_global_position()
+	_check(
+		strike.get_state() == FlightLightningStrike.State.LOCKED
+		and not strike.is_position_in_hit_zone(ship.global_position)
+		and is_equal_approx(ship.shield, 100.0),
+		"Lightning lock began too early or caused damage before STRIKE."
+	)
+	ship.position = locked_target + Vector2(0.0, 110.0)
+	hazards.advance_hazards(0.2, strike.trigger_route_distance + 1.0)
+	_check(
+		strike.get_state() == FlightLightningStrike.State.LOCKED
+		and strike.get_target_global_position().is_equal_approx(locked_target),
+		"LOCKED lightning secretly continued following the ship."
+	)
+	ship.position = locked_target
+	hazards.advance_hazards(
+		strike.lock_seconds,
 		strike.trigger_route_distance + 1.0
 	)
 	var damage_with_slow_motion: float = 100.0 - ship.shield
 	_check(
-		strike.get_state() == FlightLightningStrike.State.ACTIVE
+		strike.get_state() == FlightLightningStrike.State.STRIKE
 		and strike.did_hit_ship()
+		and strike.is_position_in_hit_zone(ship.global_position)
 		and is_equal_approx(damage_with_slow_motion, strike.damage)
 		and not hazards.is_slow_motion_active()
 		and is_equal_approx(Engine.time_scale, _original_time_scale)
@@ -271,7 +310,12 @@ func _test_lightning_warning_and_assist(
 	hazards.reset_for_checkpoint(storm_start)
 	hazards.set_active_segment(definition.segments[STORM_SEGMENT_INDEX].id)
 	settings_service.settings.slow_motion_assist = false
-	ship.position = strike.global_position
+	ship.position = Vector2(
+		route.route_origin_x + strike.trigger_route_distance,
+		280.0
+	)
+	if flight_camera != null:
+		flight_camera.position = ship.position
 	ship.shield = 100.0
 	hazards.advance_hazards(0.0, strike.trigger_route_distance + 1.0)
 	_check(
@@ -280,13 +324,26 @@ func _test_lightning_warning_and_assist(
 		"Disabled slow-motion assist must leave global time unchanged."
 	)
 	hazards.advance_hazards(
-		strike.warning_seconds + 0.01,
+		strike.tracking_seconds + 0.01,
+		strike.trigger_route_distance + 1.0
+	)
+	var no_assist_locked_target: Vector2 = strike.get_target_global_position()
+	ship.position = no_assist_locked_target
+	hazards.advance_hazards(
+		strike.lock_seconds + 0.01,
 		strike.trigger_route_distance + 1.0
 	)
 	var damage_without_slow_motion: float = 100.0 - ship.shield
 	_check(
 		is_equal_approx(damage_without_slow_motion, damage_with_slow_motion),
 		"Slow-motion assist must change reaction time, not lightning outcome or damage."
+	)
+	hazards.reset_for_checkpoint(storm_start)
+	_check(
+		strike.get_state() == FlightLightningStrike.State.IDLE
+		and not strike.get_node("WarningVisual").visible
+		and not strike.get_node("StrikeVisual").visible,
+		"Checkpoint reset did not clear tracking, lock, and strike visuals."
 	)
 	feedback.flash_lightning(false)
 

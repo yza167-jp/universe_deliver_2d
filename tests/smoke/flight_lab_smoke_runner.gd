@@ -239,7 +239,7 @@ func _run_smoke() -> void:
 			and small_asteroid.is_destroyed()
 			and small_asteroid.collision_layer == 0
 			and not flight_ship.is_fire_input_held(),
-			"A short laser press must fire exactly one pulse and stop on release."
+			"A short laser press must show one short beam and stop on release."
 		)
 		_check(
 			laser_weapon != null
@@ -253,34 +253,26 @@ func _run_smoke() -> void:
 			"Laser hit did not expose beam, synthesized sound, and fragment feedback."
 		)
 
-		var large_durability_before_cooldown: int = large_asteroid.get_current_durability()
-		var immediate_result: FlightLaserWeapon.FireResult = flight_ship.request_laser_fire()
 		_check(
-			immediate_result == FlightLaserWeapon.FireResult.COOLDOWN
-			and _laser_rejected_count == 2
-			and _last_laser_rejection_key == FlightLaserWeapon.FIRE_COOLDOWN_KEY
-			and large_asteroid.get_current_durability()
-			== large_durability_before_cooldown,
-			"Laser cooldown did not reject repeated fire without damaging the next target."
+			flight_ship.is_laser_ready() and _laser_rejected_count == 1,
+			"Continuous beam readiness should not impose the removed pulse cooldown."
 		)
-		if debug_hud != null:
-			_check(
-				debug_hud.get_status_text().contains("冷却"),
-				"Laser cooldown did not provide concise Chinese status feedback."
-			)
 
 		await _wait_for_laser_ready(flight_ship)
 		var fired_before_hold: int = _laser_fired_count
+		var ticks_before_hold: int = laser_weapon.get_damage_tick_count()
 		Input.action_press(FlightLabShip.FIRE_ACTION)
 		for _frame_index: int in 48:
 			await physics_frame
 		var fired_while_held: int = _laser_fired_count - fired_before_hold
 		_check(
 			flight_ship.is_fire_input_held()
-			and fired_while_held >= 3
-			and fired_while_held <= 5
+			and laser_weapon.is_beam_active()
+			and laser_weapon.is_beam_visible()
+			and fired_while_held == 1
+			and laser_weapon.get_damage_tick_count() > ticks_before_hold
 			and _laser_hit_count == 4,
-			"Held fire must repeat at the configured cooldown without a low-frame burst."
+			"Held fire must keep one continuous beam visible while damage ticks repeat."
 		)
 		Input.action_release(FlightLabShip.FIRE_ACTION)
 		await physics_frame
@@ -289,8 +281,11 @@ func _run_smoke() -> void:
 			await physics_frame
 		_check(
 			not flight_ship.is_fire_input_held()
+			and not laser_weapon.is_beam_active()
+			and not laser_weapon.is_beam_visible()
+			and not laser_weapon.get_shot_audio().playing
 			and _laser_fired_count == fired_after_release,
-			"Releasing the shared fire action must stop repeated laser pulses immediately."
+			"Releasing the shared fire action must stop the beam and loop audio."
 		)
 		_check(
 			large_asteroid.is_destroyed()
@@ -331,6 +326,8 @@ func _run_smoke() -> void:
 			and _laser_hit_count == hits_before_miss,
 			"A clear route should produce a harmless laser miss, not another target hit."
 		)
+		await physics_frame
+		await physics_frame
 		if debug_hud != null:
 			_check(
 				debug_hud.get_status_text() == tr("UI_FLIGHT_LAB_STATUS_LASER_MISS"),
@@ -350,7 +347,10 @@ func _run_smoke() -> void:
 			and not small_asteroid.is_destroyed()
 			and small_asteroid.get_current_durability() == small_asteroid.max_durability
 			and not large_asteroid.is_destroyed()
-			and large_asteroid.get_current_durability() == large_asteroid.max_durability,
+			and large_asteroid.get_current_durability() == large_asteroid.max_durability
+			and not flight_ship.get_laser_weapon().is_beam_active()
+			and not flight_ship.get_laser_weapon().is_beam_visible()
+			and not flight_ship.get_laser_weapon().get_shot_audio().playing,
 			"Checkpoint restart did not restore destructible asteroid state."
 		)
 		Input.action_release(FlightLabShip.FIRE_ACTION)
@@ -455,11 +455,19 @@ func _run_smoke() -> void:
 		await _hold_action_for_physics_frames(FlightLabShip.BOOST_ACTION, 12)
 		var energy_after_boost: float = flight_ship.boost_energy
 		_check(
-			flight_ship.get_speed() > 30.0
+			flight_ship.get_speed() > 20.0
 			and flight_ship.fuel < fuel_before_boost
 			and energy_after_boost < energy_before_boost
-			and flight_ship.effective_boost_input > 0.0,
-			"Shift Boost did not accelerate or consume both fuel and Boost energy."
+			and flight_ship.get_boost_feedback_strength() > 0.0,
+			"Shift Boost did not accelerate or consume both fuel and Boost energy "
+			+ "(speed=%.2f, fuel=%.2f/%.2f, energy=%.2f/%.2f, ramp=%.2f)." % [
+				flight_ship.get_speed(),
+				flight_ship.fuel,
+				fuel_before_boost,
+				energy_after_boost,
+				energy_before_boost,
+				flight_ship.get_boost_feedback_strength(),
+			]
 		)
 		var boost_glow: Polygon2D = flight_ship.get_node_or_null("BoostGlow") as Polygon2D
 		_check(

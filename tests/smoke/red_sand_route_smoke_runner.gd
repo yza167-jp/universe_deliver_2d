@@ -26,6 +26,7 @@ func _run_smoke() -> void:
 	root.add_child(route)
 	await process_frame
 	await process_frame
+	route.close_controls_help()
 	route.set_process(false)
 
 	var flight_ship: FlightLabShip = route.get_flight_ship()
@@ -64,7 +65,7 @@ func _run_smoke() -> void:
 		"Route did not begin at the system-edge checkpoint and environment."
 	)
 	_check(
-		is_equal_approx(route.get_planet_visual_scale(), 0.55),
+		is_equal_approx(route.get_planet_visual_scale(), 0.36),
 		"Initial Red Sand planet scale does not match the distant-system baseline."
 	)
 	_check(
@@ -90,14 +91,20 @@ func _run_smoke() -> void:
 		)
 	var viewport_bounds: Rect2 = Rect2(Vector2.ZERO, Vector2(640.0, 360.0))
 	_check(
-		viewport_bounds.encloses(route_hud.get_flight_panel_rect())
+		route_hud.get_flight_panel_rect() == Rect2()
 		and viewport_bounds.encloses(route_hud.get_route_panel_rect())
+		and not route_hud.has_visible_mouse_interception(),
+		"Red Sand Essential HUD is outside 640x360 or blocks mouse input."
+	)
+	route_hud.toggle_full_diagnostics()
+	_check(
+		viewport_bounds.encloses(route_hud.get_flight_panel_rect())
 		and not route_hud.get_flight_panel_rect().intersects(
 			route_hud.get_route_panel_rect()
-		)
-		and not route_hud.has_visible_mouse_interception(),
-		"Red Sand graybox HUD is outside 640x360, overlaps, or blocks mouse input."
+		),
+		"H diagnostics did not stay inside the viewport without overlapping route data."
 	)
+	route_hud.toggle_full_diagnostics()
 
 	var previous_planet_scale: float = route.get_planet_visual_scale()
 	var checkpoint_position: Vector2 = Vector2.ZERO
@@ -149,7 +156,7 @@ func _run_smoke() -> void:
 		route_hud.get_stage_text().contains(
 			tr(definition.segments[-1].display_name_key)
 		)
-		and route_hud.get_progress_text().contains("86%")
+		and route_hud.get_progress_text().contains("87%")
 		and not route_hud.get_instruction_text().is_empty()
 		and not route_hud.get_landing_text().is_empty()
 		and viewport_bounds.encloses(route_hud.get_landing_rect())
@@ -198,7 +205,10 @@ func _run_smoke() -> void:
 		and flight_ship.position == completion_position
 		and flight_ship.velocity == completion_velocity
 		and is_equal_approx(route.get_route_progress(), 1.0)
-		and is_equal_approx(route.get_planet_visual_scale(), 7.2),
+		and is_equal_approx(route.get_planet_visual_scale(), 1.55)
+		and not (
+			route.get_node("World/RouteGeometry") as RedSandRouteVisuals
+		).is_full_planet_visible(),
 		"Flying past the route distance must not replace a real touchdown."
 	)
 
@@ -246,10 +256,13 @@ func _run_smoke() -> void:
 		"Smooth landing did not replace guidance with localized Lao Pi feedback."
 	)
 	_check(
-		definition.expected_duration_seconds >= 360.0
-		and definition.expected_duration_seconds <= 600.0
-		and is_equal_approx(definition.get_estimated_cruise_speed(), 312.5),
-		"Route duration baseline is not tunable within the required 6-10 minutes."
+		definition.nominal_fast_duration_seconds >= 60.0
+		and definition.nominal_fast_duration_seconds <= 100.0
+		and definition.expected_duration_seconds >= 90.0
+		and definition.expected_duration_seconds <= 150.0
+		and definition.nominal_scenic_duration_seconds >= 120.0
+		and definition.nominal_scenic_duration_seconds <= 180.0,
+		"Route duration profiles are not tunable within the required 1-3 minutes."
 	)
 	_check(
 		UniverseDeliverApp.should_start_in_red_sand_route(

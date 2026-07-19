@@ -17,7 +17,8 @@ const LOCK_LOST_NOTICE_KEY: StringName = &"UI_RED_SAND_RADAR_NOTICE_LOST"
 
 @export var surface_segment_id: StringName = &"red_sand_surface_route"
 @export_range(0.0, 1000000.0, 1.0, "or_greater")
-var surface_start_route_distance: float = 105000.0
+var surface_start_route_distance: float = 27500.0
+@export_range(0.05, 1.0, 0.01) var horizontal_distance_scale: float = 0.22
 @export_range(0.01, 4.0, 0.01, "or_greater") var lock_acquire_rate: float = 0.55
 @export_range(0.01, 4.0, 0.01, "or_greater") var lock_decay_rate: float = 0.8
 @export_range(0.0, 1.0, 0.01) var lock_release_threshold: float = 0.5
@@ -57,6 +58,7 @@ func bind(
 	_flight_ship = flight_ship
 	_settings_service = settings_service
 	position.x = route_origin_x + surface_start_route_distance
+	scale.x = clampf(horizontal_distance_scale, 0.05, 1.0)
 	var validation_errors: PackedStringArray = validate()
 	if not validation_errors.is_empty():
 		for validation_error: String in validation_errors:

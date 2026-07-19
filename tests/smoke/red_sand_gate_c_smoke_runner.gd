@@ -107,6 +107,7 @@ func _run_smoke() -> void:
 		await _cleanup()
 		_finish()
 		return
+	route.close_controls_help()
 	route.set_process(false)
 	route.set_physics_process(false)
 	var ship: FlightLabShip = route.get_flight_ship()
@@ -119,8 +120,8 @@ func _run_smoke() -> void:
 		definition != null
 		and definition.validate().is_empty()
 		and definition.segments.size() == 8
-		and is_equal_approx(definition.expected_duration_seconds, 480.0),
-		"Gate C route must keep its validated eight-stage, eight-minute baseline."
+		and is_equal_approx(definition.expected_duration_seconds, 120.0),
+		"Gate C route must keep its validated eight-stage, two-minute baseline."
 	)
 	_check(
 		scenic_triggers.size() == 2
@@ -248,6 +249,7 @@ func _check_dive_profile(order: OrderDefinition) -> void:
 	root.add_child(dive_route)
 	await process_frame
 	await process_frame
+	dive_route.close_controls_help()
 	dive_route.set_process(false)
 	dive_route.set_physics_process(false)
 	var ship: FlightLabShip = dive_route.get_flight_ship()

@@ -16,7 +16,7 @@ const GUIDANCE_READY_KEY: StringName = &"UI_RED_SAND_LANDING_GUIDANCE_READY"
 
 @export var landing_segment_id: StringName = &"red_sand_landing_approach"
 @export_range(0.0, 1000000.0, 1.0, "or_greater")
-var landing_center_route_distance: float = 147600.0
+var landing_center_route_distance: float = 36800.0
 @export_range(960.0, 10000.0, 1.0, "or_greater") var pad_width: float = 2400.0
 @export_range(0.0, 720.0, 1.0) var pad_surface_y: float = 328.0
 @export_range(0.0, 720.0, 1.0) var touchdown_center_y: float = 318.0

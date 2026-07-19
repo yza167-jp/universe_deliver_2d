@@ -44,10 +44,14 @@ var full_assist_fuel_cost_per_second: float = 2.0
 @export_group("Boost and Resources")
 @export_range(1.0, 5.0, 0.05, "or_greater")
 var boost_multiplier: float = 2.2
+@export_range(1.0, 2.0, 0.01, "or_greater")
+var boost_max_speed_multiplier: float = 1.35
+@export_range(0.01, 1.0, 0.01, "or_greater")
+var boost_ramp_seconds: float = 0.12
 @export_range(0.0, 20.0, 0.05, "or_greater")
-var thrust_fuel_cost_per_second: float = 0.35
+var thrust_fuel_cost_per_second: float = 0.32
 @export_range(0.0, 20.0, 0.05, "or_greater")
-var boost_fuel_cost_per_second: float = 1.8
+var boost_fuel_cost_per_second: float = 1.1
 @export_range(0.0, 100.0, 0.5, "or_greater")
 var boost_energy_cost_per_second: float = 24.0
 @export_range(0.0, 100.0, 0.5, "or_greater")
@@ -59,15 +63,17 @@ var limited_cargo_boost_cap: float = 0.75
 @export_range(0.0, 1.0, 0.05)
 var emergency_thrust_multiplier: float = 0.3
 
-@export_group("Asteroid Laser")
+@export_group("Asteroid Laser Beam")
 @export_range(0.0, 1600.0, 1.0, "or_greater")
-var laser_range: float = 560.0
-@export_range(0.0, 2.0, 0.01, "or_greater")
-var laser_cooldown_seconds: float = 0.22
-@export_range(0.0, 1.0, 0.01, "or_greater")
-var laser_beam_duration_seconds: float = 0.07
-@export_range(0, 20, 1, "or_greater")
-var laser_damage: int = 1
+var beam_max_range: float = 560.0
+@export_range(1.0, 12.0, 0.5, "or_greater") var beam_width: float = 3.0
+@export_range(0, 20, 1, "or_greater") var beam_damage_per_tick: int = 1
+@export_range(0.01, 1.0, 0.01, "or_greater")
+var beam_damage_tick_seconds: float = 0.1
+@export_range(0.01, 1.0, 0.01, "or_greater")
+var beam_min_visible_seconds: float = 0.08
+@export_range(0.0, 0.5, 0.01, "or_greater")
+var beam_release_fade_seconds: float = 0.04
 
 @export_group("Entry Style")
 @export_range(0.0, 30.0, 0.1, "or_greater")

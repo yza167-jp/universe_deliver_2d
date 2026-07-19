@@ -33,17 +33,25 @@ func run() -> Array[String]:
 		failures
 	)
 	expect_true(
-		route.expected_duration_seconds
-		>= FlightRouteDefinition.MIN_PLAYABLE_DURATION_SECONDS
+		route.nominal_fast_duration_seconds
+		>= FlightRouteDefinition.MIN_FAST_DURATION_SECONDS
+		and route.nominal_fast_duration_seconds
+		<= FlightRouteDefinition.MAX_FAST_DURATION_SECONDS
 		and route.expected_duration_seconds
-		<= FlightRouteDefinition.MAX_PLAYABLE_DURATION_SECONDS,
-		"Red Sand graybox target duration must stay within 6-10 minutes.",
+		>= FlightRouteDefinition.MIN_BALANCED_DURATION_SECONDS
+		and route.expected_duration_seconds
+		<= FlightRouteDefinition.MAX_BALANCED_DURATION_SECONDS
+		and route.nominal_scenic_duration_seconds
+		>= FlightRouteDefinition.MIN_SCENIC_DURATION_SECONDS
+		and route.nominal_scenic_duration_seconds
+		<= FlightRouteDefinition.MAX_SCENIC_DURATION_SECONDS,
+		"Red Sand fast, balanced, and scenic targets must stay within 1-3 minutes.",
 		failures
 	)
 	expect_true(
-		is_equal_approx(route.get_total_distance(), 150000.0)
-		and is_equal_approx(route.get_estimated_cruise_speed(), 312.5),
-		"Route length and target duration must produce the tunable eight-minute baseline.",
+		is_equal_approx(route.get_total_distance(), 38000.0)
+		and is_equal_approx(route.get_estimated_cruise_speed(), 316.6666667),
+		"Compressed route distance must preserve the accepted baseline cruise scale.",
 		failures
 	)
 
@@ -58,6 +66,12 @@ func run() -> Array[String]:
 		expect_true(
 			segment != null and segment.id == EXPECTED_SEGMENT_IDS[index],
 			"Route segment %d has the wrong stable ID." % index,
+			failures
+		)
+		expect_true(
+			segment.checkpoint_fuel_floor >= 0.0
+			and segment.checkpoint_fuel_floor <= 100.0,
+			"Every route checkpoint must expose a bounded safe fuel floor.",
 			failures
 		)
 		if segment == null:
@@ -101,10 +115,18 @@ func run() -> Array[String]:
 
 	expect_true(
 		route.get_segment_index(0.0) == 0
-		and route.get_segment_index(14999.0) == 0
-		and route.get_segment_index(15000.0) == 1
-		and route.get_segment_index(150000.0) == 7,
+		and route.get_segment_index(3999.0) == 0
+		and route.get_segment_index(4000.0) == 1
+		and route.get_segment_index(38000.0) == 7,
 		"Route lookup must switch exactly at segment boundaries and hold the final stage.",
+		failures
+	)
+	expect_true(
+		route.segments[2].planet_scale_end
+		/ route.segments[0].planet_scale_start >= 2.5
+		and route.segments[2].planet_scale_end
+		/ route.segments[0].planet_scale_start <= 4.0,
+		"Near-orbit Red Sand must be 2.5-4x the initial system-edge disc.",
 		failures
 	)
 	expect_true(

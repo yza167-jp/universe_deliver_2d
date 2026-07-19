@@ -120,6 +120,7 @@ var _triggered_cargo_warning_keys: Dictionary[StringName, bool] = {}
 var _fire_input_held: bool = false
 var _reverse_boost_warning_latched: bool = false
 var _boost_feedback_active: bool = false
+var _boost_ramp_strength: float = 0.0
 
 
 func _ready() -> void:
@@ -142,7 +143,7 @@ func _notification(what: int) -> void:
 		NOTIFICATION_EXIT_TREE,
 		NOTIFICATION_WM_WINDOW_FOCUS_OUT,
 	]:
-		cancel_held_fire()
+		cancel_held_fire(true)
 
 
 func _physics_process(delta: float) -> void:
@@ -230,6 +231,16 @@ func integrate_motion(
 	effective_throttle_input = effective_inputs.x
 	effective_boost_input = effective_inputs.y
 	propulsion_fuel_cost_rate = resources.propulsion_fuel_cost_rate
+	var boost_ramp_seconds: float = maxf(
+		tuning.boost_ramp_seconds if tuning != null else 0.12,
+		0.01
+	)
+	_boost_ramp_strength = move_toward(
+		_boost_ramp_strength,
+		1.0 if effective_boost_input > 0.0 else 0.0,
+		maxf(delta, 0.0) / boost_ramp_seconds
+	)
+	var motion_boost: float = effective_boost_input * _boost_ramp_strength
 
 	if environment_profile == null or tuning == null:
 		velocity = FlightMotionModel.step_velocity(
@@ -239,7 +250,7 @@ func integrate_motion(
 			brake_input,
 			tuning,
 			delta,
-			effective_boost_input
+			motion_boost
 		)
 		return
 
@@ -250,7 +261,7 @@ func integrate_motion(
 		brake_input,
 		tuning,
 		delta,
-		effective_boost_input
+		motion_boost
 	)
 	velocity = FlightEnvironmentModel.step_velocity(
 		controlled_velocity,
@@ -260,7 +271,12 @@ func integrate_motion(
 		tuning.space_drag,
 		delta
 	)
-	velocity = FlightMotionModel.apply_speed_limits(velocity, rotation, tuning)
+	velocity = FlightMotionModel.apply_speed_limits(
+		velocity,
+		rotation,
+		tuning,
+		_boost_ramp_strength
+	)
 	_refresh_environment_telemetry()
 
 
@@ -281,6 +297,7 @@ func reset_to_start(
 	effective_throttle_input = 0.0
 	effective_boost_input = 0.0
 	effective_reverse_input = 0.0
+	_boost_ramp_strength = 0.0
 	resources.reset()
 	propulsion_fuel_cost_rate = 0.0
 	assist_strength = clampf(requested_assist_strength, 0.0, 1.0)
@@ -309,7 +326,10 @@ func reset_to_start(
 
 
 ## Captures only stable runtime values; scene instances are never stored.
-func capture_checkpoint(requested_checkpoint_id: StringName) -> bool:
+func capture_checkpoint(
+	requested_checkpoint_id: StringName,
+	minimum_retry_fuel: float = -1.0
+) -> bool:
 	if requested_checkpoint_id.is_empty():
 		return false
 	var snapshot: FlightCheckpointState = FlightCheckpointState.new()
@@ -323,6 +343,11 @@ func capture_checkpoint(requested_checkpoint_id: StringName) -> bool:
 	snapshot.gravity_blend = gravity_blend
 	snapshot.air_density = air_density
 	snapshot.resources = resources.duplicate_state()
+	if minimum_retry_fuel >= 0.0:
+		snapshot.resources.fuel = maxf(
+			snapshot.resources.fuel,
+			clampf(minimum_retry_fuel, 0.0, DEFAULT_RESOURCE_VALUE)
+		)
 	_checkpoint_state = snapshot
 	checkpoint_id = requested_checkpoint_id
 	return true
@@ -333,7 +358,8 @@ func configure_safe_checkpoint(
 	requested_checkpoint_id: StringName,
 	requested_position: Vector2,
 	requested_velocity: Vector2,
-	requested_rotation: float = 0.0
+	requested_rotation: float = 0.0,
+	minimum_retry_fuel: float = -1.0
 ) -> bool:
 	if requested_checkpoint_id.is_empty():
 		return false
@@ -348,6 +374,11 @@ func configure_safe_checkpoint(
 	snapshot.gravity_blend = gravity_blend
 	snapshot.air_density = air_density
 	snapshot.resources = resources.duplicate_state()
+	if minimum_retry_fuel >= 0.0:
+		snapshot.resources.fuel = maxf(
+			snapshot.resources.fuel,
+			clampf(minimum_retry_fuel, 0.0, DEFAULT_RESOURCE_VALUE)
+		)
 	_checkpoint_state = snapshot
 	checkpoint_id = requested_checkpoint_id
 	return true
@@ -582,8 +613,26 @@ func get_boost_audio() -> AudioStreamPlayer2D:
 	return _boost_audio
 
 
+func get_boost_feedback_strength() -> float:
+	return _boost_ramp_strength
+
+
 func get_collision_audio() -> AudioStreamPlayer2D:
 	return _collision_audio
+
+
+func clear_propulsion_feedback() -> void:
+	_boost_ramp_strength = 0.0
+	_boost_feedback_active = false
+	if _engine_trail_particles != null:
+		_engine_trail_particles.emitting = false
+		_engine_trail_particles.restart()
+	if _boost_trail_particles != null:
+		_boost_trail_particles.emitting = false
+		_boost_trail_particles.restart()
+	if _boost_audio != null:
+		_boost_audio.stop()
+	_update_engine_feedback()
 
 
 func request_laser_fire() -> FlightLaserWeapon.FireResult:
@@ -593,12 +642,24 @@ func request_laser_fire() -> FlightLaserWeapon.FireResult:
 	return _laser_weapon.request_fire()
 
 
+func begin_laser_beam() -> FlightLaserWeapon.FireResult:
+	if _laser_weapon == null:
+		return FlightLaserWeapon.FireResult.UNAVAILABLE
+	_laser_weapon.tuning = tuning
+	return _laser_weapon.begin_beam()
+
+
 func is_fire_input_held() -> bool:
 	return _fire_input_held
 
 
-func cancel_held_fire() -> void:
+func cancel_held_fire(immediate: bool = false) -> void:
 	_fire_input_held = false
+	if _laser_weapon != null:
+		if immediate:
+			_laser_weapon.reset_weapon()
+		else:
+			_laser_weapon.stop_beam()
 
 
 func _update_environment_state(delta: float) -> void:
@@ -672,10 +733,7 @@ func _clear_environment_telemetry() -> void:
 
 
 func _update_engine_feedback() -> void:
-	var engine_strength: float = maxf(
-		effective_throttle_input,
-		effective_boost_input
-	)
+	var engine_strength: float = maxf(effective_throttle_input, _boost_ramp_strength)
 	var feedback_active: bool = not is_failed and not is_landed
 	if _engine_glow != null:
 		_engine_glow.scale.x = lerpf(
@@ -689,8 +747,8 @@ func _update_engine_feedback() -> void:
 			else 0.0
 		)
 	if _boost_glow != null:
-		_boost_glow.visible = feedback_active and effective_boost_input > 0.0
-		_boost_glow.scale.x = lerpf(0.8, 1.5, effective_boost_input)
+		_boost_glow.visible = feedback_active and _boost_ramp_strength > 0.04
+		_boost_glow.scale.x = lerpf(0.8, 1.7, _boost_ramp_strength)
 	if _reverse_glow != null:
 		_reverse_glow.visible = feedback_active and effective_reverse_input > 0.0
 		_reverse_glow.scale.x = lerpf(0.75, 1.25, effective_reverse_input)
@@ -705,12 +763,12 @@ func _update_engine_feedback() -> void:
 		)
 	if _boost_trail_particles != null:
 		_boost_trail_particles.emitting = (
-			feedback_active and effective_boost_input > 0.04
+			feedback_active and _boost_ramp_strength > 0.04
 		)
 		_boost_trail_particles.speed_scale = lerpf(
 			0.85,
 			1.5,
-			effective_boost_input
+			_boost_ramp_strength
 		)
 	_update_engine_audio(feedback_active, engine_strength)
 	_update_boost_audio(feedback_active)
@@ -731,10 +789,12 @@ func _update_engine_audio(feedback_active: bool, engine_strength: float) -> void
 	if not feedback_active:
 		_engine_audio.stop()
 		return
-	_engine_audio.volume_db = lerpf(-28.0, -13.0, engine_strength)
+	_engine_audio.volume_db = lerpf(-28.0, -13.0, engine_strength) + (
+		4.0 * _boost_ramp_strength
+	)
 	_engine_audio.pitch_scale = lerpf(
 		0.88,
-		1.18,
+		1.18 + 0.16 * _boost_ramp_strength,
 		maxf(engine_strength, effective_reverse_input * 0.65)
 	)
 	if not _engine_audio.playing and DisplayServer.get_name() != "headless":
@@ -742,10 +802,18 @@ func _update_engine_audio(feedback_active: bool, engine_strength: float) -> void
 
 
 func _update_boost_audio(feedback_active: bool) -> void:
-	var boost_active: bool = feedback_active and effective_boost_input > 0.04
-	if boost_active and not _boost_feedback_active:
-		if _boost_audio != null and DisplayServer.get_name() != "headless":
+	var boost_active: bool = feedback_active and _boost_ramp_strength > 0.04
+	if _boost_audio != null:
+		_boost_audio.volume_db = lerpf(-14.0, -7.0, _boost_ramp_strength)
+		_boost_audio.pitch_scale = lerpf(0.92, 1.18, _boost_ramp_strength)
+		if (
+			boost_active
+			and not _boost_audio.playing
+			and DisplayServer.get_name() != "headless"
+		):
 			_boost_audio.play()
+		elif not boost_active and _boost_audio.playing:
+			_boost_audio.stop()
 	_boost_feedback_active = boost_active
 
 
@@ -802,11 +870,14 @@ func _create_boost_stream() -> AudioStreamWAV:
 	stream.format = AudioStreamWAV.FORMAT_16_BITS
 	stream.mix_rate = FEEDBACK_AUDIO_SAMPLE_RATE
 	stream.stereo = false
+	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
 	var frame_count: int = maxi(
 		int(FEEDBACK_AUDIO_SAMPLE_RATE * BOOST_SOUND_SECONDS),
 		1
 	)
 	var audio_data: PackedByteArray = PackedByteArray()
+	stream.loop_begin = 0
+	stream.loop_end = frame_count
 	audio_data.resize(frame_count * 2)
 	for frame_index: int in frame_count:
 		var progress: float = float(frame_index) / float(frame_count)
@@ -970,8 +1041,11 @@ func _clear_control_inputs() -> void:
 	effective_throttle_input = 0.0
 	effective_boost_input = 0.0
 	effective_reverse_input = 0.0
+	_boost_ramp_strength = 0.0
 	_reverse_boost_warning_latched = false
-	cancel_held_fire()
+	cancel_held_fire(true)
+	if is_node_ready():
+		clear_propulsion_feedback()
 
 
 func _clear_collision_state() -> void:
@@ -1000,13 +1074,11 @@ func _update_held_fire_input() -> void:
 	var fire_pressed: bool = Input.is_action_pressed(FIRE_ACTION)
 	if Input.is_action_just_pressed(FIRE_ACTION):
 		_fire_input_held = true
-		request_laser_fire()
+		begin_laser_beam()
 		return
 	if not fire_pressed:
 		cancel_held_fire()
 		return
-	if _fire_input_held and is_laser_ready():
-		request_laser_fire()
 
 
 func _update_reverse_boost_warning(reverse_boost_blocked: bool) -> void:

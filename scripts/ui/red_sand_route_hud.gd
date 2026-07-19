@@ -1,6 +1,8 @@
 class_name RedSandRouteHUD
 extends CanvasLayer
 
+signal controls_help_close_requested
+
 const STATUS_DURATION_SECONDS: float = 2.4
 
 @onready var _flight_panel: PanelContainer = %FlightPanel
@@ -10,12 +12,14 @@ const STATUS_DURATION_SECONDS: float = 2.4
 @onready var _stage_label: Label = %StageLabel
 @onready var _progress_label: Label = %ProgressLabel
 @onready var _instruction_label: Label = %InstructionLabel
+@onready var _controls_hint_label: Label = %ControlsHintLabel
 @onready var _radar_panel: PanelContainer = %RadarPanel
 @onready var _radar_label: Label = %RadarLabel
 @onready var _landing_panel: PanelContainer = %LandingPanel
 @onready var _landing_label: Label = %LandingLabel
 @onready var _status_panel: PanelContainer = %StatusPanel
 @onready var _status_label: Label = %StatusLabel
+@onready var _controls_help: FlightControlsHelp = %FlightControlsHelp
 
 var _flight_ship: FlightLabShip
 var _route_definition: FlightRouteDefinition
@@ -29,10 +33,21 @@ var _radar_risk: float = 0.0
 var _landing_state_key: StringName = &""
 var _landing_metrics: Vector3 = Vector3.ZERO
 var _landing_tuning: FlightTuning
+var _full_diagnostics_visible: bool = false
+var _route_details_visible: bool = true
 
 
 func _ready() -> void:
 	_set_mouse_passthrough(self)
+	if (
+		_controls_help != null
+		and not _controls_help.close_requested.is_connected(
+			_on_controls_help_close_requested
+		)
+	):
+		_controls_help.close_requested.connect(_on_controls_help_close_requested)
+	if _flight_panel != null:
+		_flight_panel.visible = _full_diagnostics_visible
 	_hide_status()
 	refresh()
 
@@ -95,9 +110,15 @@ func refresh() -> void:
 		_format_signed(_flight_ship.get_pitch_degrees()),
 		tr(FlightAssistMode.get_display_name_key(_flight_ship.assist_strength)),
 	]).replace("\\n", "\n")
+	var boost_state_key: StringName = (
+		&"UI_RED_SAND_ROUTE_BOOST_ACTIVE"
+		if _flight_ship.get_boost_feedback_strength() > 0.04
+		else &"UI_RED_SAND_ROUTE_BOOST_READY"
+	)
 	_resources_label.text = tr("UI_RED_SAND_ROUTE_HUD_RESOURCES") % [
 		roundi(_flight_ship.fuel),
 		roundi(_flight_ship.boost_energy),
+		tr(boost_state_key),
 		roundi(_flight_ship.hull),
 		roundi(_flight_ship.shield),
 		roundi(_flight_ship.cargo_integrity),
@@ -110,9 +131,12 @@ func refresh() -> void:
 	_progress_label.text = tr("UI_RED_SAND_ROUTE_HUD_PROGRESS") % [
 		roundi(_route_definition.get_overall_progress(_route_distance) * 100.0),
 		_elapsed_seconds / 60.0,
-		_route_definition.expected_duration_seconds / 60.0,
+		_route_definition.expected_duration_seconds,
 	]
 	_instruction_label.text = tr(segment.instruction_key)
+	_controls_hint_label.text = tr("UI_FLIGHT_CONTROLS_HINT")
+	_progress_label.visible = _route_details_visible
+	_instruction_label.visible = _route_details_visible
 	_refresh_radar()
 	_refresh_landing()
 
@@ -170,6 +194,21 @@ func show_laser_rejected(reason_key: StringName, cooldown_remaining: float) -> v
 
 func show_laser_miss() -> void:
 	_show_status(tr("UI_FLIGHT_LAB_STATUS_LASER_MISS"))
+
+
+func show_assist_changed(assist_strength: float) -> void:
+	_show_status(
+		tr("UI_RED_SAND_ROUTE_STATUS_ASSIST")
+		% tr(FlightAssistMode.get_display_name_key(assist_strength))
+	)
+
+
+func show_laser_loadout_changed(enabled: bool) -> void:
+	_show_status(tr(
+		"UI_FLIGHT_CONTROLS_LASER_INSTALLED"
+		if enabled
+		else "UI_FLIGHT_CONTROLS_LASER_UNINSTALLED"
+	))
 
 
 func show_landing_result(result_id: StringName, cargo_integrity: float) -> void:
@@ -249,6 +288,42 @@ func get_radar_text() -> String:
 
 func get_landing_text() -> String:
 	return "" if _landing_label == null else _landing_label.text
+
+
+func get_controls_help() -> FlightControlsHelp:
+	return _controls_help
+
+
+func show_controls_help(direct_test_mode: bool, laser_installed: bool) -> void:
+	if _controls_help != null:
+		_controls_help.show_help(direct_test_mode, laser_installed)
+
+
+func hide_controls_help() -> void:
+	if _controls_help != null:
+		_controls_help.hide_help()
+
+
+func update_controls_help_laser_state(installed: bool) -> void:
+	if _controls_help != null:
+		_controls_help.set_laser_installed(installed)
+
+
+func toggle_full_diagnostics() -> bool:
+	_full_diagnostics_visible = not _full_diagnostics_visible
+	if _flight_panel != null:
+		_flight_panel.visible = _full_diagnostics_visible
+	return _full_diagnostics_visible
+
+
+func is_full_diagnostics_visible() -> bool:
+	return _full_diagnostics_visible
+
+
+func toggle_route_details() -> bool:
+	_route_details_visible = not _route_details_visible
+	refresh()
+	return _route_details_visible
 
 
 func get_flight_panel_rect() -> Rect2:
@@ -333,6 +408,8 @@ func _get_visible_rect(control: Control) -> Rect2:
 
 
 func _set_mouse_passthrough(node: Node) -> void:
+	if node is FlightControlsHelp:
+		return
 	if node is Control:
 		(node as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for child: Node in node.get_children():
@@ -348,3 +425,7 @@ func _control_tree_intercepts_mouse(node: Node) -> bool:
 		if _control_tree_intercepts_mouse(child):
 			return true
 	return false
+
+
+func _on_controls_help_close_requested() -> void:
+	controls_help_close_requested.emit()

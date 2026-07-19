@@ -1,7 +1,9 @@
 extends SceneTree
 
 const ROUTE_SCENE_PATH: String = "res://scenes/flight/red_sand_flight.tscn"
-const CAPTURE_DIRECTORY: String = "res://.omx/artifacts/t044"
+const CAPTURE_DIRECTORY: String = "res://.omx/artifacts/t045_gate_c_round_2"
+const SYSTEM_EDGE_SEGMENT_INDEX: int = 0
+const NEAR_ORBIT_SEGMENT_INDEX: int = 2
 const STORM_SEGMENT_INDEX: int = 4
 const LANDING_SEGMENT_INDEX: int = 7
 
@@ -25,6 +27,7 @@ func _capture_route_frames() -> void:
 	root.add_child(route)
 	await process_frame
 	await process_frame
+	route.close_controls_help()
 	var hud: RedSandRouteHUD = route.get_route_hud()
 	if hud != null:
 		hud.visible = false
@@ -34,62 +37,87 @@ func _capture_route_frames() -> void:
 		quit(1)
 		return
 	ship.set_physics_process(false)
+	route.set_process(false)
+	route.set_physics_process(false)
 
-	_prepare_storm_frame(route, ship)
-	await _settle_particles(90)
-	if not _save_frame("red_sand_storm_no_hud.png"):
+	_prepare_stage_frame(
+		route, ship, SYSTEM_EDGE_SEGMENT_INDEX, 0.05, 184.0, 0.55, 0.0
+	)
+	await _settle_particles(45)
+	if not _save_frame("stage_1_system_edge.png"):
 		quit(1)
 		return
 
-	_prepare_landing_frame(route, ship)
-	await _settle_particles(90)
-	if not _save_frame("red_sand_landing_no_hud.png"):
+	_prepare_stage_frame(
+		route, ship, NEAR_ORBIT_SEGMENT_INDEX, 0.95, 170.0, 1.0, 1.0
+	)
+	await _settle_particles(45)
+	if not _save_frame("stage_3_near_orbit.png"):
 		quit(1)
 		return
 
-	print("[red-sand-visual] PASS: saved two 640x360 no-HUD route frames.")
+	_prepare_stage_frame(
+		route, ship, STORM_SEGMENT_INDEX, 0.55, 142.0, 0.82, 0.0
+	)
+	await _settle_particles(90)
+	if not _save_frame("stage_5_storm_layer.png"):
+		quit(1)
+		return
+
+	_prepare_stage_frame(
+		route, ship, LANDING_SEGMENT_INDEX, 0.55, 264.0, 0.34, 0.0
+	)
+	await _settle_particles(210)
+	if not _save_frame("stage_8_landing_approach.png"):
+		quit(1)
+		return
+
+	print(
+		"[red-sand-visual] PASS: saved stage 1, 3, 5, and 8 "
+		+ "640x360 no-HUD route frames."
+	)
 	route.queue_free()
 	await process_frame
 	quit(0)
 
 
-func _prepare_storm_frame(route: RedSandFlight, ship: FlightLabShip) -> void:
+func _prepare_stage_frame(
+	route: RedSandFlight,
+	ship: FlightLabShip,
+	segment_index: int,
+	segment_progress: float,
+	ship_y: float,
+	throttle: float,
+	boost: float
+) -> void:
 	var definition: FlightRouteDefinition = route.get_route_definition()
-	var storm_segment: FlightRouteSegment = definition.segments[STORM_SEGMENT_INDEX]
-	ship.position = Vector2(route.route_origin_x + 71180.0, 142.0)
-	ship.velocity = Vector2(360.0, 12.0)
-	ship.rotation = deg_to_rad(2.0)
-	ship.effective_throttle_input = 0.82
-	ship.effective_boost_input = 0.35
+	var segment: FlightRouteSegment = definition.segments[segment_index]
+	ship.clear_propulsion_feedback()
+	ship.position = Vector2(
+		route.route_origin_x + lerpf(
+			segment.start_distance,
+			segment.end_distance,
+			clampf(segment_progress, 0.0, 1.0)
+		),
+		ship_y
+	)
+	ship.velocity = Vector2(300.0, 0.0)
+	ship.rotation = deg_to_rad(2.0 if segment_index < STORM_SEGMENT_INDEX else 0.5)
+	ship.integrate_motion(throttle, 0.0, 0.0, 0.2, boost)
 	ship._update_engine_feedback()
 	route.advance_route_state()
 	route._physics_process(1.0 / 60.0)
 	route._process(0.0)
 	var feedback: RedSandEnvironmentFeedback = route.get_environment_feedback()
 	if feedback != null:
-		feedback.set_segment(storm_segment)
-		feedback.set_ship_feedback(360.0, 0.82, 0.35, 0.8, false)
-
-
-func _prepare_landing_frame(route: RedSandFlight, ship: FlightLabShip) -> void:
-	var landing_zone: RedSandLandingZone = route.get_landing_zone()
-	ship.global_position = landing_zone.global_position + Vector2(-120.0, 252.0)
-	ship.velocity = Vector2(112.0, 4.0)
-	ship.rotation = deg_to_rad(1.0)
-	ship.effective_throttle_input = 0.34
-	ship.effective_boost_input = 0.0
-	ship._update_engine_feedback()
-	route.advance_route_state()
-	route._physics_process(1.0 / 60.0)
-	route._process(0.0)
-	var definition: FlightRouteDefinition = route.get_route_definition()
-	var landing_segment: FlightRouteSegment = definition.segments[
-		LANDING_SEGMENT_INDEX
-	]
-	var feedback: RedSandEnvironmentFeedback = route.get_environment_feedback()
-	if feedback != null:
-		feedback.set_segment(landing_segment)
-		feedback.set_ship_feedback(112.0, 0.34, 0.0, 1.0, false)
+		feedback.set_segment(segment)
+		feedback.set_ship_feedback(
+			ship.get_speed(),
+			throttle,
+			ship.get_boost_feedback_strength(),
+			ship.air_density,
+			false
+		)
 
 
 func _settle_particles(frame_count: int) -> void:

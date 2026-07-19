@@ -3,6 +3,7 @@ extends Node2D
 
 const FLOOR_BODY_DEPTH: float = 600.0
 const STAGE_LABEL_Y: float = 94.0
+const PLANET_HORIZON_TRANSITION_SECONDS: float = 0.55
 
 @export var planet_anchor_path: NodePath
 @export var atmosphere_tint_path: NodePath
@@ -30,6 +31,9 @@ const STAGE_LABEL_Y: float = 94.0
 
 var _route_definition: FlightRouteDefinition
 var _route_origin_x: float = 0.0
+var _last_segment_index: int = -1
+var _planet_transition_remaining: float = 0.0
+var _planet_alpha: float = 1.0
 
 
 func _notification(what: int) -> void:
@@ -46,19 +50,30 @@ func configure(
 	_route_definition = route_definition
 	_route_origin_x = route_origin_x
 	_build_graybox_route()
+	reset_to_distance(0.0)
 	return true
 
 
-func update_visuals(route_distance: float) -> void:
+func update_visuals(route_distance: float, delta: float = 0.0) -> void:
 	if _route_definition == null or _planet_anchor == null:
 		return
 	var progress: float = _route_definition.get_overall_progress(route_distance)
+	var segment_index: int = _route_definition.get_segment_index(route_distance)
+	var segment: FlightRouteSegment = _route_definition.get_segment(route_distance)
+	if segment == null:
+		return
+	if segment_index != _last_segment_index:
+		_begin_planet_stage(segment_index)
+		_last_segment_index = segment_index
 	var planet_scale: float = _route_definition.get_planet_scale(route_distance)
 	_planet_anchor.scale = Vector2.ONE * planet_scale
-	_planet_anchor.position = Vector2(
-		lerpf(548.0, 590.0, progress),
-		lerpf(106.0, 278.0, progress)
+	_planet_anchor.position = _get_planet_position(
+		segment_index,
+		segment.get_progress(route_distance)
 	)
+	_update_planet_transition(maxf(delta, 0.0), segment_index)
+	_planet_anchor.modulate.a = _planet_alpha
+	_planet_anchor.visible = _planet_alpha > 0.001
 	if _atmosphere_tint != null:
 		var atmosphere_color: Color = _atmosphere_tint.color
 		atmosphere_color.a = clampf((progress - 0.3) / 0.7, 0.0, 1.0) * 0.62
@@ -79,10 +94,76 @@ func update_visuals(route_distance: float) -> void:
 		_near_facilities.modulate.a = clampf((progress - 0.7) / 0.22, 0.0, 1.0)
 
 
+func reset_to_distance(route_distance: float) -> void:
+	_last_segment_index = -1
+	_planet_transition_remaining = 0.0
+	_planet_alpha = 1.0
+	update_visuals(route_distance, 0.0)
+
+
 func get_planet_scale() -> float:
 	if _planet_anchor == null:
 		return 0.0
 	return _planet_anchor.scale.x
+
+
+func get_planet_position() -> Vector2:
+	return Vector2.ZERO if _planet_anchor == null else _planet_anchor.position
+
+
+func get_planet_alpha() -> float:
+	return _planet_alpha
+
+
+func is_full_planet_visible() -> bool:
+	return _planet_anchor != null and _planet_anchor.visible
+
+
+func _begin_planet_stage(segment_index: int) -> void:
+	if segment_index <= 2:
+		_planet_alpha = 1.0
+		_planet_transition_remaining = 0.0
+	elif segment_index == 3:
+		_planet_alpha = 1.0
+		_planet_transition_remaining = PLANET_HORIZON_TRANSITION_SECONDS
+	else:
+		_planet_alpha = 0.0
+		_planet_transition_remaining = 0.0
+
+
+func _update_planet_transition(delta: float, segment_index: int) -> void:
+	if segment_index <= 2:
+		_planet_alpha = 1.0
+		return
+	if segment_index >= 4:
+		_planet_alpha = 0.0
+		return
+	if _planet_transition_remaining <= 0.0:
+		_planet_alpha = 0.0
+		return
+	_planet_transition_remaining = maxf(
+		_planet_transition_remaining - delta,
+		0.0
+	)
+	_planet_alpha = clampf(
+		_planet_transition_remaining / PLANET_HORIZON_TRANSITION_SECONDS,
+		0.0,
+		1.0
+	)
+
+
+func _get_planet_position(segment_index: int, segment_progress: float) -> Vector2:
+	var safe_progress: float = clampf(segment_progress, 0.0, 1.0)
+	match segment_index:
+		0:
+			return Vector2(580.0, 102.0).lerp(Vector2(552.0, 112.0), safe_progress)
+		1:
+			return Vector2(552.0, 112.0).lerp(Vector2(520.0, 124.0), safe_progress)
+		2:
+			return Vector2(520.0, 124.0).lerp(Vector2(455.0, 160.0), safe_progress)
+		3:
+			return Vector2(455.0, 160.0).lerp(Vector2(370.0, 390.0), safe_progress)
+	return Vector2(370.0, 390.0)
 
 
 func _build_graybox_route() -> void:

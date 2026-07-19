@@ -1,6 +1,7 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/red_sand_route_hud.gd" id="1_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/flight_controls_help.tscn" id="2_help"]
 
 [sub_resource type="Theme" id="ThemeRoute"]
 default_font_size = 10
@@ -23,6 +24,7 @@ script = ExtResource("1_hud")
 
 [node name="FlightPanel" type="PanelContainer" parent="."]
 unique_name_in_owner = true
+visible = false
 offset_left = 8.0
 offset_top = 8.0
 offset_right = 264.0
@@ -96,6 +98,13 @@ theme_override_colors/font_color = Color(0.905882, 0.945098, 0.972549, 1)
 theme_override_font_sizes/font_size = 9
 text = "UI_RED_SAND_ROUTE_INSTRUCTION_SYSTEM_EDGE"
 text_overrun_behavior = 3
+
+[node name="ControlsHintLabel" type="Label" parent="RoutePanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.670588, 1, 0.941176, 0.88)
+theme_override_font_sizes/font_size = 8
+text = "UI_FLIGHT_CONTROLS_HINT"
 
 [node name="RadarPanel" type="PanelContainer" parent="."]
 unique_name_in_owner = true
@@ -174,3 +183,6 @@ theme_override_font_sizes/font_size = 10
 text = "UI_RED_SAND_ROUTE_STATUS_STAGE"
 horizontal_alignment = 1
 text_overrun_behavior = 3
+
+[node name="FlightControlsHelp" parent="." instance=ExtResource("2_help")]
+unique_name_in_owner = true

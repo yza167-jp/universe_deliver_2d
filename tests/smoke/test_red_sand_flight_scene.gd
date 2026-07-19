@@ -32,7 +32,10 @@ func run() -> Array[String]:
 	expect_true(flight_ship is CharacterBody2D, "Route ship must remain CharacterBody2D.", failures)
 	expect_true(
 		route_scene.get_node_or_null("World/FlightCamera") is Camera2D
-		and route_scene.get_node_or_null("RedSandRouteHUD") is RedSandRouteHUD,
+		and route_scene.get_node_or_null("RedSandRouteHUD") is RedSandRouteHUD
+		and route_scene.get_node_or_null(
+			"RedSandRouteHUD/FlightControlsHelp"
+		) is FlightControlsHelp,
 		"Red Sand route must include its camera and localized graybox HUD.",
 		failures
 	)
@@ -110,15 +113,34 @@ func run() -> Array[String]:
 		"T-043 route must bind one explicit landing zone and collidable pad.",
 		failures
 	)
+	var engine_trail: CPUParticles2D = flight_ship.get_node_or_null(
+		"EngineTrailParticles"
+	) as CPUParticles2D
+	var boost_trail: CPUParticles2D = flight_ship.get_node_or_null(
+		"BoostTrailParticles"
+	) as CPUParticles2D
 	expect_true(
-		flight_ship.get_node_or_null("EngineTrailParticles") is CPUParticles2D
-		and flight_ship.get_node_or_null("BoostTrailParticles") is CPUParticles2D
+		engine_trail != null
+		and boost_trail != null
 		and flight_ship.get_node_or_null("EngineAudio") is AudioStreamPlayer2D
 		and flight_ship.get_node_or_null("BoostAudio") is AudioStreamPlayer2D
 		and flight_ship.get_node_or_null("CollisionAudio") is AudioStreamPlayer2D,
 		"T-044 route ship must bind propulsion particles and synthesized feedback audio.",
 		failures
 	)
+	if engine_trail != null and boost_trail != null:
+		expect_true(
+			engine_trail.local_coords
+			and boost_trail.local_coords
+			and engine_trail.gravity == Vector2.ZERO
+			and boost_trail.gravity == Vector2.ZERO
+			and engine_trail.direction.x < 0.0
+			and boost_trail.direction.x < 0.0
+			and boost_trail.amount >= engine_trail.amount * 2
+			and boost_trail.initial_velocity_min > engine_trail.initial_velocity_max,
+			"Propulsion trails must stay ship-local, rearward, zero-gravity, and Boost-distinct.",
+			failures
+		)
 	var environment_feedback: RedSandEnvironmentFeedback = route_scene.get_node_or_null(
 		"EnvironmentFeedback"
 	) as RedSandEnvironmentFeedback

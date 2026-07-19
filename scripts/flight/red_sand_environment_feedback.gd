@@ -108,11 +108,21 @@ func set_ship_feedback(
 		and normalized_speed >= 0.16
 		and (normalized_speed >= 0.34 or propulsion_strength > 0.05)
 	)
-	_speed_streak_particles.speed_scale = lerpf(0.62, 1.5, normalized_speed)
+	_speed_streak_particles.speed_scale = lerpf(
+		0.62,
+		1.5 + clampf(boost_strength, 0.0, 1.0) * 0.65,
+		normalized_speed
+	)
 	_speed_streak_particles.modulate.a = lerpf(
 		0.22,
-		0.7,
-		maxf(normalized_speed, clampf(air_density, 0.0, 1.0) * 0.72)
+		0.7 + clampf(boost_strength, 0.0, 1.0) * 0.22,
+		maxf(
+			maxf(
+				normalized_speed,
+				clampf(air_density, 0.0, 1.0) * 0.72
+			),
+			clampf(boost_strength, 0.0, 1.0) * 0.86
+		)
 	)
 
 

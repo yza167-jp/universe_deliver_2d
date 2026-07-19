@@ -34,6 +34,7 @@ func _run_smoke() -> void:
 	root.add_child(route)
 	await process_frame
 	await process_frame
+	route.close_controls_help()
 	route.set_process(false)
 	route.set_physics_process(false)
 
@@ -196,7 +197,15 @@ func _test_cover_breaks_lock(
 	feedback: RedSandEnvironmentFeedback,
 	hud: RedSandRouteHUD
 ) -> void:
-	ship.position = course.global_position + Vector2(7200.0, 376.0)
+	var pipeline_cover: FlightRadarCover = null
+	for cover: FlightRadarCover in course.get_radar_covers():
+		if cover.cover_id == &"red_sand_cover_pipeline":
+			pipeline_cover = cover
+			break
+	_check(pipeline_cover != null, "Pipeline terrain cover is missing.")
+	if pipeline_cover == null:
+		return
+	ship.global_position = pipeline_cover.global_position
 	var camera: Camera2D = route.get_flight_camera()
 	if camera != null:
 		camera.position = ship.position

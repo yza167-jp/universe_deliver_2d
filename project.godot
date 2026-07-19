@@ -85,6 +85,10 @@ flight_restart={
 "deadzone": 0.5,
 "events": []
 }
+flight_controls_help={
+"deadzone": 0.5,
+"events": []
+}
 flight_route_hint={
 "deadzone": 0.5,
 "events": []

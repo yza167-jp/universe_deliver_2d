@@ -25,7 +25,7 @@ static func step_velocity(
 		boost_input
 	)
 	next_velocity = _apply_space_drag(next_velocity, tuning, delta)
-	return apply_speed_limits(next_velocity, rotation, tuning)
+	return apply_speed_limits(next_velocity, rotation, tuning, boost_input)
 
 
 ## Applies only player-controlled thrust and braking so environment forces can be composed once.
@@ -162,13 +162,19 @@ static func _apply_space_drag(
 static func apply_speed_limits(
 	current_velocity: Vector2,
 	rotation: float,
-	tuning: FlightTuning
+	tuning: FlightTuning,
+	boost_limit_blend: float = 0.0
 ) -> Vector2:
 	if tuning == null:
 		return current_velocity
 	var limited_velocity: Vector2 = current_velocity
 	var forward: Vector2 = Vector2.RIGHT.rotated(rotation)
-	var max_forward_speed: float = maxf(tuning.max_forward_speed, 0.0)
+	var speed_multiplier: float = lerpf(
+		1.0,
+		maxf(tuning.boost_max_speed_multiplier, 1.0),
+		clampf(boost_limit_blend, 0.0, 1.0)
+	)
+	var max_forward_speed: float = maxf(tuning.max_forward_speed, 0.0) * speed_multiplier
 	var forward_speed: float = limited_velocity.dot(forward)
 	if forward_speed > max_forward_speed:
 		limited_velocity -= forward * (forward_speed - max_forward_speed)
@@ -176,7 +182,9 @@ static func apply_speed_limits(
 	forward_speed = limited_velocity.dot(forward)
 	if forward_speed < -max_reverse_speed:
 		limited_velocity -= forward * (forward_speed + max_reverse_speed)
-	return limited_velocity.limit_length(maxf(tuning.max_total_speed, 0.0))
+	return limited_velocity.limit_length(
+		maxf(tuning.max_total_speed, 0.0) * speed_multiplier
+	)
 
 
 static func get_forward_speed(current_velocity: Vector2, rotation: float) -> float:

@@ -397,7 +397,8 @@ Flight Lab 的默认键位由 `SettingsService` 统一写入 Input Map；业务�
 | `flight_laser_toggle` | L | 安装/卸载调试激光模块 |
 | `flight_route_hint` | Tab | 紧凑/展开 Gate B 路线卡 |
 | `flight_restart` | R | 重置当前 Flight Lab 检查点 |
-| `flight_fire` | F / 鼠标左键 | 共用一次开火入口；短按单发、按住连发 |
+| `flight_fire` | F / 鼠标左键 | 共用 held 入口；短按短光柱、按住持续光柱 |
+| `flight_controls_help` | C | 显示/隐藏可复用飞行控制帮助 |
 
 旧存档若仍是精确的 F3–F6 默认绑定，由 `SettingsService` 一次性迁移到 H/V/G/L；自定义绑定不应被无条件覆盖。玩家可见文本不再提示 F3–F6。
 
@@ -407,7 +408,11 @@ Flight Lab 的默认键位由 `SettingsService` 统一写入 Input Map；业务�
 - Full Diagnostics 默认隐藏，由 H 独立开关，保留角速度、重力/阻力、终端下降、资源速率、碰撞、检查点、激光和进入风格等内部遥测。
 - Gate B 路线卡默认只显示进度、当前名称和一行提示，Tab 才展开五项清单；隐藏节点不得残留鼠标拦截区域。
 
-`FlightLabShip` 持有最小 held-fire 状态：按下 `flight_fire` 立即请求第一发，按住时只在现有 `FlightLaserWeapon` 冷却就绪后请求下一发；重置、失败、暂停、窗口失焦、卸载模块或离开场景时清除状态，不增加第二套计时器或武器节点。
+`FlightLabShip` 持有最小 held-fire 状态：按下 `flight_fire` 只启动一次
+`FlightLaserWeapon` Beam，按住期间保持 active，松开时停止。武器每物理帧更新
+连续视觉，同时用独立 `beam_damage_tick_seconds` 结算伤害；短按也复用同一状态，
+不生成脉冲弹丸。重置、失败、暂停、窗口失焦、卸载模块或离场会清除 held、
+Beam 和循环音，不增加第二套武器节点。
 
 有限倒车仍由显式速度积分完成。进入阈值、反推倍率、倒车速度比例和制动力倍率统一位于 `FlightTuning` Resource；倒车输入或负本地前向速度会在资源结算前门控 Boost，避免消耗燃料或 Boost 能量。俯仰与相机不因倒车切换另一套方向或限制。
 
@@ -428,18 +433,36 @@ T-040 的标准 `FLIGHT` 场景使用 `FlightRouteDefinition` 与连续的
 允许倒车距离均集中在 Resource 中。独立 Flight Lab 通过 debug 场景覆盖继续
 保留，不与正式赤砂星路线共享 Gate B 任务状态。
 
+T-045 Gate C 返工后，`FlightRouteDefinition` 集中保存名义快速/常规/观景
+时长 `82 / 120 / 165 s`，八段边界集中在 `FlightRouteSegment`，当前总长
+`38000 px`。各段另保存 `checkpoint_fuel_floor`，重试快照只在现有燃料低于
+该值时向上保底。路线 HUD 显示经过时间与常规参考时长，不提供倒计时失败条件。
+
+`RedSandRouteVisuals` 是完整星球圆盘与环境层的唯一阶段控制器：阶段 1–3
+按路线进度统一计算位置、尺度和透明度；阶段 4 以 `0.55 s` 交叉过渡到大气
+地平线；阶段 5–8 强制隐藏完整圆盘，改用云层、远景地形和设施视差。重开或
+检查点恢复调用同一 `reset_to_distance()`，不维护互相独立的 Tween。
+
 ### 8.6 赤砂星固定危险与环境反馈
 
 T-041 的陨石和雷击均由场景中的固定节点编排，不使用随机天气：陨石复用
 `DestructibleAsteroid` 的碰撞层、耐久与检查点重置；`FlightLightningStrike`
-以路线距离触发可见预警，再按固定位置结算一次命中。`RedSandHazardDirector`
-只在雷暴段施加由 `FlightHazardModel` 计算的确定性风力，辅助驾驶按现有强度
-降低风力压力。慢动作辅助只在雷击预警窗口临时调整时间倍率，命中范围、伤害、
-路线状态和叙事结果保持相同，并在命中、重开、离开雷暴或释放场景时恢复原倍率。
+以路线距离触发后进入 `IDLE / TRACKING / LOCKED / STRIKE / COOLDOWN` 状态机。
+追踪阶段使用飞船位置与少量速度提前量，把目标限制在相机安全区；锁定后目标
+固定，只有短暂 `STRIKE` 状态可命中。`RedSandHazardDirector` 只在雷暴段施加
+由 `FlightHazardModel` 计算的确定性风力，辅助驾驶按现有强度降低风力压力。
+慢动作辅助只在追踪/锁定预警窗口临时调整时间倍率，命中范围、伤害、路线状态
+和叙事结果保持相同，并在命中、重开、离开雷暴或释放场景时恢复原倍率。
 各阶段的屏幕色调、环境循环和危险音乐强度由局部反馈组件切换，不引入全局
 音频 Manager。T-044 在该组件内加入五层视差、速度/入大气/雷暴/着陆粒子，
 并由 `FlightLabShip` 的可选本地节点提供推进、Boost 与碰撞反馈；这些占位声音
 均在运行时合成，不依赖外部素材，也不改变飞行数值。
+
+`FlightLaserWeapon` 的持续 Beam 使用射线只查询
+`FlightWeaponRules.LASER_TARGET_MASK`，每帧绘制炮口到命中点/最大射程的
+`Line2D`，每 `0.10 s` 独立结算一次陨石伤害。视觉最短保持和释放淡出与伤害
+Tick 分离，循环音在 Beam 开始时开启一次、停止时关闭；重试统一调用 reset，
+避免残留光柱或音频。
 
 ### 8.7 赤砂星峡谷与雷达低飞
 
@@ -467,6 +490,19 @@ T-043 使用局部 `RedSandLandingZone` 组合大型可读 `StaticBody2D` 着陆
 写入当前 `OrderRunState`，再由 `SceneRouterService` 从 `FLIGHT` 切换到
 `ARRIVAL`。抵达场景只读取已保存结果提供最低限度反馈，正式目的地剧情仍属于
 T-050。
+
+### 8.9 飞行控制帮助与暂停边界
+
+`FlightControlsHelp` 是局部、可复用的模态 `Control`，由路线 HUD 实例化，
+不创建全局 UI Manager。赤砂星路线首次 `_ready()` 后延迟打开帮助，先记录原
+`SceneTree.paused`，再暂停飞船、危险和路线计时；路线根与帮助本身使用
+`PROCESS_MODE_ALWAYS` 接收关闭输入，飞船使用 `PROCESS_MODE_PAUSABLE`。
+
+`C`、`Escape`、`E` 或 `Enter` 关闭后恢复进入前暂停状态，并把同一输入标记为
+已处理，避免顺带开火、重试或推进。检查点重试不强制重复弹出；`C` 可随时复开。
+帮助从本地化表读取核心操作和“仅测试模式”分组，并由当前 `ShipLoadout` / 直达
+测试工具刷新激光“已安装/未安装”状态。`L` 只在 Debug 的
+`--red-sand-route` 入口切换模块，正式流程继续读取出发前配置。
 
 ## 9. 大厅与目的地区域
 
@@ -670,7 +706,7 @@ M0 目标：M1 Max 本地运行稳定 60 FPS，并保留未来低配优化余量
 |---|---|
 | 横版飞行手感反复 | Flight Lab、集中 FlightTuning、早期人工 Gate |
 | 640×360 中文 UI 拥挤 | 早期真实中文测试、分层信息、较高分辨率像素字 |
-| 长关卡尺度失控 | 电影化压缩、阶段式环境、6–10 分钟 M0 上限 |
+| 长关卡尺度失控 | 电影化压缩、阶段式环境、单颗主线约 1–3 分钟 |
 | 对话系统过度开发 | 白名单条件/效果、无可视化编辑器、M0 只做必要功能 |
 | Autoload 膨胀 | 只保留跨场景服务，业务逻辑留在系统/数据对象 |
 | AI 生成资产风格不一 | Art Bible、尺寸模板、统一调色与人工审查 |

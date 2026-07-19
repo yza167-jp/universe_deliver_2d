@@ -9,6 +9,7 @@ extends Resource
 var start_distance: float = 0.0
 @export_range(0.0, 1000000.0, 1.0, "or_greater")
 var end_distance: float = 1.0
+@export_range(0.0, 100.0, 1.0) var checkpoint_fuel_floor: float = 0.0
 @export var environment_profile: FlightEnvironmentProfile
 @export_range(0.05, 20.0, 0.01, "or_greater")
 var planet_scale_start: float = 1.0

@@ -27,6 +27,7 @@ const LIGHTNING_FAILURE_KEY: StringName = &"UI_RED_SAND_HAZARD_LIGHTNING_FAILURE
 @onready var _lightning_container: Node = get_node_or_null(lightning_container_path)
 
 var _flight_ship: FlightLabShip
+var _flight_camera: Camera2D
 var _settings_service: SettingsServiceModel
 var _storm_active: bool = false
 var _storm_elapsed_seconds: float = 0.0
@@ -43,10 +44,12 @@ func _notification(what: int) -> void:
 func bind(
 	flight_ship: FlightLabShip,
 	route_origin_x: float,
-	settings_service: SettingsServiceModel = null
+	settings_service: SettingsServiceModel = null,
+	flight_camera: Camera2D = null
 ) -> bool:
 	_flight_ship = flight_ship
 	_settings_service = settings_service
+	_flight_camera = flight_camera
 	var validation_errors: PackedStringArray = validate()
 	if not validation_errors.is_empty():
 		for validation_error: String in validation_errors:
@@ -98,9 +101,20 @@ func validate() -> PackedStringArray:
 			errors.append(
 				"Lightning '%s' must warn before its strike distance." % strike.strike_id
 			)
-		if strike.warning_seconds < 0.75:
+		if strike.tracking_seconds < 0.6 or strike.tracking_seconds > 1.0:
 			errors.append(
-				"Lightning '%s' warning is too short for M0 readability." % strike.strike_id
+				"Lightning '%s' tracking must stay within 0.6-1.0 seconds."
+				% strike.strike_id
+			)
+		if strike.lock_seconds < 0.4 or strike.lock_seconds > 0.8:
+			errors.append(
+				"Lightning '%s' lock must stay within 0.4-0.8 seconds."
+				% strike.strike_id
+			)
+		if strike.strike_seconds < 0.1 or strike.strike_seconds > 0.25:
+			errors.append(
+				"Lightning '%s' strike must stay within 0.1-0.25 seconds."
+				% strike.strike_id
 			)
 	if not errors.has("Lightning container is missing.") and get_lightning_strikes().is_empty():
 		errors.append("Storm route has no fixed lightning strikes.")
@@ -153,7 +167,14 @@ func advance_hazards(delta: float, maximum_route_distance: float) -> void:
 	if not _storm_active or _flight_ship == null or _flight_ship.is_failed:
 		return
 	for strike: FlightLightningStrike in get_lightning_strikes():
-		strike.advance(delta, maximum_route_distance, _flight_ship.global_position)
+		strike.advance(
+			delta,
+			maximum_route_distance,
+			_flight_ship.global_position,
+			_flight_ship.velocity,
+			_flight_camera.global_position if _flight_camera != null else Vector2.ZERO,
+			Vector2(640.0, 360.0)
+		)
 
 
 func reset_for_checkpoint(route_distance: float) -> void:

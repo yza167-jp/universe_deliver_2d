@@ -2,6 +2,11 @@ class_name RedSandFlight
 extends Node2D
 
 const RESTART_ACTION: StringName = &"flight_restart"
+const CONTROLS_HELP_ACTION: StringName = &"flight_controls_help"
+const HUD_TOGGLE_ACTION: StringName = &"flight_debug_toggle"
+const ROUTE_DETAILS_ACTION: StringName = &"flight_route_hint"
+const ASSIST_CYCLE_ACTION: StringName = &"flight_assist_cycle"
+const LASER_TOGGLE_ACTION: StringName = &"flight_laser_toggle"
 const NO_RETRY_PENDING: float = -1.0
 const NO_ARRIVAL_TRANSITION_PENDING: float = -1.0
 const ENTRY_START_SEGMENT_INDEX: int = 3
@@ -21,6 +26,7 @@ const ENTRY_FINALIZE_SEGMENT_INDEX: int = 7
 @export var data_registry: GameDataRegistry
 @export var route_origin_x: float = 320.0
 @export var initial_ship_y: float = 190.0
+@export var force_direct_test_mode: bool = false
 
 var settings_service_override: SettingsServiceModel
 var game_state_override: GameStateModel
@@ -38,9 +44,15 @@ var _camera_shake_remaining: float = 0.0
 var _camera_shake_duration: float = 0.0
 var _camera_shake_elapsed: float = 0.0
 var _camera_shake_amplitude: float = 0.0
+var _controls_help_open: bool = false
+var _was_tree_paused: bool = false
+var _direct_test_mode: bool = false
+var _active_assist_index: int = 1
 
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	flight_ship.process_mode = Node.PROCESS_MODE_PAUSABLE
 	if not _validate_runtime_dependencies():
 		set_process(false)
 		set_physics_process(false)
@@ -51,7 +63,8 @@ func _ready() -> void:
 	if not hazard_director.bind(
 		flight_ship,
 		route_origin_x,
-		_resolve_settings_service()
+		_resolve_settings_service(),
+		flight_camera
 	):
 		push_error("Red Sand route could not configure its fixed hazards.")
 		return
@@ -74,9 +87,23 @@ func _ready() -> void:
 	_connect_low_flight_signals()
 	_connect_landing_signals()
 	_connect_scenic_triggers()
+	if not route_hud.controls_help_close_requested.is_connected(
+		close_controls_help
+	):
+		route_hud.controls_help_close_requested.connect(close_controls_help)
 	_entry_style_tracker.bind_run_state(_resolve_order_run_state())
 	flight_ship.set_laser_enabled(_resolve_laser_enabled_from_loadout())
 	var assist_strength: float = _resolve_assist_strength()
+	_active_assist_index = FlightAssistMode.get_nearest_preset_index(assist_strength)
+	_direct_test_mode = (
+		force_direct_test_mode
+		or (
+			OS.is_debug_build()
+			and OS.get_cmdline_user_args().has(
+				UniverseDeliverApp.DEBUG_RED_SAND_ROUTE_ARGUMENT
+			)
+		)
+	)
 	var first_segment: FlightRouteSegment = route_definition.segments[0]
 	flight_ship.stable_start_position = Vector2(route_origin_x, initial_ship_y)
 	if not flight_ship.configure_stable_checkpoint(
@@ -100,9 +127,22 @@ func _ready() -> void:
 	_refresh_hud()
 	_sync_low_flight_feedback()
 	_sync_landing_feedback()
+	call_deferred("_open_initial_controls_help")
+
+
+func _exit_tree() -> void:
+	if _controls_help_open and get_tree() != null:
+		get_tree().paused = _was_tree_paused
+	_controls_help_open = false
+	if flight_ship != null:
+		flight_ship.cancel_held_fire(true)
+	if hazard_director != null:
+		hazard_director.cancel_slow_motion()
 
 
 func _physics_process(delta: float) -> void:
+	if _controls_help_open:
+		return
 	if (
 		hazard_director == null
 		or environment_feedback == null
@@ -119,6 +159,8 @@ func _physics_process(delta: float) -> void:
 
 
 func _process(delta: float) -> void:
+	if _controls_help_open:
+		return
 	_update_auto_retry(delta)
 	_update_arrival_transition(delta)
 	if not flight_ship.is_failed and not _route_completed:
@@ -130,11 +172,41 @@ func _process(delta: float) -> void:
 		hazard_director.advance_hazards(delta, _maximum_route_distance)
 	_sync_camera_to_ship()
 	_update_camera_shake(delta)
-	_update_route_visuals()
+	_update_route_visuals(delta)
 	_refresh_hud()
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _controls_help_open:
+		if (
+			event.is_action_pressed(CONTROLS_HELP_ACTION)
+			or event.is_action_pressed(&"pause")
+			or event.is_action_pressed(&"interact")
+			or event.is_action_pressed(&"ui_accept")
+		):
+			close_controls_help()
+			get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed(CONTROLS_HELP_ACTION):
+		open_controls_help()
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed(HUD_TOGGLE_ACTION):
+		route_hud.toggle_full_diagnostics()
+		get_viewport().set_input_as_handled()
+		return
+	if _direct_test_mode and event.is_action_pressed(ROUTE_DETAILS_ACTION):
+		route_hud.toggle_route_details()
+		get_viewport().set_input_as_handled()
+		return
+	if _direct_test_mode and event.is_action_pressed(ASSIST_CYCLE_ACTION):
+		cycle_test_assist_mode()
+		get_viewport().set_input_as_handled()
+		return
+	if _direct_test_mode and event.is_action_pressed(LASER_TOGGLE_ACTION):
+		toggle_test_laser_loadout()
+		get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed(RESTART_ACTION):
 		restart_from_checkpoint(false)
 		get_viewport().set_input_as_handled()
@@ -224,6 +296,71 @@ func get_landing_result() -> StringName:
 	return _landing_result
 
 
+func is_controls_help_open() -> bool:
+	return _controls_help_open
+
+
+func is_direct_test_mode() -> bool:
+	return _direct_test_mode
+
+
+func open_controls_help() -> bool:
+	if _controls_help_open or route_hud == null or flight_ship == null:
+		return false
+	_controls_help_open = true
+	_was_tree_paused = get_tree().paused
+	flight_ship.cancel_held_fire(true)
+	route_hud.show_controls_help(
+		_direct_test_mode,
+		flight_ship.is_laser_enabled()
+	)
+	get_tree().paused = true
+	return true
+
+
+func close_controls_help() -> bool:
+	if not _controls_help_open:
+		return false
+	_controls_help_open = false
+	if route_hud != null:
+		route_hud.hide_controls_help()
+	if get_tree() != null:
+		get_tree().paused = _was_tree_paused
+	return true
+
+
+func _open_initial_controls_help() -> void:
+	if is_inside_tree() and not _route_completed:
+		open_controls_help()
+
+
+func cycle_test_assist_mode() -> float:
+	if not _direct_test_mode or flight_ship == null:
+		return flight_ship.assist_strength if flight_ship != null else 0.0
+	var presets: Array[float] = FlightAssistMode.get_presets()
+	_active_assist_index = (_active_assist_index + 1) % presets.size()
+	var assist_strength: float = presets[_active_assist_index]
+	flight_ship.set_assist_strength(assist_strength)
+	var segment: FlightRouteSegment = get_active_segment()
+	if segment != null:
+		flight_ship.capture_checkpoint(
+			segment.checkpoint_id,
+			segment.checkpoint_fuel_floor
+		)
+	route_hud.show_assist_changed(assist_strength)
+	return assist_strength
+
+
+func toggle_test_laser_loadout() -> bool:
+	if not _direct_test_mode or not OS.is_debug_build() or flight_ship == null:
+		return false
+	var enabled: bool = not flight_ship.is_laser_enabled()
+	flight_ship.set_laser_enabled(enabled)
+	route_hud.update_controls_help_laser_state(enabled)
+	route_hud.show_laser_loadout_changed(enabled)
+	return enabled
+
+
 ## Advances only route orchestration; it never rewrites position, velocity, or rotation.
 func advance_route_state() -> bool:
 	if route_definition == null or flight_ship == null:
@@ -289,6 +426,7 @@ func restart_from_checkpoint(is_automatic: bool = false) -> bool:
 	low_flight_course.set_active_segment(get_active_segment().id)
 	landing_zone.reset_for_checkpoint()
 	landing_zone.set_active_segment(get_active_segment().id)
+	route_visuals.reset_to_distance(_maximum_route_distance)
 	if (
 		_active_segment_index >= ENTRY_START_SEGMENT_INDEX
 		and _active_segment_index < ENTRY_FINALIZE_SEGMENT_INDEX
@@ -336,7 +474,10 @@ func _enter_segment(segment_index: int) -> void:
 	environment_feedback.set_segment(segment)
 	low_flight_course.set_active_segment(segment.id)
 	landing_zone.set_active_segment(segment.id)
-	flight_ship.capture_checkpoint(segment.checkpoint_id)
+	flight_ship.capture_checkpoint(
+		segment.checkpoint_id,
+		segment.checkpoint_fuel_floor
+	)
 	_sync_order_run_checkpoint(segment.checkpoint_id)
 	if segment_index == ENTRY_START_SEGMENT_INDEX:
 		_begin_entry_style_tracking()
@@ -412,20 +553,23 @@ func _update_entry_style_tracking(delta: float) -> void:
 func _sync_camera_to_ship() -> void:
 	if flight_ship == null or flight_camera == null:
 		return
+	var boost_strength: float = flight_ship.get_boost_feedback_strength()
 	flight_camera.position = Vector2(
-		roundf(flight_ship.position.x),
+		roundf(flight_ship.position.x + boost_strength * 18.0),
 		roundf(flight_ship.position.y)
 	)
+	var boost_zoom: float = lerpf(1.0, 0.96, boost_strength)
+	flight_camera.zoom = Vector2.ONE * boost_zoom
 
 
-func _update_route_visuals() -> void:
+func _update_route_visuals(delta: float = 0.0) -> void:
 	if route_visuals != null:
-		route_visuals.update_visuals(_maximum_route_distance)
+		route_visuals.update_visuals(_maximum_route_distance, delta)
 	if environment_feedback != null and flight_ship != null:
 		environment_feedback.set_ship_feedback(
 			flight_ship.get_speed(),
 			flight_ship.effective_throttle_input,
-			flight_ship.effective_boost_input,
+			flight_ship.get_boost_feedback_strength(),
 			flight_ship.air_density,
 			flight_ship.is_failed or flight_ship.is_landed or _route_completed
 		)
@@ -760,7 +904,8 @@ func _configure_landing_checkpoint(segment: FlightRouteSegment) -> void:
 		segment.checkpoint_id,
 		landing_zone.get_safe_checkpoint_position(),
 		landing_zone.get_safe_checkpoint_velocity(),
-		0.0
+		0.0,
+		segment.checkpoint_fuel_floor
 	):
 		push_error("Red Sand landing checkpoint could not be configured.")
 		return

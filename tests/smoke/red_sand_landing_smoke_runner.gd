@@ -44,6 +44,8 @@ func _run_smoke() -> void:
 
 	var route: RedSandFlight = _get_active_route()
 	_check(route != null, "Standard FLIGHT stage did not instantiate RedSandFlight.")
+	if route != null:
+		route.close_controls_help()
 	if route == null:
 		await _cleanup()
 		_finish()
