@@ -32,16 +32,23 @@ func _run_smoke() -> void:
 	var flight_camera: Camera2D = route.get_flight_camera()
 	var route_hud: RedSandRouteHUD = route.get_route_hud()
 	var definition: FlightRouteDefinition = route.get_route_definition()
+	var landing_zone: RedSandLandingZone = route.get_landing_zone()
 	_check(flight_ship != null, "Red Sand route ship is missing.")
 	_check(flight_camera != null and flight_camera.enabled, "Red Sand route camera is inactive.")
 	_check(route_hud != null, "Red Sand route HUD is missing.")
+	_check(landing_zone != null, "Red Sand landing zone is missing.")
 	_check(
 		definition != null
 		and definition.validate().is_empty()
 		and definition.segments.size() == 8,
 		"Red Sand route data is not a validated eight-stage sequence."
 	)
-	if flight_ship == null or route_hud == null or definition == null:
+	if (
+		flight_ship == null
+		or route_hud == null
+		or definition == null
+		or landing_zone == null
+	):
 		route.queue_free()
 		await process_frame
 		_finish()
@@ -133,16 +140,25 @@ func _run_smoke() -> void:
 		)
 		previous_planet_scale = current_planet_scale
 		if index == definition.segments.size() - 1:
-			checkpoint_position = flight_ship.position
-			checkpoint_velocity = flight_ship.velocity
-			checkpoint_rotation = flight_ship.rotation
+			checkpoint_position = landing_zone.get_safe_checkpoint_position()
+			checkpoint_velocity = landing_zone.get_safe_checkpoint_velocity()
+			checkpoint_rotation = 0.0
+	route._physics_process(0.0)
 
 	_check(
 		route_hud.get_stage_text().contains(
 			tr(definition.segments[-1].display_name_key)
 		)
 		and route_hud.get_progress_text().contains("86%")
-		and not route_hud.get_instruction_text().is_empty(),
+		and not route_hud.get_instruction_text().is_empty()
+		and not route_hud.get_landing_text().is_empty()
+		and viewport_bounds.encloses(route_hud.get_landing_rect())
+		and not route_hud.get_landing_rect().intersects(
+			route_hud.get_flight_panel_rect()
+		)
+		and not route_hud.get_landing_rect().intersects(
+			route_hud.get_route_panel_rect()
+		),
 		"Localized route HUD did not follow the active landing-approach stage."
 	)
 
@@ -168,25 +184,22 @@ func _run_smoke() -> void:
 		flight_ship.position == checkpoint_position
 		and flight_ship.velocity == checkpoint_velocity
 		and is_equal_approx(flight_ship.rotation, checkpoint_rotation),
-		"Route checkpoint did not restore the captured continuous flight state."
+		"Landing retry did not restore the fixed safe approach checkpoint."
 	)
 
 	flight_ship.position.x = route.route_origin_x + definition.get_total_distance() + 1.0
 	flight_ship.velocity = Vector2(160.0, 9.0)
 	var completion_position: Vector2 = flight_ship.position
 	var completion_velocity: Vector2 = flight_ship.velocity
-	_check(route.advance_route_state(), "Route endpoint was not detected.")
+	_check(not route.advance_route_state(), "Route endpoint must not create a ninth stage.")
 	route._process(0.0)
 	_check(
-		route.is_route_completed()
+		not route.is_route_completed()
 		and flight_ship.position == completion_position
 		and flight_ship.velocity == completion_velocity
+		and is_equal_approx(route.get_route_progress(), 1.0)
 		and is_equal_approx(route.get_planet_visual_scale(), 7.2),
-		"Route completion must preserve flight state and reach the final planet scale."
-	)
-	_check(
-		route_hud.get_status_text() == tr("UI_RED_SAND_ROUTE_STATUS_COMPLETE"),
-		"Route endpoint did not provide clear localized graybox feedback."
+		"Flying past the route distance must not replace a real touchdown."
 	)
 
 	var maximum_x: float = (
@@ -202,6 +215,35 @@ func _run_smoke() -> void:
 		and is_zero_approx(flight_ship.velocity.x)
 		and is_equal_approx(flight_ship.velocity.y, -6.0),
 		"Route finish hold must stop overshoot without changing vertical correction."
+	)
+
+	flight_ship.global_position = landing_zone.global_position + Vector2(
+		0.0,
+		landing_zone.get_touchdown_center_y() - 2.0
+	)
+	flight_ship.velocity = Vector2(70.0, 24.0)
+	flight_ship.rotation = deg_to_rad(5.0)
+	route._physics_process(1.0 / 60.0)
+	flight_ship.global_position.y = (
+		landing_zone.global_position.y
+		+ landing_zone.get_touchdown_center_y()
+		+ 1.0
+	)
+	route._physics_process(1.0 / 60.0)
+	route._process(0.0)
+	_check(
+		route.is_route_completed()
+		and flight_ship.is_landed
+		and flight_ship.velocity == Vector2.ZERO
+		and route.get_landing_result() == OrderRunState.LANDING_RESULT_SMOOTH
+		and route.is_arrival_transition_pending(),
+		"A safe, level touchdown did not complete landing and queue ARRIVAL."
+	)
+	_check(
+		route_hud.get_status_text()
+		== tr("UI_RED_SAND_LANDING_RESULT_SMOOTH") % 100
+		and route_hud.get_landing_rect() == Rect2(),
+		"Smooth landing did not replace guidance with localized Lao Pi feedback."
 	)
 	_check(
 		definition.expected_duration_seconds >= 360.0
@@ -235,8 +277,8 @@ func _finish() -> void:
 	TranslationServer.set_locale(_original_locale)
 	if _failures.is_empty():
 		print(
-			"[red-sand-route] PASS: eight continuous stages, smooth environment handoff, "
-			+ "monotonic planet scale, checkpoints, bounded reverse, HUD, and route duration."
+			"[red-sand-route] PASS: eight continuous stages, safe landing checkpoint, "
+			+ "bounded route, localized guidance, and touchdown-only completion."
 		)
 		quit(0)
 		return

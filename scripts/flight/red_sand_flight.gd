@@ -3,6 +3,7 @@ extends Node2D
 
 const RESTART_ACTION: StringName = &"flight_restart"
 const NO_RETRY_PENDING: float = -1.0
+const NO_ARRIVAL_TRANSITION_PENDING: float = -1.0
 const ENTRY_START_SEGMENT_INDEX: int = 3
 const ENTRY_FINALIZE_SEGMENT_INDEX: int = 7
 
@@ -13,6 +14,7 @@ const ENTRY_FINALIZE_SEGMENT_INDEX: int = 7
 @onready var hazard_director: RedSandHazardDirector = %Hazards
 @onready var environment_feedback: RedSandEnvironmentFeedback = %EnvironmentFeedback
 @onready var low_flight_course: RedSandLowFlightCourse = %LowFlightCourse
+@onready var landing_zone: RedSandLandingZone = %LandingZone
 
 @export var route_definition: FlightRouteDefinition
 @export var data_registry: GameDataRegistry
@@ -21,11 +23,14 @@ const ENTRY_FINALIZE_SEGMENT_INDEX: int = 7
 
 var settings_service_override: SettingsServiceModel
 var game_state_override: GameStateModel
+var scene_router_override: SceneRouterService
 var _active_segment_index: int = 0
 var _maximum_route_distance: float = 0.0
 var _route_elapsed_seconds: float = 0.0
 var _route_completed: bool = false
 var _auto_retry_remaining: float = NO_RETRY_PENDING
+var _arrival_transition_remaining: float = NO_ARRIVAL_TRANSITION_PENDING
+var _landing_result: StringName = &""
 var _entry_style_tracker: FlightStyleTracker = FlightStyleTracker.new()
 var _local_order_run_state: OrderRunState = OrderRunState.new()
 var _camera_shake_remaining: float = 0.0
@@ -56,9 +61,17 @@ func _ready() -> void:
 	):
 		push_error("Red Sand route could not configure its low-flight course.")
 		return
+	if not landing_zone.bind(
+		flight_ship,
+		route_origin_x,
+		_resolve_settings_service()
+	):
+		push_error("Red Sand route could not configure its landing zone.")
+		return
 	_connect_ship_signals()
 	_connect_hazard_signals()
 	_connect_low_flight_signals()
+	_connect_landing_signals()
 	_entry_style_tracker.bind_run_state(_resolve_order_run_state())
 	flight_ship.set_laser_enabled(_resolve_laser_enabled_from_loadout())
 	var assist_strength: float = _resolve_assist_strength()
@@ -77,31 +90,42 @@ func _ready() -> void:
 	hazard_director.set_active_segment(first_segment.id)
 	environment_feedback.set_segment(first_segment)
 	low_flight_course.set_active_segment(first_segment.id)
+	landing_zone.set_active_segment(first_segment.id)
 	_sync_order_run_checkpoint(first_segment.checkpoint_id)
 	route_hud.bind(flight_ship, route_definition)
 	_sync_camera_to_ship()
 	_update_route_visuals()
 	_refresh_hud()
 	_sync_low_flight_feedback()
+	_sync_landing_feedback()
 
 
 func _physics_process(delta: float) -> void:
-	if hazard_director == null or environment_feedback == null:
+	if (
+		hazard_director == null
+		or environment_feedback == null
+		or low_flight_course == null
+		or landing_zone == null
+	):
 		return
 	var wind_acceleration: Vector2 = hazard_director.step_physics(delta)
 	environment_feedback.set_wind_acceleration(wind_acceleration)
 	low_flight_course.step_physics(delta)
+	landing_zone.step_physics(delta)
 	_sync_low_flight_feedback()
+	_sync_landing_feedback()
 
 
 func _process(delta: float) -> void:
 	_update_auto_retry(delta)
+	_update_arrival_transition(delta)
 	if not flight_ship.is_failed and not _route_completed:
 		_route_elapsed_seconds += maxf(delta, 0.0)
 		_update_entry_style_tracking(delta)
-	advance_route_state()
+		advance_route_state()
 	enforce_forward_route_limit()
-	hazard_director.advance_hazards(delta, _maximum_route_distance)
+	if not _route_completed:
+		hazard_director.advance_hazards(delta, _maximum_route_distance)
 	_sync_camera_to_ship()
 	_update_camera_shake(delta)
 	_update_route_visuals()
@@ -140,6 +164,10 @@ func get_environment_feedback() -> RedSandEnvironmentFeedback:
 
 func get_low_flight_course() -> RedSandLowFlightCourse:
 	return low_flight_course
+
+
+func get_landing_zone() -> RedSandLandingZone:
+	return landing_zone
 
 
 func get_active_segment_index() -> int:
@@ -186,6 +214,14 @@ func is_retry_pending() -> bool:
 	return _auto_retry_remaining >= 0.0
 
 
+func is_arrival_transition_pending() -> bool:
+	return _arrival_transition_remaining >= 0.0
+
+
+func get_landing_result() -> StringName:
+	return _landing_result
+
+
 ## Advances only route orchestration; it never rewrites position, velocity, or rotation.
 func advance_route_state() -> bool:
 	if route_definition == null or flight_ship == null:
@@ -199,12 +235,6 @@ func advance_route_state() -> bool:
 	while requested_index > _active_segment_index:
 		_active_segment_index += 1
 		_enter_segment(_active_segment_index)
-		changed = true
-	if (
-		not _route_completed
-		and _maximum_route_distance >= route_definition.get_total_distance()
-	):
-		_complete_route()
 		changed = true
 	return changed
 
@@ -248,11 +278,15 @@ func restart_from_checkpoint(is_automatic: bool = false) -> bool:
 		get_active_segment().start_distance
 	)
 	_route_completed = false
+	_arrival_transition_remaining = NO_ARRIVAL_TRANSITION_PENDING
+	_landing_result = &""
 	hazard_director.reset_for_checkpoint(_maximum_route_distance)
 	hazard_director.set_active_segment(get_active_segment().id)
 	environment_feedback.set_segment(get_active_segment())
 	low_flight_course.reset_for_checkpoint()
 	low_flight_course.set_active_segment(get_active_segment().id)
+	landing_zone.reset_for_checkpoint()
+	landing_zone.set_active_segment(get_active_segment().id)
 	if (
 		_active_segment_index >= ENTRY_START_SEGMENT_INDEX
 		and _active_segment_index < ENTRY_FINALIZE_SEGMENT_INDEX
@@ -262,6 +296,7 @@ func restart_from_checkpoint(is_automatic: bool = false) -> bool:
 	_update_route_visuals()
 	_refresh_hud()
 	_sync_low_flight_feedback()
+	_sync_landing_feedback()
 	if is_automatic:
 		route_hud.show_auto_retry(flight_ship.get_checkpoint_id())
 	else:
@@ -278,6 +313,7 @@ func _validate_runtime_dependencies() -> bool:
 		or hazard_director == null
 		or environment_feedback == null
 		or low_flight_course == null
+		or landing_zone == null
 		or route_definition == null
 	):
 		push_error("Red Sand route is missing required scene dependencies.")
@@ -296,23 +332,45 @@ func _enter_segment(segment_index: int) -> void:
 	hazard_director.set_active_segment(segment.id)
 	environment_feedback.set_segment(segment)
 	low_flight_course.set_active_segment(segment.id)
+	landing_zone.set_active_segment(segment.id)
 	flight_ship.capture_checkpoint(segment.checkpoint_id)
 	_sync_order_run_checkpoint(segment.checkpoint_id)
 	if segment_index == ENTRY_START_SEGMENT_INDEX:
 		_begin_entry_style_tracking()
 	elif segment_index == ENTRY_FINALIZE_SEGMENT_INDEX:
 		_finalize_entry_style()
+		_configure_landing_checkpoint(segment)
 	route_hud.show_stage_transition(segment)
 
 
-func _complete_route() -> void:
+func _complete_landing(
+	quality: int,
+	cargo_damage: float,
+	landed_global_position: Vector2
+) -> void:
+	if _route_completed or flight_ship == null:
+		return
+	if not flight_ship.complete_landing(landed_global_position):
+		return
+	var applied_cargo_damage: float = flight_ship.apply_delivery_cargo_damage(cargo_damage)
 	_route_completed = true
+	_maximum_route_distance = route_definition.get_total_distance()
 	hazard_director.cancel_slow_motion()
 	low_flight_course.set_active_segment(&"")
+	landing_zone.set_active_segment(&"")
 	_sync_low_flight_feedback()
+	_sync_landing_feedback()
 	_finalize_entry_style()
+	_landing_result = FlightLandingModel.get_result_id(quality)
+	_record_landing_result(_landing_result, applied_cargo_damage)
 	_sync_order_run_resources()
-	route_hud.show_route_complete()
+	route_hud.show_landing_result(_landing_result, flight_ship.cargo_integrity)
+	_arrival_transition_remaining = maxf(
+		flight_ship.tuning.landing_arrival_transition_delay_seconds
+		if flight_ship.tuning != null
+		else 0.0,
+		0.0
+	)
 
 
 func _begin_entry_style_tracking() -> void:
@@ -409,6 +467,13 @@ func _connect_low_flight_signals() -> void:
 		low_flight_course.notice_requested.connect(_on_radar_notice_requested)
 
 
+func _connect_landing_signals() -> void:
+	if not landing_zone.landing_resolved.is_connected(_on_landing_resolved):
+		landing_zone.landing_resolved.connect(_on_landing_resolved)
+	if not landing_zone.landing_failed.is_connected(_on_landing_failed):
+		landing_zone.landing_failed.connect(_on_landing_failed)
+
+
 func _on_impact_resolved(severity: int, impact_speed: float) -> void:
 	route_hud.show_impact(severity, impact_speed)
 	_start_camera_shake(severity)
@@ -474,6 +539,23 @@ func _on_radar_notice_requested(message_key: StringName) -> void:
 	route_hud.show_radar_notice(message_key)
 
 
+func _on_landing_resolved(
+	quality: int,
+	cargo_damage: float,
+	landed_global_position: Vector2
+) -> void:
+	_complete_landing(
+		quality,
+		cargo_damage,
+		landed_global_position
+	)
+
+
+func _on_landing_failed(reason_key: StringName) -> void:
+	if flight_ship != null:
+		flight_ship.fail_flight(reason_key)
+
+
 func _sync_low_flight_feedback() -> void:
 	if low_flight_course == null or route_hud == null or environment_feedback == null:
 		return
@@ -487,6 +569,17 @@ func _sync_low_flight_feedback() -> void:
 	)
 
 
+func _sync_landing_feedback() -> void:
+	if landing_zone == null or route_hud == null or flight_ship == null:
+		return
+	var metrics: Vector3 = landing_zone.get_landing_metrics()
+	route_hud.set_landing_guidance(
+		landing_zone.get_guidance_state_key(),
+		metrics,
+		flight_ship.tuning
+	)
+
+
 func _update_auto_retry(delta: float) -> void:
 	if _auto_retry_remaining < 0.0:
 		return
@@ -496,6 +589,26 @@ func _update_auto_retry(delta: float) -> void:
 	)
 	if _auto_retry_remaining <= 0.0:
 		restart_from_checkpoint(true)
+
+
+func _update_arrival_transition(delta: float) -> void:
+	if _arrival_transition_remaining < 0.0:
+		return
+	_arrival_transition_remaining = maxf(
+		_arrival_transition_remaining - maxf(delta, 0.0),
+		0.0
+	)
+	if _arrival_transition_remaining > 0.0:
+		return
+	_arrival_transition_remaining = NO_ARRIVAL_TRANSITION_PENDING
+	var scene_router: SceneRouterService = _resolve_scene_router()
+	if (
+		scene_router == null
+		or scene_router.current_stage != SceneRouterService.Stage.FLIGHT
+	):
+		return
+	if not scene_router.request_stage(SceneRouterService.Stage.ARRIVAL):
+		push_error("Landing could not enter ARRIVAL: %s" % scene_router.last_error)
 
 
 func _start_camera_shake(severity: int) -> void:
@@ -568,6 +681,12 @@ func _resolve_game_state() -> GameStateModel:
 	return get_node_or_null("/root/GameState") as GameStateModel
 
 
+func _resolve_scene_router() -> SceneRouterService:
+	if scene_router_override != null:
+		return scene_router_override
+	return get_node_or_null("/root/SceneRouter") as SceneRouterService
+
+
 func _resolve_order_run_state() -> OrderRunState:
 	var game_state: GameStateModel = _resolve_game_state()
 	if game_state != null:
@@ -595,6 +714,26 @@ func _sync_order_run_checkpoint(checkpoint_id: StringName) -> void:
 	var run_state: OrderRunState = _resolve_order_run_state()
 	if run_state != null:
 		run_state.active_checkpoint_id = checkpoint_id
+
+
+func _configure_landing_checkpoint(segment: FlightRouteSegment) -> void:
+	if segment == null or landing_zone == null or flight_ship == null:
+		return
+	if not flight_ship.configure_safe_checkpoint(
+		segment.checkpoint_id,
+		landing_zone.get_safe_checkpoint_position(),
+		landing_zone.get_safe_checkpoint_velocity(),
+		0.0
+	):
+		push_error("Red Sand landing checkpoint could not be configured.")
+		return
+	_sync_order_run_checkpoint(segment.checkpoint_id)
+
+
+func _record_landing_result(result_id: StringName, cargo_damage: float) -> void:
+	var run_state: OrderRunState = _resolve_order_run_state()
+	if run_state != null and not run_state.record_landing_result(result_id, cargo_damage):
+		push_error("Red Sand landing produced an unsupported result: %s" % result_id)
 
 
 func _sync_order_run_resources() -> void:

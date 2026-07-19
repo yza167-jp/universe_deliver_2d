@@ -15,6 +15,7 @@ func run() -> Array[String]:
 	_test_emergency_thrust_prevents_fuel_deadlock(tuning, failures)
 	_test_shield_hull_and_cargo_damage_order(failures)
 	_test_environment_hazard_uses_the_same_damage_order(failures)
+	_test_delivery_cargo_damage_clamps_and_reports(failures)
 	_test_resource_snapshot_is_independent(failures)
 	return failures
 
@@ -217,5 +218,20 @@ func _test_environment_hazard_uses_the_same_damage_order(
 		and is_equal_approx(resources.hull, 84.0)
 		and is_equal_approx(resources.cargo_integrity, 97.0),
 		"Environmental damage must deplete shield before hull and use explicit cargo damage.",
+		failures
+	)
+
+
+func _test_delivery_cargo_damage_clamps_and_reports(
+	failures: Array[String]
+) -> void:
+	var resources: FlightResources = FlightResources.new()
+	resources.cargo_integrity = 4.0
+	var applied_damage: float = resources.apply_cargo_damage(9.0)
+	expect_true(
+		is_equal_approx(applied_damage, 4.0)
+		and is_zero_approx(resources.cargo_integrity)
+		and is_zero_approx(resources.apply_cargo_damage(-3.0)),
+		"Delivery cargo damage must clamp at zero and report only actual loss.",
 		failures
 	)

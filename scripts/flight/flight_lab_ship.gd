@@ -79,6 +79,7 @@ var collision_state_key: StringName = DEFAULT_COLLISION_KEY
 var last_impact_speed: float = 0.0
 var checkpoint_id: StringName = &""
 var is_failed: bool = false
+var is_landed: bool = false
 var angular_velocity: float = 0.0
 var throttle_input: float = 0.0
 var brake_input: float = 0.0
@@ -127,7 +128,7 @@ func _physics_process(delta: float) -> void:
 		_collision_feedback_cooldown_remaining - maxf(delta, 0.0),
 		0.0
 	)
-	if is_failed:
+	if is_failed or is_landed:
 		_clear_control_inputs()
 		_update_engine_feedback()
 		return
@@ -277,6 +278,7 @@ func reset_to_start(
 		_refresh_environment_telemetry()
 	_clear_collision_state()
 	is_failed = false
+	is_landed = false
 	_triggered_cargo_warning_keys.clear()
 	if _laser_weapon != null:
 		_laser_weapon.reset_weapon()
@@ -304,6 +306,31 @@ func capture_checkpoint(requested_checkpoint_id: StringName) -> bool:
 	return true
 
 
+## Replaces the retry snapshot without rewriting the ship's current flight state.
+func configure_safe_checkpoint(
+	requested_checkpoint_id: StringName,
+	requested_position: Vector2,
+	requested_velocity: Vector2,
+	requested_rotation: float = 0.0
+) -> bool:
+	if requested_checkpoint_id.is_empty():
+		return false
+	var snapshot: FlightCheckpointState = FlightCheckpointState.new()
+	snapshot.checkpoint_id = requested_checkpoint_id
+	snapshot.position = requested_position
+	snapshot.velocity = requested_velocity
+	snapshot.rotation = requested_rotation
+	snapshot.angular_velocity = 0.0
+	snapshot.assist_strength = assist_strength
+	snapshot.environment_profile = environment_profile
+	snapshot.gravity_blend = gravity_blend
+	snapshot.air_density = air_density
+	snapshot.resources = resources.duplicate_state()
+	_checkpoint_state = snapshot
+	checkpoint_id = requested_checkpoint_id
+	return true
+
+
 func restore_checkpoint() -> bool:
 	if _checkpoint_state == null or _checkpoint_state.checkpoint_id.is_empty():
 		return false
@@ -320,6 +347,7 @@ func restore_checkpoint() -> bool:
 	_clear_control_inputs()
 	_clear_collision_state()
 	is_failed = false
+	is_landed = false
 	_triggered_cargo_warning_keys.clear()
 	if _laser_weapon != null:
 		_laser_weapon.reset_weapon()
@@ -402,6 +430,39 @@ func apply_environment_damage(
 		angular_velocity = 0.0
 		_clear_control_inputs()
 		flight_failed.emit(reason_key)
+	return true
+
+
+func apply_delivery_cargo_damage(damage: float) -> float:
+	if is_failed:
+		return 0.0
+	var previous_integrity: float = cargo_integrity
+	var applied_damage: float = resources.apply_cargo_damage(damage)
+	_emit_cargo_warning_if_needed(previous_integrity)
+	return applied_damage
+
+
+func fail_flight(reason_key: StringName) -> bool:
+	if is_failed or is_landed or reason_key.is_empty():
+		return false
+	is_failed = true
+	velocity = Vector2.ZERO
+	angular_velocity = 0.0
+	_clear_control_inputs()
+	flight_failed.emit(reason_key)
+	return true
+
+
+func complete_landing(landed_global_position: Vector2) -> bool:
+	if is_failed or is_landed:
+		return false
+	global_position = landed_global_position
+	velocity = Vector2.ZERO
+	rotation = 0.0
+	angular_velocity = 0.0
+	is_landed = true
+	_clear_control_inputs()
+	_update_engine_feedback()
 	return true
 
 

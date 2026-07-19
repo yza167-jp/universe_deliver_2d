@@ -1,0 +1,103 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/flight/red_sand_landing_zone.gd" id="1_landing"]
+
+[sub_resource type="RectangleShape2D" id="ShapeApproach"]
+size = Vector2(7200, 520)
+
+[sub_resource type="RectangleShape2D" id="ShapePad"]
+size = Vector2(2400, 160)
+
+[node name="RedSandLandingZone" type="Node2D"]
+script = ExtResource("1_landing")
+
+[node name="ApproachSensor" type="Area2D" parent="."]
+unique_name_in_owner = true
+collision_layer = 0
+collision_mask = 1
+monitorable = false
+
+[node name="ApproachShape" type="CollisionShape2D" parent="ApproachSensor"]
+unique_name_in_owner = true
+position = Vector2(0, 180)
+shape = SubResource("ShapeApproach")
+
+[node name="PadBody" type="StaticBody2D" parent="."]
+unique_name_in_owner = true
+collision_layer = 1
+collision_mask = 0
+
+[node name="PadShape" type="CollisionShape2D" parent="PadBody"]
+unique_name_in_owner = true
+position = Vector2(0, 408)
+shape = SubResource("ShapePad")
+
+[node name="PadVisual" type="Polygon2D" parent="."]
+unique_name_in_owner = true
+z_index = 3
+color = Color(0.0823529, 0.137255, 0.156863, 1)
+
+[node name="PadSurface" type="Line2D" parent="."]
+unique_name_in_owner = true
+z_index = 6
+width = 7.0
+default_color = Color(0.462745, 0.945098, 1, 0.96)
+
+[node name="PadCenterStripe" type="Line2D" parent="."]
+z_index = 5
+points = PackedVector2Array(-520, 318, 520, 318)
+width = 3.0
+default_color = Color(0.905882, 0.658824, 0.356863, 0.92)
+
+[node name="ContrastOutline" type="Line2D" parent="."]
+unique_name_in_owner = true
+visible = false
+z_index = 7
+width = 5.0
+default_color = Color(1, 0.878431, 0.505882, 0.98)
+
+[node name="LeftBeacon" type="Polygon2D" parent="."]
+position = Vector2(-1080, 302)
+z_index = 8
+polygon = PackedVector2Array(0, -18, 10, 0, 0, 18, -10, 0)
+color = Color(0.309804, 0.847059, 1, 0.98)
+
+[node name="RightBeacon" type="Polygon2D" parent="."]
+position = Vector2(1080, 302)
+z_index = 8
+polygon = PackedVector2Array(0, -18, 10, 0, 0, 18, -10, 0)
+color = Color(0.309804, 0.847059, 1, 0.98)
+
+[node name="PadLabel" type="Label" parent="."]
+unique_name_in_owner = true
+position = Vector2(-180, 350)
+size = Vector2(360, 32)
+z_index = 8
+theme_override_colors/font_color = Color(0.670588, 1, 0.941176, 1)
+theme_override_font_sizes/font_size = 14
+text = "UI_RED_SAND_LANDING_PAD_LABEL"
+horizontal_alignment = 1
+
+[node name="RouteHints" type="Node2D" parent="."]
+unique_name_in_owner = true
+z_index = 5
+
+[node name="GlideSlope" type="Line2D" parent="RouteHints"]
+points = PackedVector2Array(-3500, 188, -2600, 218, -1800, 256, -1120, 294)
+width = 3.0
+default_color = Color(0.462745, 0.945098, 1, 0.72)
+
+[node name="ChevronA" type="Polygon2D" parent="RouteHints"]
+position = Vector2(-2700, 214)
+polygon = PackedVector2Array(-18, -9, 0, 0, -18, 9, -11, 0)
+color = Color(0.670588, 1, 0.941176, 0.92)
+
+[node name="ChevronB" type="Polygon2D" parent="RouteHints"]
+position = Vector2(-1900, 252)
+polygon = PackedVector2Array(-18, -9, 0, 0, -18, 9, -11, 0)
+color = Color(0.670588, 1, 0.941176, 0.92)
+
+[node name="ChevronC" type="Polygon2D" parent="RouteHints"]
+position = Vector2(-1220, 290)
+polygon = PackedVector2Array(-18, -9, 0, 0, -18, 9, -11, 0)
+color = Color(0.670588, 1, 0.941176, 0.92)

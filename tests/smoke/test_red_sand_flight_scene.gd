@@ -98,6 +98,17 @@ func run() -> Array[String]:
 		failures
 	)
 	expect_true(
+		route_scene.get_node_or_null("World/LandingZone") is RedSandLandingZone
+		and route_scene.get_node_or_null(
+			"World/LandingZone/PadBody"
+		) is StaticBody2D
+		and route_scene.get_node_or_null(
+			"World/LandingZone/ApproachSensor"
+		) is Area2D,
+		"T-043 route must bind one explicit landing zone and collidable pad.",
+		failures
+	)
+	expect_true(
 		route_scene.find_children("*", "CharacterBody2D", true, false).size() == 1,
 		"T-042 must not add enemies or another controllable body.",
 		failures

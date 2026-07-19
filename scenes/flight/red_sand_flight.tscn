@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://scripts/flight/red_sand_flight.gd" id="1_route_controller"]
 [ext_resource type="Script" path="res://scripts/flight/flight_lab_ship.gd" id="2_ship"]
@@ -16,6 +16,7 @@
 [ext_resource type="PackedScene" path="res://scenes/flight/flight_lightning_strike.tscn" id="14_lightning"]
 [ext_resource type="Script" path="res://scripts/flight/red_sand_environment_feedback.gd" id="15_environment_feedback"]
 [ext_resource type="PackedScene" path="res://scenes/flight/red_sand_low_flight_course.tscn" id="16_low_flight"]
+[ext_resource type="PackedScene" path="res://scenes/flight/red_sand_landing_zone.tscn" id="17_landing"]
 
 [sub_resource type="RectangleShape2D" id="ShapeShip"]
 size = Vector2(38, 16)
@@ -320,6 +321,9 @@ strike_route_distance = 83720.0
 target_y = 278.0
 
 [node name="LowFlightCourse" parent="World" instance=ExtResource("16_low_flight")]
+unique_name_in_owner = true
+
+[node name="LandingZone" parent="World" instance=ExtResource("17_landing")]
 unique_name_in_owner = true
 
 [node name="FlightShip" type="CharacterBody2D" parent="World"]

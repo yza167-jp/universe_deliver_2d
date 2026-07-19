@@ -133,6 +133,28 @@ var fatal_camera_shake: float = 8.0
 @export_range(0.0, 2.0, 0.01, "or_greater")
 var collision_camera_shake_duration: float = 0.2
 
+@export_group("Landing")
+@export_range(0.0, 600.0, 1.0, "or_greater")
+var landing_smooth_max_horizontal_speed: float = 90.0
+@export_range(0.0, 400.0, 1.0, "or_greater")
+var landing_smooth_max_descent_speed: float = 32.0
+@export_range(0.0, 400.0, 1.0, "or_greater")
+var landing_smooth_max_contact_speed: float = 40.0
+@export_range(0.0, 90.0, 1.0)
+var landing_smooth_max_pitch_degrees: float = 8.0
+@export_range(0.0, 800.0, 1.0, "or_greater")
+var landing_success_max_horizontal_speed: float = 180.0
+@export_range(0.0, 600.0, 1.0, "or_greater")
+var landing_success_max_descent_speed: float = 85.0
+@export_range(0.0, 600.0, 1.0, "or_greater")
+var landing_success_max_contact_speed: float = 100.0
+@export_range(0.0, 90.0, 1.0)
+var landing_success_max_pitch_degrees: float = 24.0
+@export_range(0.0, 100.0, 0.5)
+var landing_rough_cargo_damage: float = 6.0
+@export_range(0.0, 10.0, 0.1, "or_greater")
+var landing_arrival_transition_delay_seconds: float = 1.4
+
 @export_group("Cargo Warnings")
 @export_range(0.0, 100.0, 1.0)
 var cargo_warning_high_threshold: float = 90.0

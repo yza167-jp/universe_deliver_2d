@@ -12,6 +12,8 @@ const STATUS_DURATION_SECONDS: float = 2.4
 @onready var _instruction_label: Label = %InstructionLabel
 @onready var _radar_panel: PanelContainer = %RadarPanel
 @onready var _radar_label: Label = %RadarLabel
+@onready var _landing_panel: PanelContainer = %LandingPanel
+@onready var _landing_label: Label = %LandingLabel
 @onready var _status_panel: PanelContainer = %StatusPanel
 @onready var _status_label: Label = %StatusLabel
 
@@ -24,6 +26,9 @@ var _checkpoint_id: StringName = &""
 var _status_remaining: float = 0.0
 var _radar_state_key: StringName = &""
 var _radar_risk: float = 0.0
+var _landing_state_key: StringName = &""
+var _landing_metrics: Vector3 = Vector3.ZERO
+var _landing_tuning: FlightTuning
 
 
 func _ready() -> void:
@@ -109,6 +114,7 @@ func refresh() -> void:
 	]
 	_instruction_label.text = tr(segment.instruction_key)
 	_refresh_radar()
+	_refresh_landing()
 
 
 func show_stage_transition(segment: FlightRouteSegment) -> void:
@@ -166,8 +172,13 @@ func show_laser_miss() -> void:
 	_show_status(tr("UI_FLIGHT_LAB_STATUS_LASER_MISS"))
 
 
-func show_route_complete() -> void:
-	_show_status(tr("UI_RED_SAND_ROUTE_STATUS_COMPLETE"), 6.0)
+func show_landing_result(result_id: StringName, cargo_integrity: float) -> void:
+	var result_key: StringName = (
+		&"UI_RED_SAND_LANDING_RESULT_SMOOTH"
+		if result_id == OrderRunState.LANDING_RESULT_SMOOTH
+		else &"UI_RED_SAND_LANDING_RESULT_ROUGH"
+	)
+	_show_status(tr(result_key) % roundi(cargo_integrity), 6.0)
 
 
 func show_lightning_warning(
@@ -205,6 +216,17 @@ func show_radar_notice(message_key: StringName) -> void:
 	_show_status(tr(message_key), 3.6)
 
 
+func set_landing_guidance(
+	state_key: StringName,
+	metrics: Vector3,
+	tuning: FlightTuning
+) -> void:
+	_landing_state_key = state_key
+	_landing_metrics = metrics
+	_landing_tuning = tuning
+	_refresh_landing()
+
+
 func get_stage_text() -> String:
 	return "" if _stage_label == null else _stage_label.text
 
@@ -225,6 +247,10 @@ func get_radar_text() -> String:
 	return "" if _radar_label == null else _radar_label.text
 
 
+func get_landing_text() -> String:
+	return "" if _landing_label == null else _landing_label.text
+
+
 func get_flight_panel_rect() -> Rect2:
 	return _get_visible_rect(_flight_panel)
 
@@ -239,6 +265,10 @@ func get_status_rect() -> Rect2:
 
 func get_radar_rect() -> Rect2:
 	return _get_visible_rect(_radar_panel)
+
+
+func get_landing_rect() -> Rect2:
+	return _get_visible_rect(_landing_panel)
 
 
 func has_visible_mouse_interception() -> bool:
@@ -268,6 +298,26 @@ func _refresh_radar() -> void:
 		return
 	_radar_label.text = tr(_radar_state_key) % roundi(_radar_risk * 100.0)
 	_radar_panel.visible = true
+
+
+func _refresh_landing() -> void:
+	if _landing_panel == null or _landing_label == null:
+		return
+	if _landing_state_key.is_empty() or _landing_tuning == null:
+		_landing_panel.visible = false
+		_landing_label.text = ""
+		return
+	_landing_label.text = (tr("UI_RED_SAND_LANDING_HUD") % [
+		tr(_landing_state_key),
+		roundi(_landing_metrics.x),
+		roundi(_landing_tuning.landing_success_max_horizontal_speed),
+		roundi(_landing_metrics.y),
+		roundi(_landing_tuning.landing_success_max_descent_speed),
+		roundi(_landing_metrics.z),
+		roundi(_landing_tuning.landing_success_max_pitch_degrees),
+	]).replace("\\n", "\n")
+	_landing_panel.visible = true
+	_landing_panel.queue_sort()
 
 
 func _format_signed(value: float) -> String:

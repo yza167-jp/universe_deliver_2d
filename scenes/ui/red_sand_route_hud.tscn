@@ -122,6 +122,33 @@ theme_override_font_sizes/font_size = 9
 text = "UI_RED_SAND_RADAR_STATE_LOW_PROFILE"
 text_overrun_behavior = 3
 
+[node name="LandingPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+offset_left = 8.0
+offset_top = 84.0
+offset_right = 344.0
+offset_bottom = 124.0
+theme = SubResource("ThemeRoute")
+theme_override_styles/panel = SubResource("StylePanel")
+
+[node name="Margin" type="MarginContainer" parent="LandingPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 4
+
+[node name="LandingLabel" type="Label" parent="LandingPanel/Margin"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 26)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.670588, 1, 0.941176, 1)
+theme_override_font_sizes/font_size = 9
+text = "UI_RED_SAND_LANDING_HUD"
+autowrap_mode = 2
+text_overrun_behavior = 3
+
 [node name="StatusPanel" type="PanelContainer" parent="."]
 unique_name_in_owner = true
 visible = false

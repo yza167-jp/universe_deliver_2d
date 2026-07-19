@@ -1,4 +1,6 @@
-[gd_scene format=3]
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/arrival/red_sand_arrival.gd" id="1_arrival"]
 
 [node name="Arrival" type="Control"]
 layout_mode = 3
@@ -7,6 +9,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("1_arrival")
 
 [node name="Background" type="ColorRect" parent="."]
 layout_mode = 1
@@ -45,4 +48,12 @@ horizontal_alignment = 1
 layout_mode = 2
 theme_override_colors/font_color = Color(0.87451, 0.741176, 0.619608, 1)
 text = "UI_STAGE_PLACEHOLDER"
+horizontal_alignment = 1
+
+[node name="LandingFeedbackLabel" type="Label" parent="Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.670588, 1, 0.941176, 1)
+theme_override_font_sizes/font_size = 14
+text = "UI_RED_SAND_ARRIVAL_LANDING_SMOOTH"
 horizontal_alignment = 1

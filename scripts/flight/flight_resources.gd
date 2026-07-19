@@ -134,16 +134,22 @@ func apply_hazard_damage(total_damage: float, hazard_cargo_damage: float = 0.0) 
 	_apply_damage(total_damage, hazard_cargo_damage)
 
 
+func apply_cargo_damage(applied_cargo_damage: float) -> float:
+	var previous_integrity: float = cargo_integrity
+	cargo_integrity = maxf(
+		cargo_integrity - maxf(applied_cargo_damage, 0.0),
+		0.0
+	)
+	return previous_integrity - cargo_integrity
+
+
 func _apply_damage(total_damage: float, applied_cargo_damage: float) -> void:
 	var remaining_damage: float = maxf(total_damage, 0.0)
 	var shield_damage: float = minf(shield, remaining_damage)
 	shield -= shield_damage
 	remaining_damage -= shield_damage
 	hull = maxf(hull - remaining_damage, 0.0)
-	cargo_integrity = maxf(
-		cargo_integrity - maxf(applied_cargo_damage, 0.0),
-		0.0
-	)
+	apply_cargo_damage(applied_cargo_damage)
 
 
 func clear_telemetry() -> void:

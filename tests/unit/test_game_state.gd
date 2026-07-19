@@ -18,6 +18,10 @@ func run() -> Array[String]:
 	game_state.last_travel_error = GameStateModel.TRAVEL_ERROR_ALREADY_STARTED
 	game_state.order_run_state.reset(&"order_test")
 	game_state.order_run_state.entry_style = FlightStyleTracker.STYLE_DIVE
+	game_state.order_run_state.record_landing_result(
+		OrderRunState.LANDING_RESULT_ROUGH,
+		6.0
+	)
 	expect_true(game_state.has_story_flag(&"story_test"), "Story flag must be readable.", failures)
 	expect_true(
 		game_state.has_read_dialogue_line(&"dialogue_test", &"line_test"),
@@ -57,8 +61,10 @@ func run() -> Array[String]:
 	expect_true(
 		game_state.order_run_state != null
 		and game_state.order_run_state.order_id.is_empty()
-		and game_state.get_order_entry_style().is_empty(),
-		"Order-run result and entry style must clear on runtime reset.",
+		and game_state.get_order_entry_style().is_empty()
+		and game_state.order_run_state.landing_result.is_empty()
+		and is_zero_approx(game_state.order_run_state.landing_cargo_damage),
+		"Order-run entry and landing results must clear on runtime reset.",
 		failures
 	)
 	game_state.free()
