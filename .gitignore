@@ -4,6 +4,9 @@
 # Local agent/runtime state
 .omx/
 
+# Local manual-play captures
+/my_play/
+
 # Godot editor/import state
 .godot/
 .import/

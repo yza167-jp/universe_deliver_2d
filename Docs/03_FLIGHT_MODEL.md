@@ -1,0 +1,487 @@
+# 03 — Flight Model / 飞行模型
+
+## 1. 设计目标
+
+横版飞行需要同时满足四件事：
+
+1. 飞船有重量、惯性和速度感。
+2. 玩家能够理解自己为什么上升、下降、加速和失控。
+3. 从太空到地表的环境变化会真正改变操作。
+4. 参数能快速调整，失败后能快速重试。
+
+本项目使用“可控的街机物理”，而不追求完整空气动力学、轨道力学或真实刚体模拟。
+
+## 2. 实现原则
+
+- 飞船主体优先使用 `CharacterBody2D`。
+- 在 `_physics_process(delta)` 中显式维护 `velocity`、`angular_velocity` 和资源状态。
+- 使用 `move_and_slide()` 或等价的可控移动流程处理碰撞。
+- 推力、重力、阻力、辅助驾驶和 Boost 都由可测试的纯计算函数组合。
+- 地图环境通过数据配置/Area2D 提供参数，不在飞船脚本中写死“赤砂星特例”。
+- 视觉 Sprite 的旋转、相机抖动和粒子不能反向决定物理状态。
+
+## 3. 坐标约定
+
+Godot 2D 中：
+
+- `+X` 向右，作为关卡总体前进方向。
+- `+Y` 向下，重力方向为 `Vector2.DOWN`。
+- 飞船局部前方向：`Vector2.RIGHT.rotated(rotation)`。
+- `rotation = 0` 时船头向右。
+- 抬头使 rotation 变小（逆时针），低头使 rotation 变大（顺时针）。
+
+关卡总体向右推进，但允许刹车、悬停和短距离后退。飞船不进行 180° 掉头后长期向左飞行。
+
+## 4. 输入模型
+
+业务代码只读取 Input Map action，不直接读取键码。
+
+建议 action：
+
+| Action | 默认键鼠 | 作用 |
+|---|---|---|
+| `flight_throttle` | W | 沿船头方向施加主推力 |
+| `flight_brake` | S | 正向速度时先制动；接近零后继续按住进入有限倒车 |
+| `flight_pitch_up` | 鼠标上移 / ↑ | 抬头 |
+| `flight_pitch_down` | 鼠标下移 / ↓ | 低头 |
+| `flight_boost` | Shift | 高功率推进 |
+| `flight_fire` | 鼠标左键 / F | 已安装激光炮时短按单发、按住连续脉冲发射 |
+| `flight_restart` | R | 重开当前飞行段 |
+| `flight_route_hint` | Tab | Flight Lab 紧凑/展开 Gate 路线卡 |
+| `pause` | Esc | 暂停；释放鼠标捕获 |
+
+Flight Lab 使用同一 Input Map 的可记忆调试键：`H` 显示/隐藏 Full Diagnostics，`V` 切换深空/大气，`G` 循环重力补偿，`L` 安装/卸载调试激光。玩家可见提示不依赖 `F3`–`F6`。
+
+鼠标俯仰：
+
+- 飞行开始时可捕获鼠标。
+- 鼠标垂直移动转换为短时 pitch input。
+- 提供灵敏度设置和反转 Y 轴预留。
+- 键盘俯仰必须始终可用，避免鼠标捕获问题阻塞试玩。
+
+## 5. 每帧计算顺序
+
+建议顺序：
+
+```text
+读取输入
+→ 读取当前环境参数
+→ 更新俯仰/角速度
+→ 计算主推力
+→ 计算 Boost
+→ 计算制动或有限反推
+→ 计算重力与辅助驾驶
+→ 计算大气/空间阻力
+→ 计算风暴等环境力
+→ 积分速度
+→ 应用安全速度限制
+→ move_and_slide
+→ 处理碰撞结果
+→ 更新资源与反馈
+→ 更新相机和调试数据
+```
+
+不要把所有逻辑写在一个 300 行 `_physics_process()` 中。建议拆成纯函数或小组件：
+
+- `FlightInputState`
+- `FlightEnvironmentState`
+- `FlightForces`
+- `FlightResources`
+- `FlightCollisionResolver`
+- `FlightStyleTracker`
+
+## 6. 基础运动模型
+
+### 6.1 推力
+
+概念公式：
+
+```text
+forward = Vector2.RIGHT.rotated(rotation)
+thrust_acceleration = forward * thrust_accel * throttle_input
+```
+
+`throttle_input` 为 0–1。默认不做可累积的独立油门档位；如试玩发现持续按键疲劳，可再加入“油门保持”辅助，不在 M0 初始实现。
+
+### 6.2 Boost
+
+```text
+boost_acceleration = forward * thrust_accel * (boost_multiplier - 1) * boost_input
+```
+
+Boost 仅在：
+
+- `boost_energy > 0`
+- 货物允许/未强制禁止
+- 当前状态未锁定 Boost
+- 玩家没有输入倒车，且本地前向速度不为负
+
+时生效。
+
+Boost 设计用途：
+
+- 穿越风暴控制窗口。
+- 抵抗较强重力。
+- 快速离开危险区。
+- 选择高风险高速路线。
+
+Boost 不是永久巡航速度。持续使用会消耗 Boost 能量，并提高燃料消耗。
+
+### 6.3 制动与有限倒车
+
+`S` 分为两个连续阶段：
+
+1. 本地前向速度高于 `reverse_entry_speed_threshold` 时，沿用既有制动力平滑趋近零，不瞬间清空速度，也不在高速前进时突然施加完整反推。
+2. 本地前向速度接近零后继续按住 `S`，沿船头反方向施加 `thrust_accel * reverse_thrust_multiplier`，并将负前向速度限制在 `max_forward_speed * reverse_max_speed_ratio`。
+
+M0 Gate B Round 2 工作值集中在 `FlightTuning`：
+
+| 参数 | 当前值 | 作用 |
+|---|---:|---|
+| `reverse_entry_speed_threshold` | 6 px/s | 从制动切入有限反推的本地前向速度阈值 |
+| `reverse_thrust_multiplier` | 0.40 | 相对普通主推力的倒车推力 |
+| `reverse_max_speed_ratio` | 0.30 | 相对最大正向速度的倒车上限 |
+| `reverse_brake_strength` | 1.00 | 保持当前已接受制动力的倍率 |
+
+倒车只用于位置修正：输入 `S` 或本地前向速度为负时，Boost 激活在资源扣除前被门控，不消耗燃料或 Boost 能量。按 `W` 会先消除负速度再恢复正向推进。倒车不反转俯仰输入、不改变俯仰角/角速度上限、不自动掉头，也不触发专门的反向相机。
+
+### 6.4 俯仰
+
+```text
+target_angular_velocity = pitch_input * max_pitch_rate
+angular_velocity = move_toward(
+    angular_velocity,
+    target_angular_velocity,
+    pitch_acceleration * delta
+)
+angular_velocity *= angular_damping_factor
+rotation += angular_velocity * delta
+```
+
+辅助驾驶强度可以增加角速度阻尼，但不能默认把船头强制回水平，否则会削弱俯冲与拉起的操作感。
+
+## 7. 重力、阻力与“松手后会不会越来越快”
+
+### 结论
+
+进入大气层后，松开操作时：
+
+- 飞船会因引力向下加速。
+- 垂直下降速度先增加。
+- 随着大气阻力增大，下降速度逐渐趋近终端速度。
+- 水平速度会因阻力缓慢降低。
+- 总速度可能在早期增加，但不会无限增加。
+
+这既保留重量感，也避免玩家在短时间内进入不可恢复的极端速度。
+
+### 7.1 环境重力
+
+```text
+gravity_acceleration = Vector2.DOWN * planet_gravity * gravity_blend
+```
+
+`gravity_blend` 随星球接近/大气深度从 0 平滑到 1。不要在单帧从无重力切到完整重力。
+
+### 7.2 辅助驾驶
+
+```text
+assist_acceleration = Vector2.UP * planet_gravity * gravity_blend * assist_strength
+effective_gravity = gravity_acceleration + assist_acceleration
+```
+
+其中 `assist_strength` 为 0–1：
+
+| 内部值 | 玩家可见名称 | 体验 |
+|---:|---|---|
+| 0% | 关闭重力补偿 | 完整重力，松手后明显加速下坠 |
+| 75%（默认） | 有限重力补偿 | 缓慢下沉，仍有重量感，适合剧情主流程 |
+| 100% | 无限重力补偿 | 完全抵消当前重力，允许悬停 |
+
+100% 悬停不是免费：
+
+- 玩家简短说明固定为“完全抵消重力，持续消耗燃料”。“无限”只表示完全抵消当前重力，不表示燃料无限。
+- M0 当前工作值为满重力混合时额外消耗 2 燃料/秒，并停止 Boost 自然恢复；Gate B Round 1 未要求重调这一成本。
+- 具体长期成本仍可由后续人工试玩调整，目的只是避免无限安全悬停抹掉环境压力。
+
+辅助驾驶还可以提供：
+
+- 角速度阻尼。
+- 低速时少量姿态稳定。
+- 着陆区内更强的垂直控制。
+
+辅助驾驶不自动躲避地形、不自动沿路线飞行。
+
+### 7.3 阻力
+
+将空间基础阻力和大气阻力分开：
+
+```text
+horizontal_drag = base_space_drag_x + atmosphere_drag_x * air_density
+vertical_drag   = base_space_drag_y + atmosphere_drag_y * air_density
+
+drag_acceleration.x = -velocity.x * horizontal_drag
+drag_acceleration.y = -velocity.y * vertical_drag
+```
+
+使用随速度线性或近似二次增长的阻力均可，首版优先选择容易调试且不会数值爆炸的形式。
+
+`air_density` 由 0–1 的大气深度曲线给出。赤砂星不同层级可使用平滑曲线而非硬切换。
+
+### 7.4 终端下降速度
+
+真实终端速度应由重力和阻力自然平衡产生，但为了防止极端帧或错误参数，额外设置安全上限：
+
+```text
+velocity.y = min(velocity.y, terminal_fall_speed_safety)
+```
+
+该上限只作为保护，不应成为主要手感来源。调试 HUD 同时显示“自然预计终端速度”和“安全上限”。
+
+## 8. 环境阶段
+
+每个星球使用 `FlightEnvironmentProfile` 描述阶段：
+
+| 阶段 | 重力 | 阻力 | 常见危险 | 手感目标 |
+|---|---:|---:|---|---|
+| Deep Space | 0–极弱 | 极低 | 陨石 | 惯性明显、转向需要预判 |
+| Planet Approach | 逐渐增强 | 低 | 航道/碎片 | 星球逐渐变大，开始感到被吸引 |
+| Upper Atmosphere | 中等 | 低到中 | 热/电离视觉、稀薄雷暴 | 俯冲加速明显 |
+| Storm Layer | 高 | 中等 | 雷暴、侧风 | 需要 Boost 与姿态控制 |
+| Lower Atmosphere | 完整 | 较高 | 云、能见度、地形 | 速度受控，准备拉起 |
+| Surface Route | 完整 | 中到高 | 峡谷、雷达、设施 | 低空可读、短时悬停可用 |
+| Landing Zone | 完整 | 高/辅助增强 | 着陆速度 | 精细控制、宽容收束 |
+
+阶段变化内容：
+
+- 重力与阻力。
+- 风力/扰动。
+- 相机参数。
+- 背景层与色调。
+- 引擎和环境音。
+- 粒子、闪电、屏幕震动。
+- HUD 风险提示。
+
+逻辑值必须平滑插值；叙事阶段可以是离散标签。
+
+## 9. 不同星球的重力
+
+重力差异服务于星球性格，而不是追求科学比例。
+
+建议 M1 初始相对范围：
+
+| 星球 | 相对重力工作值 | 体验倾向 |
+|---|---:|---|
+| 赤砂星 | 1.0 | 教程基准 |
+| 白噪星 | 1.2–1.35 | 更需要屏蔽与提前拉起 |
+| 穹林星 | 0.75–0.9 | 树冠间更轻盈，但生态障碍密集 |
+| 群潮星 | 0.9–1.05 | 重力普通，强风与天气塔主导 |
+
+这些值是工作范围，不是正史天体数据。
+
+## 10. 速度与参数初始范围
+
+640×360 视口下，初始工作范围如下。所有值都必须集中在 Resource 中，并由试玩修改：
+
+| 参数 | 初始范围 | 说明 |
+|---|---:|---|
+| `thrust_accel` | 180–280 px/s² | 普通主推力 |
+| `brake_accel` | 220–360 px/s² | 应强于普通推力，便于落地 |
+| `boost_multiplier` | 1.8–2.5 | 高速明显但可控 |
+| `max_forward_speed` | 360–520 px/s | 随关卡镜头和路线尺度调整 |
+| `planet_gravity` | 140–240 px/s² | 赤砂星基准约 180–210 |
+| `terminal_fall_speed` | 220–340 px/s | 默认辅助后自然值应更低 |
+| `max_pitch_rate` | 1.8–3.0 rad/s | 低速可稍快，高速可衰减 |
+| `pitch_acceleration` | 5–10 rad/s² | 避免瞬间转头 |
+| `safe_graze_speed` | 60–110 px/s | 具体依据碰撞法线分量 |
+| `fatal_impact_speed` | 240–360 px/s | 主线触发检查点重试 |
+
+高速操控建议加入“速度越高，最大俯仰响应略降低”的曲线，避免高速 twitchy；不能完全锁死控制。
+
+## 11. 燃料与 Boost
+
+### 燃料
+
+- 主推力、Boost 和 100% 辅助悬停消耗燃料。
+- 普通 M0 路线即使驾驶低效，也应有足够安全余量。
+- 主线燃料耗尽触发应急策略，不造成死档。
+- 燃料不是每次飞行前必须购买的经济惩罚。
+
+### Boost 能量
+
+- 持续 Boost 快速消耗。
+- 不 Boost 时逐渐恢复。
+- 强风暴/高温段可降低恢复速度。
+- 100% 辅助悬停时停止恢复或缓慢消耗。
+- 货物可以限制 Boost，但必须有剧情理由。
+
+M0 先保持单一 Boost 能量，不加入复杂热管理。
+
+## 12. 碰撞模型
+
+碰撞严重度优先使用“相对碰撞法线速度”，而不是简单总速度：
+
+```text
+impact_speed = abs(velocity.dot(collision_normal))
+```
+
+工作分级：
+
+### Graze / 擦碰
+
+- 低法线速度。
+- 火花、轻震、擦碰音。
+- 护盾少量损失或仅反馈。
+- 不立即损伤货物。
+
+### Hard Impact / 重撞
+
+- 中等法线速度。
+- 护盾显著损失；护盾归零后影响船体与货物。
+- 可产生短时失控，但不能长时间剥夺控制。
+
+### Fatal Impact / 致命撞击
+
+- 高速正面撞击。
+- 主线：最近检查点重试。
+- 支线：重试或放弃订单。
+
+避免：
+
+- 地形连续多次碰撞在一帧内清空全部资源。
+- 轻微贴地因碰撞法线抖动反复触发警告。
+- 相机震动强到无法恢复控制。
+
+## 13. 护盾、船体与货物
+
+伤害顺序：
+
+```text
+环境/碰撞事件
+→ 护盾吸收
+→ 剩余伤害进入船体
+→ 根据事件类型和货物抗性影响货物完整度
+```
+
+货物不必在每次船体损伤时同步等比受损。某些货物更怕冲击、温度或扫描，应通过 `CargoDefinition` 单独计算。
+
+公司警告具有阈值和冷却，例如：
+
+- 首次低于 90%。
+- 首次低于 60%。
+- 首次低于 30%。
+
+同一阈值不重复骚扰玩家。
+
+## 14. 激光炮
+
+M0 规则：
+
+- 只有装配 `laser_cannon` 模块时可用。
+- 使用 RayCast2D、短寿命射线/弹丸均可，优先可读和易测试。
+- 只碰撞 `destructible_asteroid` 等明确环境层。
+- 不命中 NPC、地形、建筑剧情对象或普通交互物。
+- 有短冷却、音效、发光和击碎粒子。
+- 按下时立即发射第一发；按住期间按集中配置的 `laser_cooldown_seconds` 继续发射脉冲，松开立即停止；M0 Gate B 当前间隔为 0.22 秒。
+- 短按仍只产生一发；低帧率下每个物理帧最多补发一发，不追赶累计出大量脉冲。
+- 重置、失败、暂停、失去控制或卸载模块时清除 held-fire 状态；键盘和鼠标共用 `flight_fire` 状态。
+- 不设置弹药库存；如需成本，可占用少量 Boost 能量或使用独立冷却，M0 默认仅冷却。
+
+激光的意义是路线选择，不是战斗循环。
+
+## 15. 俯冲/滑翔风格识别
+
+一次进入段记录：
+
+- `entry_duration`
+- `max_downward_speed`
+- `max_total_speed`
+- `max_risk_or_heat`
+- `scenic_trigger_count`
+- `late_pull_up_detected`
+- `collision_count`
+
+分类逻辑必须数据化。示意：
+
+```text
+DIVE:
+  max_downward_speed 高
+  或 entry_duration 很短
+  且 scenic_trigger_count 较少
+
+GLIDE:
+  entry_duration 较长
+  max_downward_speed 低到中
+  scenic_trigger_count 至少达到阈值
+
+BALANCED:
+  其他情况
+```
+
+结果只用于对白、图鉴和少量条件，不显示分数。
+
+## 16. 相机
+
+相机目标：高速可预判、低空可读、像素稳定。
+
+建议：
+
+- 基础位置跟随飞船。
+- 沿速度方向提供有限 look-ahead。
+- 垂直 look-ahead 小于水平，避免地形突然离屏。
+- Boost 时轻微拉远或扩大可见前方，不使用模糊破坏像素画。
+- 大气进入可逐步改变缩放，但保持整数像素显示策略。
+- 碰撞与雷暴震动有强度设置并可关闭。
+- 相机逻辑与飞船物理解耦。
+
+像素抖动需要通过相机取整、Sprite 位置策略和实际试玩共同调整；不要为了绝对像素锁定让运动明显卡顿。
+
+## 17. 调试与快速调参
+
+Flight Lab HUD 分为两层：
+
+- **Essential Flight HUD** 默认显示，只保留带方向的前向速度、垂直速度、俯仰、环境、重力补偿名称、燃料/Boost、船体/护盾/货物，以及 Gate 当前一项目标；中央飞行区不放常驻大型面板。
+- **Full Diagnostics** 默认隐藏，按 `H` 显示/隐藏；保留下列开发内部参数。隐藏后节点不可见且不拦截输入。
+
+Full Diagnostics 至少显示：
+
+- 当前环境阶段、空气密度、重力混合。
+- 速度向量、总速度、垂直速度。
+- rotation、angular velocity。
+- 推力、制动、Boost、有效重力、阻力、风力。
+- 辅助驾驶强度。
+- 船体、护盾、燃料、Boost、货物。
+- 最近碰撞法线速度和分类。
+- 当前进入风格候选。
+- 检查点 ID。
+
+至少提供：
+
+- 重置飞船。
+- 切换环境阶段。
+- 切换 0%/75%/100% 辅助。
+- 补满资源。
+- 开关无敌（只供调试）。
+- 记录当前关键参数到日志。
+
+## 18. 自动测试边界
+
+适合自动测试：
+
+- 辅助驾驶后的有效重力。
+- 大气密度与参数插值。
+- 终端速度保护。
+- 燃料与 Boost 消耗/恢复。
+- 货物限制。
+- 撞击分级。
+- 模块能力门控。
+- 俯冲/滑翔分类。
+
+必须人工试玩：
+
+- 重量感。
+- 刹车是否自然。
+- 高速是否过于 twitchy。
+- 进入阶段是否有仪式感。
+- 低空镜头是否可读。
+- 雷暴和震动是否令人不适。
+- 默认 75% 辅助是否“有重量但不烦”。
