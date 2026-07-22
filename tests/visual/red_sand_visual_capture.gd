@@ -1,7 +1,7 @@
 extends SceneTree
 
 const ROUTE_SCENE_PATH: String = "res://scenes/flight/red_sand_flight.tscn"
-const CAPTURE_DIRECTORY: String = "res://.omx/artifacts/t045_gate_c_round_3_rework"
+const CAPTURE_DIRECTORY: String = "res://.omx/artifacts/t045_gate_c_round_4_rework"
 const SYSTEM_EDGE_SEGMENT_INDEX: int = 0
 const NEAR_ORBIT_SEGMENT_INDEX: int = 2
 const ATMOSPHERE_SEGMENT_INDEX: int = 3
@@ -104,6 +104,62 @@ func _capture_route_frames() -> void:
 		quit(1)
 		return
 
+	_prepare_stage_frame(
+		route, ship, LOW_ALTITUDE_CONTROL_SEGMENT_INDEX, 0.18, -80.0, 0.0, 0.0
+	)
+	ship.velocity = Vector2.ZERO
+	ship.clear_propulsion_feedback()
+	ship._update_engine_feedback()
+	var feedback: RedSandEnvironmentFeedback = route.get_environment_feedback()
+	if feedback != null:
+		feedback.set_ship_feedback(0.0, 0.0, 0.0, ship.air_density, false)
+	await _settle_particles(3)
+	if not _save_frame("stage_6_effect_static.png"):
+		quit(1)
+		return
+	ship.integrate_motion(1.0, 0.0, 0.0, 0.24, 0.0)
+	ship._update_engine_feedback()
+	if feedback != null:
+		feedback.set_ship_feedback(
+			ship.get_speed(), 1.0, ship.get_boost_feedback_strength(), ship.air_density, false
+		)
+	await _settle_particles(12)
+	if not _save_frame("stage_6_effect_throttle.png"):
+		quit(1)
+		return
+	ship.integrate_motion(1.0, 0.0, 0.0, 0.24, 1.0)
+	ship._update_engine_feedback()
+	if feedback != null:
+		feedback.set_ship_feedback(
+			ship.get_speed(), 1.0, ship.get_boost_feedback_strength(), ship.air_density, false
+		)
+	await _settle_particles(12)
+	if not _save_frame("stage_6_effect_boost.png"):
+		quit(1)
+		return
+	ship.velocity = Vector2.ZERO
+	ship.clear_propulsion_feedback()
+	ship._update_engine_feedback()
+	if feedback != null:
+		feedback.set_ship_feedback(0.0, 0.0, 0.0, ship.air_density, false)
+	ship.set_laser_enabled(true)
+	ship.begin_laser_beam()
+	await _settle_particles(3)
+	if not _save_frame("stage_6_effect_laser.png"):
+		quit(1)
+		return
+	ship.cancel_held_fire(true)
+	ship.apply_environment_damage(1.0, 0.0, &"UI_RED_SAND_RADAR_NOTICE_LOCKED")
+	await _settle_particles(3)
+	if not _save_frame("stage_6_effect_collision.png"):
+		quit(1)
+		return
+	route.restart_from_checkpoint(false)
+	await _settle_particles(3)
+	if not _save_frame("stage_6_effect_retry.png"):
+		quit(1)
+		return
+
 	if hud != null:
 		hud.visible = true
 	_prepare_stage_frame(
@@ -129,7 +185,7 @@ func _capture_route_frames() -> void:
 		quit(1)
 		return
 	_prepare_stage_frame(
-		route, ship, LANDING_PREPARATION_SEGMENT_INDEX, 0.3, -200.0, 0.34, 0.0
+		route, ship, LANDING_PREPARATION_SEGMENT_INDEX, 0.3, -80.0, 0.34, 0.0
 	)
 	await _settle_particles(12)
 	if not _save_frame("stage_7_preparation_hud.png"):
@@ -145,7 +201,7 @@ func _capture_route_frames() -> void:
 		hud.toggle_full_diagnostics()
 
 	_prepare_stage_frame(
-		route, ship, LANDING_SEGMENT_INDEX, 0.0, -180.0, 0.34, 0.0
+		route, ship, LANDING_SEGMENT_INDEX, 0.0, -80.0, 0.34, 0.0
 	)
 	await _settle_particles(45)
 	if not _save_frame("stage_8_high_descent_entry.png"):
@@ -154,7 +210,7 @@ func _capture_route_frames() -> void:
 
 	print(
 		"[red-sand-visual] PASS: saved boundary-continuous atmosphere, orbital/AGL HUD, "
-		+ "low-altitude radar, preparation, diagnostics, storm, and high landing entry frames."
+		+ "isolated effect lifecycle, radar, diagnostics, storm, and landing entry frames."
 	)
 	route.queue_free()
 	await process_frame
@@ -173,12 +229,13 @@ func _prepare_stage_frame(
 	var definition: FlightRouteDefinition = route.get_route_definition()
 	var segment: FlightRouteSegment = definition.segments[segment_index]
 	ship.clear_propulsion_feedback()
-	ship.position = Vector2(
-		route.route_origin_x + lerpf(
+	var route_distance: float = lerpf(
 			segment.start_distance,
 			segment.end_distance,
 			clampf(segment_progress, 0.0, 1.0)
-		),
+		)
+	ship.position = Vector2(
+		route.route_origin_x + route_distance,
 		ship_y
 	)
 	ship.velocity = Vector2(300.0, 0.0)
@@ -193,7 +250,8 @@ func _prepare_stage_frame(
 		altitude_provider.reset_to_route_state_from_world(
 			segment_index,
 			segment_progress,
-			ship
+			ship,
+			definition.get_altitude_reference_y(route_distance)
 		)
 	route._physics_process(1.0 / 60.0)
 	route._process(0.0)

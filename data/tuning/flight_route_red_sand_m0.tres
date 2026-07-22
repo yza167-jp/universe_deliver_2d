@@ -114,7 +114,7 @@ checkpoint_fuel_floor = 32.0
 environment_profile = ExtResource("10_preparation")
 planet_scale_start = 1.55
 planet_scale_end = 1.55
-floor_y = 440.0
+floor_y = 520.0
 terrain_surface_enabled = true
 graybox_color = Color(0.337255, 0.164706, 0.137255, 1)
 

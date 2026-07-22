@@ -81,6 +81,11 @@ var natural_terminal_fall_speed: float = 0.0
 var environment_zone_key: StringName = DEFAULT_ZONE_KEY
 var collision_state_key: StringName = DEFAULT_COLLISION_KEY
 var last_impact_speed: float = 0.0
+var last_collision_object_name: StringName = &""
+var last_collision_object_path: NodePath = NodePath()
+var last_collision_layer: int = 0
+var last_collision_mask: int = 0
+var last_collision_normal: Vector2 = Vector2.ZERO
 var checkpoint_id: StringName = &""
 var is_failed: bool = false
 var is_landed: bool = false
@@ -936,13 +941,14 @@ func _write_audio_sample(
 
 
 func _resolve_slide_collisions(incoming_velocity: Vector2) -> void:
-	if _collision_feedback_cooldown_remaining > 0.0:
-		return
 	var strongest_result: FlightCollisionResult = FlightCollisionResult.new()
+	var strongest_collision: KinematicCollision2D = null
 	for collision_index: int in get_slide_collision_count():
 		var collision: KinematicCollision2D = get_slide_collision(collision_index)
 		if collision == null:
 			continue
+		if strongest_collision == null:
+			strongest_collision = collision
 		var candidate: FlightCollisionResult = FlightCollisionResolver.resolve(
 			incoming_velocity,
 			collision.get_normal(),
@@ -957,7 +963,33 @@ func _resolve_slide_collisions(incoming_velocity: Vector2) -> void:
 			)
 		):
 			strongest_result = candidate
+			strongest_collision = collision
+	if strongest_collision != null:
+		_record_collision_diagnostics(strongest_collision)
+	if _collision_feedback_cooldown_remaining > 0.0:
+		return
 	_apply_collision_result(strongest_result)
+
+
+func _record_collision_diagnostics(collision: KinematicCollision2D) -> void:
+	if collision == null:
+		return
+	last_collision_normal = collision.get_normal()
+	var collider: Object = collision.get_collider()
+	if collider is Node:
+		var collider_node: Node = collider as Node
+		last_collision_object_name = collider_node.name
+		last_collision_object_path = collider_node.get_path()
+	else:
+		last_collision_object_name = &""
+		last_collision_object_path = NodePath()
+	if collider is CollisionObject2D:
+		var collision_object: CollisionObject2D = collider as CollisionObject2D
+		last_collision_layer = collision_object.collision_layer
+		last_collision_mask = collision_object.collision_mask
+	else:
+		last_collision_layer = 0
+		last_collision_mask = 0
 
 
 func _apply_collision_result(result: FlightCollisionResult) -> void:
@@ -1051,6 +1083,11 @@ func _clear_control_inputs() -> void:
 func _clear_collision_state() -> void:
 	collision_state_key = DEFAULT_COLLISION_KEY
 	last_impact_speed = 0.0
+	last_collision_object_name = &""
+	last_collision_object_path = NodePath()
+	last_collision_layer = 0
+	last_collision_mask = 0
+	last_collision_normal = Vector2.ZERO
 	_collision_feedback_cooldown_remaining = 0.0
 
 

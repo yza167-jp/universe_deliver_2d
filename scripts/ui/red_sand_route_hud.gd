@@ -508,11 +508,37 @@ func _refresh_diagnostics(
 	var altitude_mode_text: String = "—"
 	var virtual_altitude: float = 0.0
 	var terrain_altitude: float = 0.0
+	var raycast_altitude: float = 0.0
+	var profile_altitude: float = 0.0
+	var final_agl_altitude: float = 0.0
+	var altitude_source_text: String = "—"
+	var altitude_source_valid_text: String = tr("UI_RED_SAND_ROUTE_TERRAIN_MISS")
+	var ground_node_text: String = "—"
+	var ground_path_text: String = "—"
+	var altitude_failure_text: String = "—"
 	var terrain_hit_text: String = tr("UI_RED_SAND_ROUTE_TERRAIN_MISS")
 	if _altitude_reference_provider != null:
 		altitude_mode_text = tr(_get_altitude_mode_key())
 		virtual_altitude = _altitude_reference_provider.raw_virtual_altitude_meters
 		terrain_altitude = _altitude_reference_provider.raw_terrain_altitude_meters
+		raycast_altitude = _altitude_reference_provider.raw_raycast_altitude_meters
+		profile_altitude = _altitude_reference_provider.raw_profile_altitude_meters
+		final_agl_altitude = _altitude_reference_provider.final_agl_altitude_meters
+		altitude_source_text = String(_altitude_reference_provider.get_source_name())
+		altitude_source_valid_text = tr(
+			"UI_RED_SAND_ROUTE_TERRAIN_HIT"
+			if _altitude_reference_provider.altitude_source_valid
+			else "UI_RED_SAND_ROUTE_TERRAIN_MISS"
+		)
+		ground_node_text = String(_altitude_reference_provider.get_ground_node_name())
+		ground_path_text = String(_altitude_reference_provider.get_ground_node_path())
+		altitude_failure_text = String(_altitude_reference_provider.get_failure_reason())
+		if ground_node_text.is_empty():
+			ground_node_text = "—"
+		if ground_path_text.is_empty():
+			ground_path_text = "—"
+		if altitude_failure_text.is_empty():
+			altitude_failure_text = "—"
 		terrain_hit_text = tr(
 			"UI_RED_SAND_ROUTE_TERRAIN_HIT"
 			if _altitude_reference_provider.terrain_hit_valid
@@ -520,12 +546,14 @@ func _refresh_diagnostics(
 		)
 	var lines: PackedStringArray = PackedStringArray([
 		tr("UI_RED_SAND_ROUTE_DIAGNOSTICS_HINT"),
-		tr("UI_FLIGHT_DEBUG_SPEED") % _flight_ship.get_speed(),
-		tr("UI_FLIGHT_DEBUG_VERTICAL_SPEED") % _flight_ship.get_vertical_speed(),
-		tr("UI_FLIGHT_DEBUG_PITCH") % _flight_ship.get_pitch_degrees(),
-		tr("UI_FLIGHT_DEBUG_ANGULAR_VELOCITY") % _flight_ship.get_angular_velocity(),
-		tr("UI_FLIGHT_DEBUG_ZONE") % tr(_flight_ship.environment_zone_key),
-		tr("UI_FLIGHT_DEBUG_ENVIRONMENT") % [
+		tr("UI_RED_SAND_ROUTE_DIAGNOSTICS_MOTION") % [
+			_flight_ship.get_speed(),
+			_flight_ship.get_vertical_speed(),
+			_flight_ship.get_pitch_degrees(),
+			_flight_ship.get_angular_velocity(),
+		],
+		tr("UI_RED_SAND_ROUTE_DIAGNOSTICS_ENVIRONMENT") % [
+			tr(_flight_ship.environment_zone_key),
 			roundi(_flight_ship.air_density * 100.0),
 			roundi(_flight_ship.gravity_blend * 100.0),
 		],
@@ -539,11 +567,9 @@ func _refresh_diagnostics(
 			roundi(_flight_ship.shield),
 			roundi(_flight_ship.cargo_integrity),
 		],
-		tr("UI_FLIGHT_DEBUG_FUEL") % [
+		tr("UI_RED_SAND_ROUTE_DIAGNOSTICS_PROPULSION") % [
 			roundi(_flight_ship.fuel),
 			_flight_ship.propulsion_fuel_cost_rate,
-		],
-		tr("UI_FLIGHT_DEBUG_BOOST") % [
 			roundi(_flight_ship.boost_energy),
 			_flight_ship.resources.boost_energy_cost_rate,
 			_flight_ship.resources.boost_recovery_rate,
@@ -574,6 +600,26 @@ func _refresh_diagnostics(
 			terrain_altitude,
 			terrain_hit_text,
 		],
+		tr("UI_RED_SAND_ROUTE_DIAGNOSTICS_ALTITUDE_SOURCE") % [
+			altitude_source_text,
+			altitude_source_valid_text,
+			raycast_altitude,
+			profile_altitude,
+			final_agl_altitude,
+		],
+		tr("UI_RED_SAND_ROUTE_DIAGNOSTICS_GROUND") % [
+			ground_node_text,
+			ground_path_text,
+			altitude_failure_text,
+		],
+		tr("UI_RED_SAND_ROUTE_DIAGNOSTICS_COLLIDER") % [
+			_segment_index + 1,
+			String(_flight_ship.last_collision_object_name),
+			_flight_ship.last_collision_layer,
+			_flight_ship.last_collision_mask,
+			_flight_ship.last_collision_normal,
+			String(_flight_ship.last_collision_object_path),
+		],
 		tr("UI_RED_SAND_ROUTE_DIAGNOSTICS_RADAR") % [
 			radar_state_text,
 			roundi(_radar_risk * 100.0),
@@ -584,10 +630,11 @@ func _refresh_diagnostics(
 
 
 func _format_player_altitude() -> String:
-	if (
-		_altitude_reference_provider == null
-		or not _altitude_reference_provider.has_numeric_altitude()
-	):
+	if _altitude_reference_provider == null:
+		return tr("UI_RED_SAND_ROUTE_ALTITUDE_HIGH")
+	if not _altitude_reference_provider.has_numeric_altitude():
+		if _altitude_reference_provider.get_mode_name() == &"AGL":
+			return tr("UI_RED_SAND_ROUTE_ALTITUDE_UNAVAILABLE")
 		return tr("UI_RED_SAND_ROUTE_ALTITUDE_HIGH")
 	return tr("UI_RED_SAND_ROUTE_ALTITUDE_VALUE") % _format_distance(
 		_altitude_reference_provider.get_display_altitude_meters()

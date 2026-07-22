@@ -212,11 +212,11 @@ func _test_planet_stages_and_checkpoint(
 	_check(
 		is_equal_approx(
 			RedSandOrbitTransitionModel.TRANSITION_WINDOW_DISTANCE,
-			2200.0
+			4000.0
 		)
-		and transition_duration >= 6.0
-		and transition_duration <= 10.0,
-		"Orbit-to-atmosphere geometry must span 2200 m and roughly 6-10 seconds."
+		and transition_duration >= 9.0
+		and transition_duration <= 14.0,
+		"Orbit-to-atmosphere geometry must span 4000 m and roughly 9-14 seconds."
 	)
 
 	ship.position.x = route.route_origin_x + 13499.999
@@ -259,7 +259,7 @@ func _test_planet_stages_and_checkpoint(
 		and is_equal_approx(visuals.get_planet_transition_progress(), 1.0)
 		and is_zero_approx(visuals.get_planet_alpha())
 		and is_equal_approx(visuals.get_atmosphere_horizon_alpha(), 1.0),
-		"The 2200 m disc-to-horizon geometry did not finish at the route window end."
+		"The 4000 m disc-to-horizon geometry did not finish at the route window end."
 	)
 	_check(route.restart_from_checkpoint(false), "Atmosphere checkpoint did not restore.")
 	_check(

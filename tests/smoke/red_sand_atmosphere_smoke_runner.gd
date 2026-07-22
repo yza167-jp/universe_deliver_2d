@@ -128,14 +128,20 @@ func _test_stage_feedback(
 		ATMOSPHERE_SEGMENT_INDEX
 	]
 	feedback.set_segment(atmosphere_segment)
+	feedback.set_orbit_to_atmosphere_visual_progress(0.5)
 	_check(
 		feedback.are_entry_particles_emitting()
 		and not feedback.are_storm_particles_emitting()
+		and is_equal_approx(
+			feedback.get_orbit_to_atmosphere_visual_progress(),
+			0.5
+		)
 		and feedback.get_target_music_intensity() >= 0.6,
-		"Atmospheric entry must activate its own heat streaks and music pressure."
+		"Shared orbit-to-atmosphere progress must activate heat streaks and music pressure."
 	)
 
 	var storm_segment: FlightRouteSegment = definition.segments[STORM_SEGMENT_INDEX]
+	feedback.set_orbit_to_atmosphere_visual_progress(1.0)
 	feedback.set_segment(storm_segment)
 	feedback._process(2.0)
 	_check(
@@ -149,6 +155,7 @@ func _test_stage_feedback(
 	var landing_segment: FlightRouteSegment = definition.segments[
 		LANDING_SEGMENT_INDEX
 	]
+	var landing_zone: RedSandLandingZone = route.get_landing_zone()
 	feedback.set_segment(landing_segment)
 	route_visuals.update_visuals(
 		landing_segment.start_distance + landing_segment.get_length() * 0.5
@@ -160,20 +167,40 @@ func _test_stage_feedback(
 		"BackgroundLayers/NearFacilities"
 	) as Parallax2D
 	_check(
-		feedback.are_landing_particles_emitting()
-		and not feedback.are_storm_particles_emitting()
+		not feedback.are_storm_particles_emitting()
+		and not feedback.are_entry_particles_emitting()
+		and feedback.get_node_or_null("LandingDustParticles") == null
+		and landing_zone != null
+		and not landing_zone.are_touchdown_particles_emitting()
 		and far_terrain != null
 		and far_terrain.modulate.a >= 0.95
 		and near_facilities != null
 		and near_facilities.modulate.a >= 0.7,
-		"Landing approach must reveal desert terrain, facilities, and surface dust."
+		"Landing approach must reveal terrain without a fixed-screen dust emitter."
 	)
-	feedback.burst_landing_dust()
-	_check(
-		feedback.is_landing_burst_emitting()
-		and not feedback.are_landing_particles_emitting(),
-		"Touchdown must replace approach dust with a distinct landing burst."
-	)
+	if landing_zone != null:
+		var contact_position: Vector2 = landing_zone.global_position + Vector2(
+			120.0,
+			landing_zone.get_touchdown_center_y()
+		)
+		landing_zone.burst_touchdown_dust(contact_position)
+		_check(
+			landing_zone.are_touchdown_particles_emitting()
+			and absf(
+				landing_zone.get_touchdown_effect_global_position().x
+				- contact_position.x
+			) < 0.1
+			and is_equal_approx(
+				landing_zone.get_touchdown_effect_global_position().y,
+				landing_zone.global_position.y + landing_zone.get_pad_surface_y()
+			),
+			"Touchdown dust must emit once at the world-space pad contact."
+		)
+		landing_zone.reset_for_checkpoint()
+		_check(
+			not landing_zone.are_touchdown_particles_emitting(),
+			"Checkpoint retry did not clear all touchdown particle emitters."
+		)
 
 
 func _test_mix_headroom(

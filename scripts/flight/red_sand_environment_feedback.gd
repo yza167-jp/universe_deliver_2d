@@ -21,8 +21,6 @@ const MUSIC_DANGER_VOLUME_DB: float = -17.0
 @onready var _speed_streak_particles: CPUParticles2D = %SpeedStreakParticles
 @onready var _entry_particles: CPUParticles2D = %AtmosphereEntryParticles
 @onready var _storm_particles: CPUParticles2D = %StormParticles
-@onready var _landing_dust_particles: CPUParticles2D = %LandingDustParticles
-@onready var _landing_burst_particles: CPUParticles2D = %LandingBurstParticles
 @onready var _wind_bands: Array[ColorRect] = [
 	%WindBandA,
 	%WindBandB,
@@ -47,6 +45,8 @@ var _radar_pulse_remaining: float = 0.0
 var _radar_pulse_peak_alpha: float = 0.0
 var _radar_pulse_count: int = 0
 var _base_tint: Color = Color.TRANSPARENT
+var _current_tint: Color = Color.TRANSPARENT
+var _orbit_to_atmosphere_visual_progress: float = 0.0
 var _segment_music_intensity: float = 0.0
 var _target_music_intensity: float = 0.0
 var _music_intensity: float = 0.0
@@ -72,6 +72,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	var safe_delta: float = maxf(delta, 0.0)
+	_update_environment_tint(safe_delta)
 	_update_wind_bands(safe_delta)
 	_update_radar_feedback(safe_delta)
 	_update_radar_pulse(safe_delta)
@@ -87,8 +88,6 @@ func set_segment(segment: FlightRouteSegment) -> void:
 	_base_tint = _resolve_tint(segment.id)
 	_segment_music_intensity = _resolve_music_intensity(segment.id)
 	_refresh_music_target()
-	if _environment_tint != null:
-		_environment_tint.color = _base_tint
 	_apply_wind_visibility(segment.id == &"red_sand_storm_layer")
 	_set_environment_particles(segment.id)
 	if segment.id != &"red_sand_low_altitude_control":
@@ -99,6 +98,20 @@ func set_segment(segment: FlightRouteSegment) -> void:
 
 func set_wind_acceleration(acceleration: Vector2) -> void:
 	_wind_acceleration = acceleration
+
+
+## Entry heat belongs to the same cross-stage visual curve as the planet geometry.
+func set_orbit_to_atmosphere_visual_progress(progress: float) -> void:
+	_orbit_to_atmosphere_visual_progress = clampf(progress, 0.0, 1.0)
+	if _entry_particles != null:
+		_entry_particles.emitting = (
+			_orbit_to_atmosphere_visual_progress > 0.08
+			and _orbit_to_atmosphere_visual_progress < 0.98
+		)
+
+
+func get_orbit_to_atmosphere_visual_progress() -> float:
+	return _orbit_to_atmosphere_visual_progress
 
 
 func set_ship_feedback(
@@ -137,14 +150,6 @@ func set_ship_feedback(
 			clampf(boost_strength, 0.0, 1.0) * 0.86
 		)
 	)
-
-
-func burst_landing_dust() -> void:
-	if _landing_dust_particles != null:
-		_landing_dust_particles.emitting = false
-	if _landing_burst_particles != null:
-		_landing_burst_particles.restart()
-		_landing_burst_particles.emitting = true
 
 
 func stop_travel_feedback() -> void:
@@ -263,17 +268,6 @@ func are_storm_particles_emitting() -> bool:
 	return _storm_particles != null and _storm_particles.emitting
 
 
-func are_landing_particles_emitting() -> bool:
-	return (
-		_landing_dust_particles != null
-		and _landing_dust_particles.emitting
-	)
-
-
-func is_landing_burst_emitting() -> bool:
-	return _landing_burst_particles != null and _landing_burst_particles.emitting
-
-
 func _apply_wind_visibility(visible: bool) -> void:
 	for band: ColorRect in _wind_bands:
 		if band != null:
@@ -295,16 +289,15 @@ func _apply_radar_visibility(visible: bool) -> void:
 
 
 func _set_environment_particles(segment_id: StringName) -> void:
-	if _entry_particles != null:
-		_entry_particles.emitting = segment_id == &"red_sand_atmosphere_edge"
 	if _storm_particles != null:
 		_storm_particles.emitting = segment_id == &"red_sand_storm_layer"
-	if _landing_dust_particles != null:
-		_landing_dust_particles.emitting = (
-			segment_id == &"red_sand_landing_approach"
-		)
-	if _landing_burst_particles != null and segment_id.is_empty():
-		_landing_burst_particles.emitting = false
+
+
+func _update_environment_tint(delta: float) -> void:
+	var blend: float = 1.0 - exp(-maxf(delta, 0.0) * 4.0)
+	_current_tint = _current_tint.lerp(_base_tint, blend)
+	if _environment_tint != null:
+		_environment_tint.color = _current_tint
 
 
 func _refresh_music_target() -> void:

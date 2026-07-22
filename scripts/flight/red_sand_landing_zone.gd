@@ -26,7 +26,7 @@ var approach_half_width: float = 4200.0
 @export_range(1200.0, 5000.0, 1.0, "or_greater")
 var collision_activation_distance_before_center: float = 2000.0
 @export_range(400.0, 800.0, 1.0) var recommended_entry_altitude_meters: float = 600.0
-@export var safe_checkpoint_offset: Vector2 = Vector2(-4000.0, -160.0)
+@export var safe_checkpoint_offset: Vector2 = Vector2(-4000.0, -80.0)
 @export var safe_checkpoint_velocity: Vector2 = Vector2(110.0, 0.0)
 
 @onready var _approach_sensor: Area2D = %ApproachSensor
@@ -35,6 +35,8 @@ var collision_activation_distance_before_center: float = 2000.0
 @onready var _pad_shape: CollisionShape2D = %PadShape
 @onready var _pad_visual: Polygon2D = %PadVisual
 @onready var _pad_surface: Line2D = %PadSurface
+@onready var _touchdown_dust_particles: CPUParticles2D = %TouchdownDustParticles
+@onready var _touchdown_burst_particles: CPUParticles2D = %TouchdownBurstParticles
 @onready var _contrast_outline: Line2D = %ContrastOutline
 @onready var _route_hints: Node2D = %RouteHints
 @onready var _pad_label: Label = %PadLabel
@@ -55,8 +57,13 @@ var _high_contrast_enabled: bool = false
 
 func _ready() -> void:
 	_configure_geometry()
+	clear_touchdown_effects()
 	_refresh_label()
 	refresh_accessibility()
+
+
+func _exit_tree() -> void:
+	clear_touchdown_effects()
 
 
 func _notification(what: int) -> void:
@@ -125,6 +132,7 @@ func set_active_segment(segment_id: StringName) -> void:
 	_active = should_be_active
 	if not _active:
 		_guidance_state_key = &""
+		clear_touchdown_effects()
 	_set_pad_collision_active(false)
 
 
@@ -186,7 +194,54 @@ func reset_for_checkpoint() -> void:
 	_last_approach_velocity = Vector2.ZERO
 	_last_approach_rotation = 0.0
 	_guidance_state_key = GUIDANCE_APPROACH_KEY if _active else &""
+	clear_touchdown_effects()
 	_set_pad_collision_active(false)
+
+
+## Touchdown dust belongs to the world-space pad and only exists at real contact.
+func burst_touchdown_dust(landed_global_position: Vector2) -> void:
+	var local_contact: Vector2 = to_local(landed_global_position)
+	var effect_position: Vector2 = Vector2(
+		clampf(local_contact.x, -pad_width * 0.46, pad_width * 0.46),
+		pad_surface_y
+	)
+	for particles: CPUParticles2D in [
+		_touchdown_dust_particles,
+		_touchdown_burst_particles,
+	]:
+		if particles == null:
+			continue
+		particles.position = effect_position
+		particles.restart()
+		particles.emitting = true
+
+
+func clear_touchdown_effects() -> void:
+	for particles: CPUParticles2D in [
+		_touchdown_dust_particles,
+		_touchdown_burst_particles,
+	]:
+		if particles == null:
+			continue
+		particles.emitting = false
+		particles.restart()
+		particles.emitting = false
+
+
+func are_touchdown_particles_emitting() -> bool:
+	return (
+		(_touchdown_dust_particles != null and _touchdown_dust_particles.emitting)
+		or (
+			_touchdown_burst_particles != null
+			and _touchdown_burst_particles.emitting
+		)
+	)
+
+
+func get_touchdown_effect_global_position() -> Vector2:
+	if _touchdown_burst_particles == null:
+		return Vector2.ZERO
+	return _touchdown_burst_particles.global_position
 
 
 func refresh_accessibility() -> void:
@@ -336,7 +391,12 @@ func _set_pad_collision_active(active: bool) -> void:
 	_pad_collision_active = active and _active
 	if _pad_body != null:
 		_pad_body.collision_layer = (
-			FlightWeaponRules.WORLD_COLLISION_LAYER if _pad_collision_active else 0
+			(
+				FlightWeaponRules.WORLD_COLLISION_LAYER
+				| FlightAltitudeReferenceProvider.ALTITUDE_REFERENCE_COLLISION_LAYER
+			)
+			if _pad_collision_active
+			else 0
 		)
 
 

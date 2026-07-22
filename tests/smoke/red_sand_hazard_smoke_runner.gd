@@ -165,6 +165,9 @@ func _test_storm_partition(
 	)
 	ship.velocity = Vector2.ZERO
 	_check(route.advance_route_state(), "Storm route boundary was not detected.")
+	# Segment entry now sets a tint target; advance the continuous mix instead of
+	# requiring the pre-Round-4 one-frame hard switch.
+	feedback._process(0.5)
 	_check(
 		route.get_active_segment_index() == STORM_SEGMENT_INDEX
 		and hazards.is_storm_active()

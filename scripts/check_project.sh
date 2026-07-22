@@ -146,6 +146,10 @@ run_step \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/red_sand_gate_c_round_3_smoke_runner.gd
 
 run_step \
+  "Gate C Round 4 live AGL, Stage 7 traversal, and effect lifecycle smoke test" \
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/red_sand_gate_c_round_4_smoke_runner.gd
+
+run_step \
   "Station hub layout and reachability smoke test" \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/station_hub_smoke_runner.gd
 

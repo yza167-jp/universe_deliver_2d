@@ -4,8 +4,8 @@ extends Node2D
 const FLOOR_BODY_DEPTH: float = 600.0
 const STAGE_LABEL_Y: float = 94.0
 const LOW_ALTITUDE_SEGMENT_INDEX: int = 5
-const PLANET_CURVATURE_SCALE: float = 5.8
-const PLANET_CURVATURE_POSITION: Vector2 = Vector2(350.0, 620.0)
+const PLANET_CURVATURE_SCALE: float = 7.0
+const PLANET_CURVATURE_POSITION: Vector2 = Vector2(320.0, 612.0)
 
 @export var planet_anchor_path: NodePath
 @export var atmosphere_horizon_path: NodePath
@@ -84,14 +84,20 @@ func update_visuals(route_distance: float, _delta: float = 0.0) -> void:
 		_atmosphere_horizon.visible = _horizon_alpha > 0.001
 	if _atmosphere_tint != null:
 		var atmosphere_color: Color = _atmosphere_tint.color
-		atmosphere_color.a = clampf((progress - 0.3) / 0.7, 0.0, 1.0) * 0.62
+		atmosphere_color.a = (
+			_orbit_transition.get_atmosphere_progress() * 0.62
+		)
 		_atmosphere_tint.color = atmosphere_color
 	if _surface_haze != null:
 		var surface_color: Color = _surface_haze.color
 		surface_color.a = clampf((progress - 0.58) / 0.42, 0.0, 1.0) * 0.72
 		_surface_haze.color = surface_color
 	if _far_stars != null:
-		_far_stars.modulate.a = lerpf(1.0, 0.12, progress)
+		_far_stars.modulate.a = lerpf(
+			1.0,
+			0.04,
+			_orbit_transition.get_star_fade_progress()
+		)
 	if _dust_bands != null:
 		_dust_bands.modulate.a = lerpf(0.18, 0.78, progress)
 	if _lower_haze != null:
@@ -139,6 +145,26 @@ func get_atmosphere_transition_progress() -> float:
 	)
 
 
+func get_orbit_to_atmosphere_visual_progress() -> float:
+	return get_atmosphere_transition_progress()
+
+
+func get_atmosphere_horizon_position() -> Vector2:
+	return (
+		Vector2.ZERO
+		if _atmosphere_horizon == null
+		else _atmosphere_horizon.position
+	)
+
+
+func get_atmosphere_horizon_scale() -> float:
+	return 0.0 if _atmosphere_horizon == null else _atmosphere_horizon.scale.x
+
+
+func get_far_stars_alpha() -> float:
+	return 0.0 if _far_stars == null else _far_stars.modulate.a
+
+
 func get_visual_route_distance() -> float:
 	return 0.0 if _orbit_transition == null else _orbit_transition.get_route_distance()
 
@@ -166,6 +192,7 @@ func _apply_orbit_transition(
 		_planet_anchor.position = _get_planet_position(segment_index, segment_progress)
 		_planet_alpha = 1.0
 		_horizon_alpha = 0.0
+		_sync_horizon_transform()
 		return
 
 	_planet_anchor.position = _orbit_transition.get_planet_position()
@@ -176,6 +203,14 @@ func _apply_orbit_transition(
 		_horizon_alpha = 1.0 - smoothstep(0.35, 1.0, segment_progress)
 	elif segment_index > LOW_ALTITUDE_SEGMENT_INDEX:
 		_horizon_alpha = 0.0
+	_sync_horizon_transform()
+
+
+func _sync_horizon_transform() -> void:
+	if _atmosphere_horizon == null or _planet_anchor == null:
+		return
+	_atmosphere_horizon.position = _planet_anchor.position
+	_atmosphere_horizon.scale = _planet_anchor.scale
 
 
 func _create_orbit_transition() -> RedSandOrbitTransitionModel:
@@ -318,8 +353,13 @@ func _build_terrain_surface(
 	)
 	floor_body.collision_mask = 0
 	floor_body.set_meta(&"route_segment_index", index)
-	var floor_collision: CollisionPolygon2D = CollisionPolygon2D.new()
-	floor_collision.polygon = surface_polygon
+	floor_body.set_meta(&"visible_geometry_path", floor_edge.get_path())
+	var floor_collision: CollisionShape2D = CollisionShape2D.new()
+	floor_collision.name = "SurfaceCollision"
+	var surface_segment: SegmentShape2D = SegmentShape2D.new()
+	surface_segment.a = Vector2(start_x, start_floor_y)
+	surface_segment.b = Vector2(end_x, end_floor_y)
+	floor_collision.shape = surface_segment
 	floor_body.add_child(floor_collision)
 	add_child(floor_body)
 

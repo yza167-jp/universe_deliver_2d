@@ -181,10 +181,14 @@ func run() -> Array[String]:
 			"AtmosphereEntryParticles"
 		) is CPUParticles2D
 		and environment_feedback.get_node_or_null("StormParticles") is CPUParticles2D
-		and environment_feedback.get_node_or_null(
-			"LandingDustParticles"
+		and environment_feedback.get_node_or_null("LandingDustParticles") == null
+		and route_scene.get_node_or_null(
+			"World/LandingZone/TouchdownDustParticles"
+		) is CPUParticles2D
+		and route_scene.get_node_or_null(
+			"World/LandingZone/TouchdownBurstParticles"
 		) is CPUParticles2D,
-		"T-044 route must bind music and stage-specific environment particles.",
+		"Screen-space weather and world-space touchdown particles must stay separated.",
 		failures
 	)
 	expect_true(

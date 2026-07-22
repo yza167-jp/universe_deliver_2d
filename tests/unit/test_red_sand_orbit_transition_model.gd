@@ -1,9 +1,9 @@
 extends ProjectTestSuite
 
-const START_POSITION: Vector2 = Vector2(465.1111, 154.4)
-const START_SCALE: float = 1.1928889
-const END_POSITION: Vector2 = Vector2(350.0, 620.0)
-const END_SCALE: float = 5.8
+const START_POSITION: Vector2 = Vector2(479.5556, 146.4)
+const START_SCALE: float = 1.0684444
+const END_POSITION: Vector2 = Vector2(320.0, 612.0)
+const END_SCALE: float = 7.0
 const STAGE_FOUR_BOUNDARY: float = 13500.0
 const NOMINAL_ROUTE_SPEED: float = 316.6666667
 
@@ -22,23 +22,23 @@ func _test_window_length(failures: Array[String]) -> void:
 	expect_true(
 		is_equal_approx(
 			RedSandOrbitTransitionModel.TRANSITION_START_DISTANCE,
-			12800.0
+			11800.0
 		)
 		and is_equal_approx(
 			RedSandOrbitTransitionModel.TRANSITION_END_DISTANCE,
-			15000.0
+			15800.0
 		)
 		and is_equal_approx(
 			RedSandOrbitTransitionModel.TRANSITION_WINDOW_DISTANCE,
-			2200.0
+			4000.0
 		)
 		and is_equal_approx(
 			RedSandOrbitTransitionModel.get_nominal_duration_seconds(
 				NOMINAL_ROUTE_SPEED
 			),
-			6.9473684
+			12.6315789
 		),
-		"Orbit-to-atmosphere transition must span 12800-15000 (2200 m, about 6.95 s).",
+		"Orbit-to-atmosphere transition must span 11800-15800 (4000 m, about 12.63 s).",
 		failures
 	)
 
@@ -103,7 +103,7 @@ func _test_monotonic_reverse_guard(failures: Array[String]) -> void:
 
 func _test_alpha_waits_for_geometric_exit(failures: Array[String]) -> void:
 	var transition: RedSandOrbitTransitionModel = _create_transition()
-	transition.reset_to_distance(14500.0)
+	transition.reset_to_distance(14800.0)
 	expect_true(
 		is_equal_approx(transition.get_planet_alpha(), 1.0)
 		and transition.get_planet_visible_height()
@@ -111,7 +111,7 @@ func _test_alpha_waits_for_geometric_exit(failures: Array[String]) -> void:
 		"Planet alpha must remain 1 while more than a thin cap is still on screen.",
 		failures
 	)
-	transition.reset_to_distance(14800.0)
+	transition.reset_to_distance(15400.0)
 	expect_true(
 		transition.get_planet_alpha() > 0.0
 		and transition.get_planet_alpha() < 1.0

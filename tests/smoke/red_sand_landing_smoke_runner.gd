@@ -76,7 +76,7 @@ func _run_smoke() -> void:
 	var final_segment: FlightRouteSegment = definition.segments[-1]
 	flight_ship.position = Vector2(
 		route.route_origin_x + final_segment.start_distance + 1.0,
-		-160.0
+		-80.0
 	)
 	flight_ship.velocity = Vector2(125.0, 4.0)
 	_check(route.advance_route_state(), "Landing stage could not be reached.")
@@ -220,6 +220,10 @@ func _run_smoke() -> void:
 		and is_zero_approx(flight_ship.rotation),
 		"Automatic retry did not restore the safe landing approach checkpoint."
 	)
+	_check(
+		not landing_zone.are_touchdown_particles_emitting(),
+		"Failed approach retry left touchdown dust alive."
+	)
 
 	var cargo_before: float = flight_ship.cargo_integrity
 	_touch_down(
@@ -236,6 +240,14 @@ func _run_smoke() -> void:
 		and route.get_landing_result() == OrderRunState.LANDING_RESULT_ROUGH
 		and route.is_arrival_transition_pending(),
 		"Recoverable touchdown did not complete as a rough landing."
+	)
+	_check(
+		landing_zone.are_touchdown_particles_emitting()
+		and is_equal_approx(
+			landing_zone.get_touchdown_effect_global_position().y,
+			landing_zone.global_position.y + landing_zone.get_pad_surface_y()
+		),
+		"Successful touchdown did not place its one-shot dust at pad contact."
 	)
 	_check(
 		run_state != null

@@ -1,15 +1,15 @@
 class_name RedSandOrbitTransitionModel
 extends RefCounted
 
-const TRANSITION_START_DISTANCE: float = 12800.0
-const TRANSITION_END_DISTANCE: float = 15000.0
+const TRANSITION_START_DISTANCE: float = 11800.0
+const TRANSITION_END_DISTANCE: float = 15800.0
 const TRANSITION_WINDOW_DISTANCE: float = (
 	TRANSITION_END_DISTANCE - TRANSITION_START_DISTANCE
 )
 const VIEWPORT_HEIGHT: float = 360.0
 const PLANET_LOCAL_RADIUS: float = 48.0
-const PLANET_FADE_START_VISIBLE_HEIGHT: float = 32.0
-const PLANET_FADE_END_VISIBLE_HEIGHT: float = 20.0
+const PLANET_FADE_START_VISIBLE_HEIGHT: float = 112.0
+const PLANET_FADE_END_VISIBLE_HEIGHT: float = 84.0
 
 var _start_position: Vector2
 var _start_scale: float
@@ -94,6 +94,10 @@ func get_glow_progress() -> float:
 
 
 func get_high_cloud_progress() -> float:
+	return get_atmosphere_progress()
+
+
+func get_star_fade_progress() -> float:
 	return get_atmosphere_progress()
 
 

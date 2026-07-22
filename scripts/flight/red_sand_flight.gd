@@ -44,6 +44,7 @@ var _camera_shake_remaining: float = 0.0
 var _camera_shake_duration: float = 0.0
 var _camera_shake_elapsed: float = 0.0
 var _camera_shake_amplitude: float = 0.0
+var _altitude_failure_latched: bool = false
 var _controls_help_open: bool = false
 var _was_tree_paused: bool = false
 var _direct_test_mode: bool = false
@@ -148,6 +149,8 @@ func _exit_tree() -> void:
 		flight_ship.cancel_held_fire(true)
 	if hazard_director != null:
 		hazard_director.cancel_slow_motion()
+	if landing_zone != null:
+		landing_zone.clear_touchdown_effects()
 
 
 func _physics_process(delta: float) -> void:
@@ -513,13 +516,13 @@ func _complete_landing(
 		return
 	if not flight_ship.complete_landing(landed_global_position):
 		return
-	environment_feedback.burst_landing_dust()
 	var applied_cargo_damage: float = flight_ship.apply_delivery_cargo_damage(cargo_damage)
 	_route_completed = true
 	_maximum_route_distance = route_definition.get_total_distance()
 	hazard_director.cancel_slow_motion()
 	low_flight_course.set_active_segment(&"")
 	landing_zone.set_active_segment(&"")
+	landing_zone.burst_touchdown_dust(landed_global_position)
 	_sync_low_flight_feedback()
 	_sync_landing_feedback()
 	_finalize_entry_style()
@@ -583,6 +586,10 @@ func _update_route_visuals(delta: float = 0.0) -> void:
 	if route_visuals != null:
 		route_visuals.update_visuals(_maximum_route_distance, delta)
 	if environment_feedback != null and flight_ship != null:
+		if route_visuals != null:
+			environment_feedback.set_orbit_to_atmosphere_visual_progress(
+				route_visuals.get_orbit_to_atmosphere_visual_progress()
+			)
 		environment_feedback.set_ship_feedback(
 			flight_ship.get_speed(),
 			flight_ship.effective_throttle_input,
@@ -606,8 +613,10 @@ func _update_altitude_reference(delta: float) -> void:
 		_active_segment_index,
 		segment.get_progress(_maximum_route_distance),
 		flight_ship,
-		delta
+		delta,
+		route_definition.get_altitude_reference_y(_maximum_route_distance)
 	)
+	_validate_agl_source()
 
 
 func _reset_altitude_reference() -> void:
@@ -623,8 +632,30 @@ func _reset_altitude_reference() -> void:
 	_altitude_reference_provider.reset_to_route_state_from_world(
 		_active_segment_index,
 		segment.get_progress(_maximum_route_distance),
-		flight_ship
+		flight_ship,
+		route_definition.get_altitude_reference_y(_maximum_route_distance)
 	)
+	_validate_agl_source()
+
+
+func _validate_agl_source() -> void:
+	if _altitude_reference_provider == null:
+		return
+	var agl_failed: bool = (
+		_altitude_reference_provider.get_mode_name() == &"AGL"
+		and not _altitude_reference_provider.altitude_source_valid
+	)
+	if agl_failed and not _altitude_failure_latched:
+		push_error(
+			"Red Sand AGL source failed in stage %d: source=%s reason=%s ground=%s"
+			% [
+				_active_segment_index + 1,
+				_altitude_reference_provider.get_source_name(),
+				_altitude_reference_provider.get_failure_reason(),
+				_altitude_reference_provider.get_ground_node_path(),
+			]
+		)
+	_altitude_failure_latched = agl_failed
 
 
 func _refresh_hud() -> void:

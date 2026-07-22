@@ -1,12 +1,26 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/flight/red_sand_landing_zone.gd" id="1_landing"]
+[ext_resource type="Texture2D" path="res://assets/flight_particle_mote.svg" id="2_mote"]
 
 [sub_resource type="RectangleShape2D" id="ShapeApproach"]
 size = Vector2(8400, 760)
 
 [sub_resource type="RectangleShape2D" id="ShapePad"]
 size = Vector2(2400, 160)
+
+[sub_resource type="ParticleProcessMaterial" id="ParticlesTouchdownDust"]
+particle_flag_disable_z = true
+emission_shape = 3
+emission_box_extents = Vector3(250, 6, 1)
+direction = Vector3(0, -1, 0)
+spread = 62.0
+gravity = Vector3(0, 22, 0)
+initial_velocity_min = 28.0
+initial_velocity_max = 72.0
+scale_min = 0.8
+scale_max = 1.7
+color = Color(0.905882, 0.658824, 0.356863, 0.56)
 
 [node name="RedSandLandingZone" type="Node2D"]
 script = ExtResource("1_landing")
@@ -42,6 +56,38 @@ unique_name_in_owner = true
 z_index = 6
 width = 7.0
 default_color = Color(0.462745, 0.945098, 1, 0.96)
+
+[node name="TouchdownDustParticles" type="CPUParticles2D" parent="."]
+unique_name_in_owner = true
+position = Vector2(0, 328)
+emitting = false
+amount = 22
+lifetime = 0.9
+one_shot = true
+explosiveness = 0.76
+randomness = 0.8
+local_coords = false
+visibility_rect = Rect2(-340, -180, 680, 200)
+modulate = Color(0.905882, 0.658824, 0.356863, 0.52)
+texture_filter = 1
+process_material = SubResource("ParticlesTouchdownDust")
+texture = ExtResource("2_mote")
+
+[node name="TouchdownBurstParticles" type="CPUParticles2D" parent="."]
+unique_name_in_owner = true
+position = Vector2(0, 328)
+emitting = false
+amount = 54
+lifetime = 1.2
+one_shot = true
+explosiveness = 0.88
+randomness = 0.82
+local_coords = false
+visibility_rect = Rect2(-340, -190, 680, 210)
+modulate = Color(0.905882, 0.658824, 0.356863, 0.62)
+texture_filter = 1
+process_material = SubResource("ParticlesTouchdownDust")
+texture = ExtResource("2_mote")
 
 [node name="PadCenterStripe" type="Line2D" parent="."]
 z_index = 5
