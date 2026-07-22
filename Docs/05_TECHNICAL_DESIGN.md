@@ -171,25 +171,32 @@ App
 
 ## 5. 运行时状态模型
 
-建议将可序列化的数据与场景节点分开。
+将可序列化的数据与场景节点分开。
 
-### 5.1 `GameProgress`
+### 5.1 `GameProgress`（M0 schema v1）
 
-长期进度：
+当前版本化进度：
 
 ```text
 schema_version
-player_name
+current_order_id
+destination_id
+cargo_id
+ship_configuration  # 固定槽位到稳定模块 ID
 story_flags
-completed_order_ids
-unlocked_planet_ids
-credits
-owned_module_ids
-station_upgrade_ids
-relationship_values
-codex_entries
 read_dialogue_ids
+completed_order_ids
+credits
+station_upgrade_ids
+departure_confirmed
+travel_state
+travel_destination_id
+order_run_state
+settings_reference  # 只引用独立本机设置，不嵌入其内容
 ```
+
+玩家名、关系值、百科与更多星球解锁属于后续 schema；不要在 M0 为尚未出现的数据
+搭建空框架。
 
 ### 5.2 `OrderRunState`
 
@@ -210,7 +217,8 @@ optional_trigger_ids
 result_tags
 ```
 
-离开/完成订单后转成结算结果，不把整棵场景树存档。
+离开/完成订单后保留必要的订单结果，不把整棵场景树存档。M0 的继续游戏固定回到
+快递站稳定状态，不恢复驾驶舱、飞行、抵达或结算场景节点。
 
 ### 5.3 `ShipLoadout`
 
@@ -613,16 +621,20 @@ T-043 使用局部 `RedSandLandingZone` 组合大型可读 `StaticBody2D` 着陆
 
 ### 11.1 格式
 
-M0 建议使用 JSON 或 Godot `Variant` 可读格式。优先可检查、可迁移：
+M0 使用可检查、可迁移的 JSON。当前文件为 `user://savegame.json`，格式为：
 
 ```json
 {
   "schema_version": 1,
   "game_progress": {},
-  "last_saved_at": "...",
-  "build_version": "..."
+  "last_saved_at_unix": 0,
+  "build_version": "...",
+  "settings_reference": "local_settings"
 }
 ```
+
+`game_progress` 只保存稳定 ID、数值和布尔状态；不保存 `Node`、场景实例、资源对象
+或可运行脚本。
 
 ### 11.2 安全写入
 
@@ -634,12 +646,37 @@ M0 建议使用 JSON 或 Godot `Variant` 可读格式。优先可检查、可迁
 
 不要因一次写入中断覆盖最后可用档。
 
+当前路径为：
+
+- 临时档：`user://savegame.tmp`
+- 上一份有效档：`user://savegame.backup.json`
+- 新写入前发现的非法主档副本：`user://savegame.invalid.json`
+
+只有新内容和备份都能重新解析为有效 schema 后才替换主档。主档损坏但备份有效时，
+主菜单保持“继续游戏”可用并明确提示将从备份恢复；两份都无效时禁用继续，但保留
+“新游戏”以及原文件，不静默清空。
+
 ### 11.3 迁移
 
 - 每次 schema 变化增加版本。
 - 使用逐版本迁移函数。
 - 缺字段使用明确默认值。
 - 无法迁移时保留坏档并提示，不静默清空。
+
+schema `0`（没有版本字段）的已知 M0 字段会迁移到 v1；v1 缺字段使用明确默认值；
+高于当前版本、类型错误、负数资源或不一致订单状态会被拒绝，不把部分数据写进
+`GameState`。成功继续旧版存档并进入稳定节点后，下一次安全写入会生成 v1 主档。
+
+### 11.4 自动保存与继续入口
+
+`SaveService` 监听 `GameState.persistent_state_changed`，并在 `STATION`、`RESULTS`
+两个稳定阶段合并同帧重复变更后写入。进入这两个阶段也会触发保存，保证结算场景
+在 `_ready()` 中提交奖励后仍能落盘。测试、headless、导入和直接调试路线默认关闭
+正常自动保存，避免污染玩家档案。
+
+“新游戏”重置 `GameState` 并立即创建有效主档；“继续游戏”只在主档或备份有效时
+启用，加载完成后从主菜单进入 `STATION`。M0 不做多槽位、云同步、跨平台同步或
+飞行中场景恢复。
 
 ## 12. 设置存储
 
@@ -653,6 +690,10 @@ M0 建议使用 JSON 或 Godot `Variant` 可读格式。优先可检查、可迁
 - 慢动作、路线提示、高对比地形。
 
 新游戏不重置本机设置。
+
+当前设置继续由 `SettingsService` 写入 `user://settings.cfg`；剧情存档只保存
+`settings_reference = "local_settings"`。存档恢复、备份回退和新游戏都不得复制、
+覆盖或回滚玩家的音量、键位和辅助选项。
 
 ## 13. 音频架构
 

@@ -150,6 +150,10 @@ run_step \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/red_sand_settlement_smoke_runner.gd
 
 run_step \
+  "Versioned save, backup recovery, and Continue smoke test" \
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/save_continue_smoke_runner.gd
+
+run_step \
   "Red Sand parallax, particles, audio, and dynamic music smoke test" \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/red_sand_atmosphere_smoke_runner.gd
 

@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/app/main_menu.gd" id="1_main_menu"]
 
@@ -30,6 +30,42 @@ border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
 border_color = Color(0.905882, 0.87451, 0.784314, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleContinueFocus"]
+bg_color = Color(0.980392, 0.752941, 0.431373, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.929412, 0.960784, 0.929412, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleNewGameButton"]
+bg_color = Color(0.101961, 0.227451, 0.337255, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.466667, 0.788235, 0.768627, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleNewGameFocus"]
+bg_color = Color(0.145098, 0.32549, 0.419608, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.65098, 0.956863, 0.894118, 1)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
@@ -72,9 +108,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -224.0
-offset_top = -132.0
+offset_top = -158.0
 offset_right = 224.0
-offset_bottom = 132.0
+offset_bottom = 158.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleMenuPanel")
@@ -82,13 +118,13 @@ theme_override_styles/panel = SubResource("StyleMenuPanel")
 [node name="Margin" type="MarginContainer" parent="MenuPanel"]
 layout_mode = 2
 theme_override_constants/margin_left = 28
-theme_override_constants/margin_top = 20
+theme_override_constants/margin_top = 16
 theme_override_constants/margin_right = 28
-theme_override_constants/margin_bottom = 20
+theme_override_constants/margin_bottom = 16
 
 [node name="Content" type="VBoxContainer" parent="MenuPanel/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 9
+theme_override_constants/separation = 7
 alignment = 1
 
 [node name="EyebrowLabel" type="Label" parent="MenuPanel/Margin/Content"]
@@ -130,24 +166,40 @@ theme_override_font_sizes/font_size = 12
 text = "UI_MAIN_MENU_CONTROLS"
 horizontal_alignment = 1
 
-[node name="StartButton" type="Button" parent="MenuPanel/Margin/Content"]
+[node name="ContinueButton" type="Button" parent="MenuPanel/Margin/Content"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
-focus_neighbor_top = NodePath(".")
-focus_neighbor_bottom = NodePath(".")
+focus_neighbor_top = NodePath("../StartButton")
+focus_neighbor_bottom = NodePath("../StartButton")
 theme_override_colors/font_color = Color(0.0313726, 0.0666667, 0.121569, 1)
 theme_override_colors/font_focus_color = Color(0.0313726, 0.0666667, 0.121569, 1)
 theme_override_font_sizes/font_size = 17
 theme_override_styles/normal = SubResource("StyleStartButton")
-theme_override_styles/hover = SubResource("StyleStartButton")
+theme_override_styles/hover = SubResource("StyleContinueFocus")
 theme_override_styles/pressed = SubResource("StyleStartButton")
-theme_override_styles/focus = SubResource("StyleStartButton")
+theme_override_styles/focus = SubResource("StyleContinueFocus")
+text = "UI_MAIN_MENU_CONTINUE_GAME"
+
+[node name="StartButton" type="Button" parent="MenuPanel/Margin/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+focus_neighbor_top = NodePath("../ContinueButton")
+focus_neighbor_bottom = NodePath("../ContinueButton")
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_colors/font_focus_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("StyleNewGameButton")
+theme_override_styles/hover = SubResource("StyleNewGameFocus")
+theme_override_styles/pressed = SubResource("StyleNewGameButton")
+theme_override_styles/focus = SubResource("StyleNewGameFocus")
 text = "UI_MAIN_MENU_NEW_GAME"
 
 [node name="StatusLabel" type="Label" parent="MenuPanel/Margin/Content"]
 unique_name_in_owner = true
 visible = false
+custom_minimum_size = Vector2(0, 28)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.913725, 0.415686, 0.227451, 1)
 theme_override_font_sizes/font_size = 12

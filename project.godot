@@ -20,6 +20,7 @@ run/max_fps=60
 GameState="*res://scripts/app/game_state.gd"
 SceneRouter="*res://scripts/app/scene_router.gd"
 SettingsService="*res://scripts/settings/settings_service.gd"
+SaveService="*res://scripts/save/save_service.gd"
 
 [display]
 

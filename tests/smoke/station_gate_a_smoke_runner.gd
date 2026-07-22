@@ -2,11 +2,16 @@ extends SceneTree
 
 const APP_SCENE_PATH: String = "res://scenes/app/app.tscn"
 const VIEWPORT_RECT: Rect2 = Rect2(0.0, 0.0, 640.0, 360.0)
+const TEST_SAVE_PATH: String = "user://station_gate_a_save.json"
+const TEST_TEMP_PATH: String = "user://station_gate_a_save.tmp"
+const TEST_BACKUP_PATH: String = "user://station_gate_a_save.backup.json"
+const TEST_REJECTED_PATH: String = "user://station_gate_a_save.invalid.json"
 
 var _failures: PackedStringArray = []
 var _original_locale: String = ""
 var _game_state: GameStateModel
 var _scene_router: SceneRouterService
+var _save_service: SaveServiceModel
 var _app: UniverseDeliverApp
 
 
@@ -19,11 +24,21 @@ func _run_smoke() -> void:
 	TranslationServer.set_locale("zh_CN")
 	_game_state = root.get_node_or_null("GameState") as GameStateModel
 	_scene_router = root.get_node_or_null("SceneRouter") as SceneRouterService
+	_save_service = root.get_node_or_null("SaveService") as SaveServiceModel
 	_check(_game_state != null, "GameState autoload is unavailable.")
 	_check(_scene_router != null, "SceneRouter autoload is unavailable.")
-	if _game_state == null or _scene_router == null:
+	_check(_save_service != null, "SaveService autoload is unavailable.")
+	if _game_state == null or _scene_router == null or _save_service == null:
 		_finish_smoke()
 		return
+	_save_service.set_automatic_saves_enabled(false)
+	_save_service.configure_storage_paths(
+		TEST_SAVE_PATH,
+		TEST_TEMP_PATH,
+		TEST_BACKUP_PATH,
+		TEST_REJECTED_PATH
+	)
+	_remove_test_save_files()
 
 	_game_state.reset_runtime_state()
 	_game_state.set_story_flag(&"gate_a_reset_fixture")
@@ -72,6 +87,9 @@ func _run_smoke() -> void:
 		"Main menu does not expose movement and interaction controls."
 	)
 	_check(main_menu.get_start_button_text() == "开始新游戏", "New-game action is unclear.")
+	_check(main_menu.get_continue_button_text() == "继续游戏", "Continue action is unclear.")
+	_check(not main_menu.is_continue_button_enabled(), "Empty test storage enabled Continue.")
+	_check(main_menu.get_status_text().contains("尚无"), "Empty-save guidance is unclear.")
 	_check(main_menu.is_start_button_focused(), "New-game action does not receive initial focus.")
 
 	_check(main_menu.start_new_game(), "New game could not start from the main menu.")
@@ -340,6 +358,20 @@ func _cleanup() -> void:
 		await process_frame
 	if _game_state != null:
 		_game_state.reset_runtime_state()
+	if _save_service != null:
+		_remove_test_save_files()
+		_save_service.reset_storage_paths()
+
+
+func _remove_test_save_files() -> void:
+	for path: String in [
+		TEST_SAVE_PATH,
+		TEST_TEMP_PATH,
+		TEST_BACKUP_PATH,
+		TEST_REJECTED_PATH,
+	]:
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
 
 func _finish_smoke() -> void:

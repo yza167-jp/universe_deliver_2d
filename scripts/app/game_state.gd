@@ -1,13 +1,15 @@
 class_name GameStateModel
 extends Node
 
-## Session data that must outlive stage scenes; persistence is intentionally handled later.
+## Session data that outlives stage scenes; SaveService owns disk persistence.
 signal runtime_state_reset
+signal runtime_state_restored
 signal order_status_changed(order_id: StringName, status: OrderStatus)
 signal ship_configuration_changed
 signal departure_readiness_changed(confirmed: bool)
 signal travel_state_changed(state: TravelState, destination_id: StringName)
 signal progress_changed(credits: int)
+signal persistent_state_changed
 
 enum OrderStatus {
 	NOT_ACCEPTED,
@@ -132,6 +134,7 @@ func accept_order(order: OrderDefinition) -> bool:
 	_reset_travel_state(false)
 	order_status_changed.emit(order.id, OrderStatus.ACCEPTED)
 	departure_readiness_changed.emit(false)
+	persistent_state_changed.emit()
 	return true
 
 
@@ -153,6 +156,7 @@ func complete_current_order(order: OrderDefinition) -> bool:
 	_reset_travel_state(false)
 	order_status_changed.emit(order.id, OrderStatus.COMPLETED)
 	departure_readiness_changed.emit(false)
+	persistent_state_changed.emit()
 	return true
 
 
@@ -190,6 +194,7 @@ func settle_current_order(
 	destination_id = &""
 	cargo_id = &""
 	progress_changed.emit(credits)
+	persistent_state_changed.emit()
 	return true
 
 
@@ -239,6 +244,7 @@ func equip_ship_module(module: ShipModuleDefinition) -> bool:
 	ship_configuration[slot_id] = module.id
 	_invalidate_departure_confirmation()
 	ship_configuration_changed.emit()
+	persistent_state_changed.emit()
 	return true
 
 
@@ -257,6 +263,7 @@ func unequip_ship_module(module: ShipModuleDefinition) -> bool:
 	ship_configuration[slot_id] = &""
 	_invalidate_departure_confirmation()
 	ship_configuration_changed.emit()
+	persistent_state_changed.emit()
 	return true
 
 
@@ -301,6 +308,7 @@ func confirm_departure(order: OrderDefinition) -> bool:
 		return true
 	departure_confirmed = true
 	departure_readiness_changed.emit(true)
+	persistent_state_changed.emit()
 	return true
 
 
@@ -421,7 +429,16 @@ func has_seen_travel(travel_destination: StringName) -> bool:
 
 
 func set_story_flag(flag_id: StringName, enabled: bool = true) -> void:
-	story_flags[flag_id] = enabled
+	if flag_id.is_empty():
+		return
+	var previous_value: bool = story_flags.get(flag_id, false)
+	if previous_value == enabled:
+		return
+	if enabled:
+		story_flags[flag_id] = true
+	else:
+		story_flags.erase(flag_id)
+	persistent_state_changed.emit()
 
 
 func has_story_flag(flag_id: StringName) -> bool:
@@ -429,7 +446,13 @@ func has_story_flag(flag_id: StringName) -> bool:
 
 
 func mark_dialogue_line_read(sequence_id: StringName, line_id: StringName) -> void:
-	read_dialogue_ids[_get_dialogue_read_id(sequence_id, line_id)] = true
+	if sequence_id.is_empty() or line_id.is_empty():
+		return
+	var read_id: StringName = _get_dialogue_read_id(sequence_id, line_id)
+	if read_dialogue_ids.get(read_id, false):
+		return
+	read_dialogue_ids[read_id] = true
+	persistent_state_changed.emit()
 
 
 func has_read_dialogue_line(sequence_id: StringName, line_id: StringName) -> bool:
