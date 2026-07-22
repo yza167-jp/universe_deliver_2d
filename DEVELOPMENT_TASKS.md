@@ -39,8 +39,8 @@ M0 的强制 Human Check 任务只有：
 | B | 快递站、老皮与接单闭环 | Done |
 | C | 第一人称驾驶舱与旅行 | Done |
 | D | 飞行实验室与核心手感 | Done |
-| E | 赤砂星完整飞行路线 | Human Check（T-045 Gate C Round 8） |
-| F | 落地剧情、结算、存档与 M0 打磨 | Blocked |
+| E | 赤砂星完整飞行路线 | Done |
+| F | 落地剧情、结算、存档与 M0 打磨 | Ready（T-050） |
 
 ---
 
@@ -1470,7 +1470,7 @@ T-041、T-042、T-043。
 
 ## T-045 — 赤砂星完整路线人工试玩
 
-**State:** `Human Check`\
+**State:** `Done`\
 **Priority:** P0\
 **Goal:** 在连接落地剧情前验证整段星球进入是否真正具有仪式感和节奏。
 
@@ -2038,6 +2038,18 @@ export GODOT_BIN="/Applications/Godot.app/Contents/MacOS/Godot"
 视觉、雷达规则、路线节奏、燃料、Beam、Boost、雷暴与 T-036 手感不再重测。
 当前仍是 T-045 强制人工验收节点，玩家确认前不开始 T-050。
 
+### Gate C Round 8 人工试玩结论（2026-07-23）
+
+**Result:** `Passed`
+
+- 用户明确确认 T-045 人工验收通过，接受当前赤砂星从星系接近、连续入大气、
+  低空管制雷达、高位准备、最终进场到着陆的完整 M0 路线基线。
+- Round 8 重点复验的有限平台尾缘提示、无高度错误日志与阶段 8 重试闭环随本次
+  验收关闭；此前已接受的路线节奏、燃料、Beam、Boost、雷暴、两层 HUD 和
+  T-036 飞行手感继续保持，不再留在 T-045 等待复验。
+- T-045 与阶段 E 标记为 `Done`。T-005、T-011 和 T-045 均已完成，因此
+  T-050 与阶段 F 解锁为 `Ready`；本轮不开始 T-050 或任何其他任务。
+
 ### 建议提交
 
 `完成赤砂星完整进入与降落试玩版本`
@@ -2048,7 +2060,7 @@ export GODOT_BIN="/Applications/Godot.app/Contents/MacOS/Godot"
 
 ## T-050 — 赤砂星目的地场景与主要 NPC
 
-**State:** `Blocked`\
+**State:** `Ready`\
 **Priority:** P0\
 **Goal:** 证明认识星球人物和文明是配送的核心回报。
 
