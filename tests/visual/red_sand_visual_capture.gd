@@ -1,7 +1,9 @@
 extends SceneTree
 
 const ROUTE_SCENE_PATH: String = "res://scenes/flight/red_sand_flight.tscn"
-const CAPTURE_DIRECTORY: String = "res://.omx/artifacts/t045_gate_c_round_4_rework"
+const CAPTURE_DIRECTORY: String = (
+	"res://.omx/artifacts/t045_gate_c_round_7_surface_frame"
+)
 const SYSTEM_EDGE_SEGMENT_INDEX: int = 0
 const NEAR_ORBIT_SEGMENT_INDEX: int = 2
 const ATMOSPHERE_SEGMENT_INDEX: int = 3
@@ -41,7 +43,7 @@ func _capture_route_frames() -> void:
 	route.set_process(false)
 	route.set_physics_process(false)
 
-	_prepare_stage_frame(
+	await _prepare_stage_frame(
 		route, ship, SYSTEM_EDGE_SEGMENT_INDEX, 0.05, 184.0, 0.55, 0.0
 	)
 	await _settle_particles(45)
@@ -51,7 +53,7 @@ func _capture_route_frames() -> void:
 	if hud != null:
 		hud.visible = false
 
-	_prepare_stage_frame(
+	await _prepare_stage_frame(
 		route, ship, NEAR_ORBIT_SEGMENT_INDEX, 0.95, 170.0, 1.0, 1.0
 	)
 	await _settle_particles(45)
@@ -59,28 +61,28 @@ func _capture_route_frames() -> void:
 		quit(1)
 		return
 
-	_prepare_stage_frame(
+	await _prepare_stage_frame(
 		route, ship, NEAR_ORBIT_SEGMENT_INDEX, 0.99998, 174.0, 0.9, 0.0
 	)
 	await _settle_particles(2)
 	if not _save_frame("stage_3_boundary_last.png"):
 		quit(1)
 		return
-	_prepare_stage_frame(
+	await _prepare_stage_frame(
 		route, ship, ATMOSPHERE_SEGMENT_INDEX, 0.0, 174.0, 0.9, 0.0
 	)
 	await _settle_particles(2)
 	if not _save_frame("stage_4_boundary_first.png"):
 		quit(1)
 		return
-	_prepare_stage_frame(
+	await _prepare_stage_frame(
 		route, ship, ATMOSPHERE_SEGMENT_INDEX, 0.08889, 176.0, 0.9, 0.0
 	)
 	await _settle_particles(12)
 	if not _save_frame("stage_4_transition_mid.png"):
 		quit(1)
 		return
-	_prepare_stage_frame(
+	await _prepare_stage_frame(
 		route, ship, ATMOSPHERE_SEGMENT_INDEX, 0.33334, 180.0, 0.82, 0.0
 	)
 	await _settle_particles(12)
@@ -96,7 +98,7 @@ func _capture_route_frames() -> void:
 	if hud != null:
 		hud.visible = false
 
-	_prepare_stage_frame(
+	await _prepare_stage_frame(
 		route, ship, STORM_SEGMENT_INDEX, 0.55, 142.0, 0.82, 0.0
 	)
 	await _settle_particles(90)
@@ -104,7 +106,7 @@ func _capture_route_frames() -> void:
 		quit(1)
 		return
 
-	_prepare_stage_frame(
+	await _prepare_stage_frame(
 		route, ship, LOW_ALTITUDE_CONTROL_SEGMENT_INDEX, 0.18, -80.0, 0.0, 0.0
 	)
 	ship.velocity = Vector2.ZERO
@@ -162,14 +164,14 @@ func _capture_route_frames() -> void:
 
 	if hud != null:
 		hud.visible = true
-	_prepare_stage_frame(
+	await _prepare_stage_frame(
 		route, ship, LOW_ALTITUDE_CONTROL_SEGMENT_INDEX, 0.42, 96.0, 0.45, 0.0
 	)
 	await _settle_particles(12)
 	if not _save_frame("stage_6_high_altitude_safe.png"):
 		quit(1)
 		return
-	_prepare_stage_frame(
+	await _prepare_stage_frame(
 		route, ship, LOW_ALTITUDE_CONTROL_SEGMENT_INDEX, 0.62, 396.0, 0.45, 0.0
 	)
 	route._physics_process(0.7)
@@ -184,7 +186,7 @@ func _capture_route_frames() -> void:
 	if not _save_frame("stage_6_low_altitude_pulse.png"):
 		quit(1)
 		return
-	_prepare_stage_frame(
+	await _prepare_stage_frame(
 		route, ship, LANDING_PREPARATION_SEGMENT_INDEX, 0.3, -80.0, 0.34, 0.0
 	)
 	await _settle_particles(12)
@@ -200,7 +202,7 @@ func _capture_route_frames() -> void:
 	if hud != null:
 		hud.toggle_full_diagnostics()
 
-	_prepare_stage_frame(
+	await _prepare_stage_frame(
 		route, ship, LANDING_SEGMENT_INDEX, 0.0, -80.0, 0.34, 0.0
 	)
 	await _settle_particles(45)
@@ -243,6 +245,11 @@ func _prepare_stage_frame(
 	ship.integrate_motion(throttle, 0.0, 0.0, 0.2, boost)
 	ship._update_engine_feedback()
 	route.advance_route_state()
+	if segment_index >= LOW_ALTITUDE_CONTROL_SEGMENT_INDEX:
+		ship.position.y = ship_y + route.get_surface_frame_offset_y()
+		for _sync_frame: int in range(5):
+			await physics_frame
+			route._physics_process(0.0)
 	var altitude_provider: FlightAltitudeReferenceProvider = (
 		route.get_altitude_reference_provider()
 	)

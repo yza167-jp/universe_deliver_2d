@@ -120,6 +120,11 @@ func _test_real_input_descends_below_radar_threshold(
 	ship.is_failed = false
 	ship.is_landed = false
 	route.advance_route_state()
+	profile_ground_y += route.get_surface_frame_offset_y()
+	ship.position.y = profile_ground_y - 600.0 - 8.0
+	for _sync_frame: int in range(5):
+		await physics_frame
+		route._physics_process(0.0)
 	route._reset_altitude_reference()
 	_real_input_minimum_altitude = provider.get_altitude_meters()
 	Input.action_press(&"flight_throttle")
@@ -242,7 +247,10 @@ func _test_live_agl_and_radar(
 ) -> void:
 	var segment: FlightRouteSegment = definition.segments[RADAR_SEGMENT_INDEX]
 	var route_distance: float = 24000.0
-	var profile_ground_y: float = definition.get_ground_route_y(route_distance)
+	var profile_ground_y: float = (
+		definition.get_ground_route_y(route_distance)
+		+ route.get_surface_frame_offset_y()
+	)
 	ship.position.x = route.route_origin_x + route_distance
 	ship.rotation = 0.0
 	ship.angular_velocity = 0.0
@@ -319,7 +327,10 @@ func _test_stage_seven_three_height_traversal(
 	var segment: FlightRouteSegment = definition.segments[PREPARATION_SEGMENT_INDEX]
 	var start_x: float = route.route_origin_x + segment.start_distance + 1.0
 	var motion_x: float = segment.get_length() - 2.0
-	var ground_y: float = definition.get_ground_route_y(segment.start_distance)
+	var ground_y: float = (
+		definition.get_ground_route_y(segment.start_distance)
+		+ route.get_surface_frame_offset_y()
+	)
 	for altitude: float in [600.0, 280.0, 150.0]:
 		ship.position = Vector2(start_x, ground_y - altitude - 8.0)
 		ship.velocity = Vector2.ZERO

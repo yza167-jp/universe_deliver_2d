@@ -55,6 +55,20 @@ func run() -> Array[String]:
 		failures
 	)
 	expect_true(
+		is_equal_approx(route.surface_frame_prepare_start_distance, 20000.0)
+		and is_equal_approx(route.surface_frame_lock_distance, 23000.0)
+		and is_equal_approx(
+			route.surface_frame_minimum_entry_altitude_meters,
+			180.0
+		)
+		and is_equal_approx(
+			route.surface_frame_descent_reaction_seconds,
+			1.25
+		),
+		"Surface-frame acquisition must stay in late Stage 5 and lock at Stage 6.",
+		failures
+	)
+	expect_true(
 		is_equal_approx(route.segments[5].start_distance, 23000.0)
 		and is_equal_approx(route.segments[5].end_distance, 30500.0)
 		and is_equal_approx(route.segments[5].get_length(), 7500.0)

@@ -463,11 +463,21 @@ Tween，也不重设任何变换。
 封闭 `CollisionPolygon2D` 产生不可见分段侧墙；每个阻挡体保存对应可见几何
 路径，Full Diagnostics 记录最近碰撞名称、路径、layer/mask 与法线。
 
+由于阶段 1–5 没有物理地表，飞船在重力下累计的世界 Y 不代表距固定地面的
+高度。路线局部 `FlightSurfaceFrame` 在 `20000 m` 获取当前船底参考点与虚拟
+高度，在第一段真实地表边界 `23000 m` 锁定 `surface_frame_offset_y`。该偏移
+同时应用到 `RedSandRouteVisuals` 的阶段 6–8 地表/设施/标签、
+`RedSandLowFlightCourse`、`RedSandLandingZone` 和 canonical 剖面；不得改变
+飞船位置、速度或姿态。基线保持真实进入轨迹差异，只在预测入口低于
+`180 m + downward_speed × 1.25 s` 时继续下移未来地表。偏移锁定后不再随
+飞船追踪，检查点恢复沿用同一值；回到 `20000 m` 前的检查点才重置并重新获取。
+
 `FlightAltitudeReferenceProvider` 是 HUD 与低空雷达的唯一高度源。实时入口只
 接受 canonical route vertical frame：路线根根据飞船实际 X 计算路线距离，
 根据船体底部中心 `AltitudeReferencePoint` 计算 `ship_reference_route_y`，再由
-`FlightRouteDefinition.get_ground_route_y(actual_distance, active_segment)` 查询
-地表 Y。相机、屏幕位置、视觉最大进度和切段标签都不能改写这些输入；世界坐标
+`FlightRouteDefinition.get_ground_route_y(actual_distance, active_segment)` 加上
+已锁定的 `surface_frame_offset_y` 查询地表 Y。相机、屏幕位置、视觉最大进度和
+切段标签都不能改写这些输入；世界坐标
 只用于专用地表层 RayCast。短距离倒车时，查询距离被限制在当前阶段的连续剖面，
 不会跳回上一段或冻结在最大进度。
 
@@ -475,8 +485,8 @@ Provider 按阶段输出 `ORBITAL / ATMOSPHERE_ENTRY / AGL` 以及明确的
 `source / is_valid / Final AGL / raw ray / raw profile / last valid /
 invalid duration / failure reason`。阶段 1–3 返回无数值的高空状态；阶段 4–5
 使用 `1800→1200→1050 m` 的虚拟剖面，并从阶段 5 的 `40%` 进度开始把同一
-canonical 地表剖面平滑混入，因此阶段 6 不创建新原点、不替换飞船参考点，
-也不强制重置高度或速度。
+带偏移 canonical 地表剖面平滑混入，因此阶段 6 不替换飞船参考点，也不强制
+重置高度或速度。
 
 阶段 6–8 以路线剖面为确定性 Final AGL，向下射线验证物理表面；两源差异超过
 `4 m` 即标记 `RAY_PROFILE_MISMATCH`。负 AGL、无剖面或不一致是无效状态，
@@ -487,6 +497,9 @@ canonical 地表剖面平滑混入，因此阶段 6 不创建新原点、不替�
 同时显示实际路线距离、飞船/地表 route Y、AGL 路线单位、剖面段、阶段 5→6
 混合值、无效持续时间、射线路径及射线/剖面差值。Debug 路线还以 `0.45 s`
 运动窗口检测“坐标预期变化但 Final AGL 固定”的不变量并输出完整快照。
+移动 `StaticBody2D` 后，PhysicsServer2D 可能晚于脚本帧更新查询变换；最多四次
+Provider 更新以剖面为权威并暂缓射线一致性验证，随后必须恢复 RayCast 交叉
+验证。该窗口只处理服务器同步，不能吞掉负 AGL 或长期双源不一致。
 
 ### 8.6 赤砂星固定危险与环境反馈
 
@@ -688,6 +701,8 @@ M0 赤砂星路线暂由场景局部 `AudioStreamPlayer` 播放程序合成的�
 - 存档迁移与坏档恢复。
 - canonical 高度的阶段 5→6 边界连续性、合法 `0/1 m`、负 AGL 与双源不一致
   的显式失败、无效宽限和 HUD/雷达同值约束。
+- 从阶段 1 真实推进到阶段 6 的累计重力路径、地表帧获取/锁定、所有地表消费方
+  的统一偏移，以及阶段 6–8 检查点和阶段 8 `4.0 km / 600 m` 重试。
 - 高/中/低、上升/下降、零速、Boost/无 Boost、短倒车、检查点/重开的
   `11 × 30/60/120 FPS` 矩阵，连续重复至少 `20` 次，并包含真实 Input Map
   上升、俯冲和 Boost 轨迹。

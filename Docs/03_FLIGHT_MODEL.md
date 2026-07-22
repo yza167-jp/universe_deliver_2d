@@ -37,7 +37,9 @@ Godot 2D 中：
 ```text
 route_distance         = ship_route_x - route_origin_x
 ship_reference_route_y = AltitudeReferencePoint 在路线局部坐标中的 Y
-ground_route_y          = 地形剖面在 route_distance 的 Y
+base_ground_route_y     = 路线 Resource 中地形剖面的原始 Y
+surface_frame_offset_y  = 阶段 5 后半按真实进入轨迹建立的统一垂直偏移
+ground_route_y          = base_ground_route_y + surface_frame_offset_y
 agl_route_units         = ground_route_y - ship_reference_route_y
 Final AGL meters        = agl_route_units × meters_per_route_unit
 ```
@@ -46,6 +48,14 @@ Final AGL meters        = agl_route_units × meters_per_route_unit
 底部中心；旋转时随船体移动，但不会在切段时更换参考点。路线距离来自飞船实际
 位置，不使用相机、屏幕 X/Y 或单调视觉进度；短距离倒车时地表查询仍以当前
 阶段的连续剖面计算。路线标签、相机跟随和 Canvas HUD 都不得改变该坐标原点。
+
+阶段 1–5 没有物理地表，因此飞船在这些阶段累计的世界 Y 不能与一条预先固定的
+地面 Y 直接比较。`FlightSurfaceFrame` 在路线 `20000 m`（阶段 5 进度 `40%`）
+按当前船底参考点与虚拟高度建立地表坐标，在 `23000 m` 的阶段 6 边界锁定。
+它只移动尚未出现的阶段 6–8 地表视觉、碰撞、雷达设施、着陆台和 canonical
+剖面，不移动飞船，也不改写速度或姿态。正常高位轨迹保留其额外高度；若持续
+下降会把飞船带到地表内，只把未来地表下移到至少 `180 m` 加当前下降速度
+`1.25 s` 反应距离的位置。
 
 ## 4. 输入模型
 
@@ -290,9 +300,8 @@ velocity.y = min(velocity.y, terminal_fall_speed_safety)
   关卡坐标伪装成几百米地表高度。
 - 阶段 4–5 使用 `ATMOSPHERE_ENTRY`，以单调虚拟剖面从约
   `1.8 km` 平滑下降到约 `1.05 km`，与轨道—大气背景进度同步；阶段 5 后半
-  `60%`（进度 `40%` 起）同时预热 canonical 地表剖面并平滑混合，使阶段 5
-  最后一帧和阶段 6
-  第一帧使用同一组飞船参考点、地表参考和连续输出。
+  `60%`（进度 `40%` 起）同时建立并预热统一地表坐标帧，使阶段 5 最后一帧
+  和阶段 6 第一帧使用同一组飞船参考点、带偏移地表参考和连续输出。
 - 阶段 6–8 使用 `AGL`：`FlightRouteDefinition.get_ground_route_y()` 提供
   唯一 canonical 地表剖面，专用向下射线只验证对应物理表面。两源都有效时
   差值必须在 `4 m` 内；不一致时显式标记 `RAY_PROFILE_MISMATCH`，不得随机
@@ -302,9 +311,10 @@ velocity.y = min(velocity.y, terminal_fall_speed_safety)
   作为阶段 6–8 的错误哨兵。瞬时无效最多保持最近有效值 `0.20 s`，随后进入
   `INVALID` 并输出可捕获诊断；雷达在当前源无效时不得锁定或处罚。
 
-阶段 1–5 不因高度显示生成地面视觉或 `StaticBody2D`；赤砂星只从阶段 6
-开始启用可见且可碰撞的地表。飞船高度参考固定为碰撞盒底部中心，地表视觉、
-地表碰撞、路线剖面和平台顶面覆盖必须来自同一份路线数据；相机、屏幕坐标与
+阶段 1–5 不因高度显示生成地面视觉或 `StaticBody2D`；阶段 5 建立坐标帧时也
+只移动尚未出现的未来节点，赤砂星仍从阶段 6 才启用可见且可碰撞的地表。飞船
+高度参考固定为碰撞盒底部中心，地表视觉、地表碰撞、路线剖面、雷达设施和
+平台顶面覆盖必须共用同一垂直偏移；相机、屏幕坐标与
 单调最大路线进度均不得参与 AGL。检查点恢复必须按实际路线距离和当前阶段
 直接重建同一坐标帧，短距离倒车仍查询当前阶段的连续剖面。Essential HUD、
 低空雷达和飞行帮助不得各自重复计算高度，全部消费 Provider 输出的同一个
@@ -579,6 +589,8 @@ Full Diagnostics 至少显示：
 - 模块能力门控。
 - 俯冲/滑翔分类。
 - 阶段 5→6 边界前后 canonical 坐标快照与 Final AGL 连续性。
+- 从阶段 1 真实积分至阶段 6 的重力累计路径，断言地表坐标帧已建立并锁定、
+  切段不改变飞船状态、阶段 6–8 检查点与重试均保持有效 AGL。
 - 高、中、低、上升、下降、零速、Boost、无 Boost、短倒车、检查点和重开
   轨迹在 `30/60/120 FPS` 下的高度矩阵，以及至少 `20` 次重复稳定性。
 - `0 m`/`1 m` 合法值、负 AGL 与来源不一致的显式失败、`0.20 s` 无效宽限，

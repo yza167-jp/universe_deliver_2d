@@ -20,6 +20,15 @@ var nominal_scenic_duration_seconds: float = 165.0
 var reverse_allowance_distance: float = 640.0
 @export_range(0.0, 5000.0, 1.0, "or_greater")
 var finish_hold_distance: float = 360.0
+@export_group("Surface Frame Acquisition")
+@export_range(0.0, 1000000.0, 1.0, "or_greater")
+var surface_frame_prepare_start_distance: float = 20000.0
+@export_range(0.0, 1000000.0, 1.0, "or_greater")
+var surface_frame_lock_distance: float = 23000.0
+@export_range(0.0, 2000.0, 1.0, "or_greater")
+var surface_frame_minimum_entry_altitude_meters: float = 180.0
+@export_range(0.0, 5.0, 0.05, "or_greater")
+var surface_frame_descent_reaction_seconds: float = 1.25
 @export var segments: Array[FlightRouteSegment] = []
 
 
@@ -54,6 +63,7 @@ func validate() -> PackedStringArray:
 	var previous_end: float = 0.0
 	var previous_planet_scale: float = 0.0
 	var terrain_surface_started: bool = false
+	var first_terrain_start_distance: float = -1.0
 	var seen_ids: Dictionary[StringName, bool] = {}
 	var seen_checkpoints: Dictionary[StringName, bool] = {}
 	for index: int in segments.size():
@@ -91,6 +101,8 @@ func validate() -> PackedStringArray:
 		if segment.planet_scale_end + DISTANCE_EPSILON < segment.planet_scale_start:
 			errors.append("Flight route planet scale decreases inside '%s'." % segment.id)
 		if segment.terrain_surface_enabled:
+			if not terrain_surface_started:
+				first_terrain_start_distance = segment.start_distance
 			terrain_surface_started = true
 		elif terrain_surface_started:
 			errors.append(
@@ -98,6 +110,25 @@ func validate() -> PackedStringArray:
 			)
 		previous_end = segment.end_distance
 		previous_planet_scale = segment.planet_scale_end
+	if (
+		surface_frame_prepare_start_distance < 0.0
+		or surface_frame_prepare_start_distance >= surface_frame_lock_distance
+	):
+		errors.append("Surface frame acquisition must begin before it locks.")
+	if first_terrain_start_distance < 0.0:
+		errors.append("Flight route needs a terrain stage for surface-frame lock.")
+	else:
+		if not is_equal_approx(
+			surface_frame_lock_distance,
+			first_terrain_start_distance
+		):
+			errors.append("Surface frame must lock at the first terrain stage boundary.")
+		if surface_frame_prepare_start_distance >= first_terrain_start_distance:
+			errors.append("Surface frame acquisition must begin before terrain is enabled.")
+	if surface_frame_minimum_entry_altitude_meters <= 0.0:
+		errors.append("Surface frame minimum entry altitude must be positive.")
+	if surface_frame_descent_reaction_seconds < 0.0:
+		errors.append("Surface frame descent reaction time cannot be negative.")
 	return errors
 
 

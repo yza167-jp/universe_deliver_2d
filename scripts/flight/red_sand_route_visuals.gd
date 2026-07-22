@@ -6,6 +6,7 @@ const STAGE_LABEL_Y: float = 94.0
 const LOW_ALTITUDE_SEGMENT_INDEX: int = 5
 const PLANET_CURVATURE_SCALE: float = 7.0
 const PLANET_CURVATURE_POSITION: Vector2 = Vector2(320.0, 612.0)
+const SURFACE_FRAME_BASE_POSITION_META: StringName = &"surface_frame_base_position"
 
 @export var planet_anchor_path: NodePath
 @export var atmosphere_horizon_path: NodePath
@@ -40,6 +41,9 @@ var _route_origin_x: float = 0.0
 var _orbit_transition: RedSandOrbitTransitionModel
 var _planet_alpha: float = 1.0
 var _horizon_alpha: float = 0.0
+var _surface_frame_offset_y: float = 0.0
+var _surface_frame_nodes: Array[Node2D] = []
+var _surface_frame_controls: Array[Control] = []
 
 
 func _notification(what: int) -> void:
@@ -177,6 +181,44 @@ func get_terrain_surface_stage_indices() -> PackedInt32Array:
 	return stage_indices
 
 
+func set_surface_frame_offset_y(offset_y: float) -> void:
+	if not is_finite(offset_y) or is_equal_approx(offset_y, _surface_frame_offset_y):
+		return
+	_surface_frame_offset_y = offset_y
+	for surface_node: Node2D in _surface_frame_nodes:
+		if not is_instance_valid(surface_node):
+			continue
+		var base_position_value: Variant = surface_node.get_meta(
+			SURFACE_FRAME_BASE_POSITION_META,
+			Vector2.ZERO
+		)
+		var base_position: Vector2 = (
+			base_position_value as Vector2
+			if base_position_value is Vector2
+			else Vector2.ZERO
+		)
+		surface_node.position = base_position + Vector2(0.0, _surface_frame_offset_y)
+	for surface_control: Control in _surface_frame_controls:
+		if not is_instance_valid(surface_control):
+			continue
+		var base_position_value: Variant = surface_control.get_meta(
+			SURFACE_FRAME_BASE_POSITION_META,
+			Vector2.ZERO
+		)
+		var base_position: Vector2 = (
+			base_position_value as Vector2
+			if base_position_value is Vector2
+			else Vector2.ZERO
+		)
+		surface_control.position = (
+			base_position + Vector2(0.0, _surface_frame_offset_y)
+		)
+
+
+func get_surface_frame_offset_y() -> float:
+	return _surface_frame_offset_y
+
+
 func is_full_planet_visible() -> bool:
 	return _planet_anchor != null and _planet_anchor.visible
 
@@ -246,6 +288,8 @@ func _get_planet_position(segment_index: int, segment_progress: float) -> Vector
 
 
 func _build_graybox_route() -> void:
+	_surface_frame_nodes.clear()
+	_surface_frame_controls.clear()
 	for child: Node in get_children():
 		child.queue_free()
 	for index: int in _route_definition.segments.size():
@@ -278,6 +322,8 @@ func _build_segment_graybox(segment: FlightRouteSegment, index: int) -> void:
 	band_color.a = 0.18
 	stage_band.color = band_color
 	add_child(stage_band)
+	if index >= LOW_ALTITUDE_SEGMENT_INDEX:
+		_register_surface_frame_node(stage_band)
 
 	if segment.terrain_surface_enabled:
 		_build_terrain_surface(
@@ -299,6 +345,8 @@ func _build_segment_graybox(segment: FlightRouteSegment, index: int) -> void:
 	divider.width = 2.0
 	divider.default_color = Color(0.905882, 0.658824, 0.356863, 0.45)
 	add_child(divider)
+	if index >= LOW_ALTITUDE_SEGMENT_INDEX:
+		_register_surface_frame_node(divider)
 
 	var stage_label: Label = Label.new()
 	stage_label.name = "StageLabel%02d" % (index + 1)
@@ -311,6 +359,8 @@ func _build_segment_graybox(segment: FlightRouteSegment, index: int) -> void:
 	)
 	stage_label.set_meta(&"route_segment_index", index)
 	add_child(stage_label)
+	if index >= LOW_ALTITUDE_SEGMENT_INDEX:
+		_register_surface_frame_control(stage_label)
 
 
 func _build_terrain_surface(
@@ -333,6 +383,7 @@ func _build_terrain_surface(
 	floor_visual.polygon = surface_polygon
 	floor_visual.color = segment.graybox_color
 	add_child(floor_visual)
+	_register_surface_frame_node(floor_visual)
 
 	var floor_edge: Line2D = Line2D.new()
 	floor_edge.name = "FloorEdge%02d" % (index + 1)
@@ -344,6 +395,7 @@ func _build_terrain_surface(
 	floor_edge.width = 3.0
 	floor_edge.default_color = _resolve_floor_edge_color(index)
 	add_child(floor_edge)
+	_register_surface_frame_node(floor_edge)
 
 	var floor_body: StaticBody2D = StaticBody2D.new()
 	floor_body.name = "FloorBody%02d" % (index + 1)
@@ -362,6 +414,7 @@ func _build_terrain_surface(
 	floor_collision.shape = surface_segment
 	floor_body.add_child(floor_collision)
 	add_child(floor_body)
+	_register_surface_frame_node(floor_body)
 
 
 func _build_finish_beacon() -> void:
@@ -376,6 +429,7 @@ func _build_finish_beacon() -> void:
 	beacon.width = 6.0
 	beacon.default_color = Color(0.462745, 0.945098, 1.0, 0.9)
 	add_child(beacon)
+	_register_surface_frame_node(beacon)
 
 
 func _build_segment_landmarks(segment: FlightRouteSegment, index: int) -> void:
@@ -477,6 +531,8 @@ func _build_cloud_silhouettes(segment: FlightRouteSegment, index: int) -> void:
 		)
 		container.add_child(cloud)
 	add_child(container)
+	if index >= LOW_ALTITUDE_SEGMENT_INDEX:
+		_register_surface_frame_node(container)
 
 
 func _build_facility_silhouettes(segment: FlightRouteSegment, index: int) -> void:
@@ -507,6 +563,7 @@ func _build_facility_silhouettes(segment: FlightRouteSegment, index: int) -> voi
 		facility.color = Color(0.105882, 0.129412, 0.14902, 0.72)
 		container.add_child(facility)
 	add_child(container)
+	_register_surface_frame_node(container)
 
 
 func _build_landing_guides(
@@ -540,6 +597,26 @@ func _build_landing_guides(
 		marker.default_color = Color(0.462745, 0.945098, 1.0, 0.76)
 		container.add_child(marker)
 	add_child(container)
+	_register_surface_frame_node(container)
+
+
+func _register_surface_frame_node(surface_node: Node2D) -> void:
+	if surface_node == null:
+		return
+	surface_node.set_meta(SURFACE_FRAME_BASE_POSITION_META, surface_node.position)
+	_surface_frame_nodes.append(surface_node)
+	surface_node.position += Vector2(0.0, _surface_frame_offset_y)
+
+
+func _register_surface_frame_control(surface_control: Control) -> void:
+	if surface_control == null:
+		return
+	surface_control.set_meta(
+		SURFACE_FRAME_BASE_POSITION_META,
+		surface_control.position
+	)
+	_surface_frame_controls.append(surface_control)
+	surface_control.position += Vector2(0.0, _surface_frame_offset_y)
 
 
 func _resolve_floor_edge_color(index: int) -> Color:

@@ -14,6 +14,9 @@ const ENTRY_FINALIZE_SEGMENT_INDEX: int = 7
 const ALTITUDE_INVARIANT_WINDOW_SECONDS: float = 0.45
 const ALTITUDE_INVARIANT_EXPECTED_CHANGE_METERS: float = 12.0
 const ALTITUDE_INVARIANT_MAX_FINAL_CHANGE_METERS: float = 0.75
+## Profile is authoritative while PhysicsServer2D catches up with moved StaticBody2D
+## transforms. Four calls also cover debug/test jumps across all late route stages.
+const SURFACE_FRAME_RAYCAST_DEFERRED_FRAMES: int = 4
 
 @onready var flight_ship: FlightLabShip = %FlightShip
 @onready var altitude_reference_point: Node2D = %AltitudeReferencePoint
@@ -61,6 +64,9 @@ var _active_assist_index: int = 1
 var _altitude_reference_provider: FlightAltitudeReferenceProvider = (
 	FlightAltitudeReferenceProvider.new()
 )
+var _surface_frame: FlightSurfaceFrame = FlightSurfaceFrame.new()
+var _applied_surface_frame_offset_y: float = 0.0
+var _surface_frame_raycast_deferred_frames: int = 0
 
 
 func _ready() -> void:
@@ -69,6 +75,15 @@ func _ready() -> void:
 	if not _validate_runtime_dependencies():
 		set_process(false)
 		set_physics_process(false)
+		return
+	if not _surface_frame.configure(
+		route_definition.surface_frame_prepare_start_distance,
+		route_definition.surface_frame_lock_distance,
+		route_definition.surface_frame_minimum_entry_altitude_meters,
+		route_definition.surface_frame_descent_reaction_seconds,
+		_altitude_reference_provider.meters_per_route_unit
+	):
+		push_error("Red Sand route could not configure its surface frame.")
 		return
 	if not route_visuals.configure(route_definition, route_origin_x):
 		push_error("Red Sand route could not build its graybox visuals.")
@@ -96,6 +111,7 @@ func _ready() -> void:
 	):
 		push_error("Red Sand route could not configure its landing zone.")
 		return
+	_reset_surface_frame()
 	_connect_ship_signals()
 	_connect_hazard_signals()
 	_connect_low_flight_signals()
@@ -174,6 +190,7 @@ func _physics_process(delta: float) -> void:
 		return
 	var wind_acceleration: Vector2 = hazard_director.step_physics(delta)
 	environment_feedback.set_wind_acceleration(wind_acceleration)
+	_update_surface_frame()
 	_update_altitude_reference(delta)
 	low_flight_course.step_physics(delta)
 	landing_zone.step_physics(delta)
@@ -269,6 +286,26 @@ func get_landing_zone() -> RedSandLandingZone:
 
 func get_altitude_reference_provider() -> FlightAltitudeReferenceProvider:
 	return _altitude_reference_provider
+
+
+func get_surface_frame_offset_y() -> float:
+	return _surface_frame.offset_y if _surface_frame != null else 0.0
+
+
+func is_surface_frame_acquired() -> bool:
+	return _surface_frame != null and _surface_frame.is_acquired
+
+
+func is_surface_frame_locked() -> bool:
+	return _surface_frame != null and _surface_frame.is_locked
+
+
+func get_surface_frame_predicted_entry_altitude_meters() -> float:
+	return (
+		_surface_frame.predicted_entry_altitude_meters
+		if _surface_frame != null
+		else 0.0
+	)
 
 
 func get_active_segment_index() -> int:
@@ -439,6 +476,10 @@ func restart_from_checkpoint(is_automatic: bool = false) -> bool:
 	_auto_retry_remaining = NO_RETRY_PENDING
 	_clear_camera_shake()
 	_active_segment_index = route_definition.get_segment_index(get_route_distance())
+	if get_route_distance() < route_definition.surface_frame_prepare_start_distance:
+		_reset_surface_frame()
+	else:
+		_sync_surface_frame_offset()
 	_maximum_route_distance = maxf(
 		get_route_distance(),
 		get_active_segment().start_distance
@@ -498,6 +539,7 @@ func _validate_runtime_dependencies() -> bool:
 
 func _enter_segment(segment_index: int) -> void:
 	var segment: FlightRouteSegment = route_definition.segments[segment_index]
+	_update_surface_frame()
 	flight_ship.set_environment_profile(segment.environment_profile, false)
 	hazard_director.set_active_segment(segment.id)
 	environment_feedback.set_segment(segment)
@@ -647,10 +689,88 @@ func _update_altitude_reference(delta: float) -> void:
 		altitude_reference_point,
 		flight_ship,
 		self,
-		delta
+		delta,
+		_surface_frame_raycast_deferred_frames <= 0
+	)
+	_surface_frame_raycast_deferred_frames = maxi(
+		_surface_frame_raycast_deferred_frames - 1,
+		0
 	)
 	_validate_agl_source()
 	_update_altitude_invariant(delta)
+
+
+func _update_surface_frame() -> void:
+	if (
+		_surface_frame == null
+		or flight_ship == null
+		or altitude_reference_point == null
+		or route_definition == null
+		or _surface_frame.is_locked
+	):
+		return
+	var route_distance: float = get_route_distance()
+	if route_distance < route_definition.surface_frame_prepare_start_distance:
+		return
+	var prepare_segment_index: int = route_definition.get_segment_index(
+		route_definition.surface_frame_prepare_start_distance
+	)
+	if _active_segment_index < prepare_segment_index:
+		return
+	var segment: FlightRouteSegment = get_active_segment()
+	if segment == null:
+		return
+	var ship_reference_y: float = to_local(
+		altitude_reference_point.global_position
+	).y
+	var base_ground_y: float = route_definition.get_ground_route_y(
+		route_distance,
+		_active_segment_index
+	)
+	var lock_segment_index: int = route_definition.get_segment_index(
+		route_definition.surface_frame_lock_distance
+	)
+	var lock_ground_y: float = route_definition.get_ground_route_y(
+		route_definition.surface_frame_lock_distance,
+		lock_segment_index
+	)
+	var virtual_altitude: float = (
+		_altitude_reference_provider.get_virtual_altitude_meters_for(
+			_active_segment_index,
+			segment.get_progress(route_distance)
+		)
+	)
+	if _surface_frame.update(
+		route_distance,
+		ship_reference_y,
+		flight_ship.get_vertical_speed(),
+		base_ground_y,
+		lock_ground_y,
+		virtual_altitude
+	):
+		_sync_surface_frame_offset()
+
+
+func _reset_surface_frame() -> void:
+	if _surface_frame == null:
+		return
+	_surface_frame.reset()
+	_sync_surface_frame_offset()
+
+
+func _sync_surface_frame_offset() -> void:
+	var offset_y: float = get_surface_frame_offset_y()
+	if not is_equal_approx(offset_y, _applied_surface_frame_offset_y):
+		_surface_frame_raycast_deferred_frames = (
+			SURFACE_FRAME_RAYCAST_DEFERRED_FRAMES
+		)
+		_applied_surface_frame_offset_y = offset_y
+	if route_visuals != null:
+		route_visuals.set_surface_frame_offset_y(offset_y)
+	if low_flight_course != null:
+		low_flight_course.set_surface_frame_offset_y(offset_y)
+	if landing_zone != null:
+		landing_zone.set_surface_frame_offset_y(offset_y)
 
 
 func _reset_altitude_reference() -> void:
@@ -709,7 +829,7 @@ func _get_canonical_ground_route_y(route_distance: float) -> float:
 	var ground_y: float = route_definition.get_ground_route_y(
 		route_distance,
 		_active_segment_index
-	)
+	) + get_surface_frame_offset_y()
 	if (
 		landing_zone != null
 		and landing_zone.has_altitude_surface_override(route_distance)
@@ -783,7 +903,8 @@ func get_altitude_diagnostic_snapshot() -> String:
 	return (
 		"stage=%d route=%.2f source=%s valid=%s ship_y=%.2f ground_y=%.2f "
 		+ "agl=%.2f raw_ray=%.2f raw_profile=%.2f last=%.2f invalid=%.3f "
-		+ "ray_hit=%s profile=%s blend=%.3f failure=%s"
+		+ "surface=%.2f acquired=%s locked=%s ray_hit=%s profile=%s "
+		+ "blend=%.3f failure=%s"
 	) % [
 		_active_segment_index + 1,
 		_altitude_reference_provider.canonical_route_distance,
@@ -796,6 +917,9 @@ func get_altitude_diagnostic_snapshot() -> String:
 		_altitude_reference_provider.raw_profile_altitude_meters,
 		_altitude_reference_provider.last_valid_agl_meters,
 		_altitude_reference_provider.invalid_duration_seconds,
+		get_surface_frame_offset_y(),
+		is_surface_frame_acquired(),
+		is_surface_frame_locked(),
 		_altitude_reference_provider.get_ground_node_path(),
 		_altitude_reference_provider.terrain_profile_segment_id,
 		_altitude_reference_provider.atmosphere_to_agl_blend,

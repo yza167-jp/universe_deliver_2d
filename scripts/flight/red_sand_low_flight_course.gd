@@ -55,6 +55,7 @@ var _scan_elapsed_seconds: float = 0.0
 var _pulse_count: int = 0
 var _route_hints_enabled: bool = false
 var _high_contrast_enabled: bool = false
+var _surface_frame_offset_y: float = 0.0
 
 
 func _ready() -> void:
@@ -74,6 +75,7 @@ func bind(
 	_altitude_provider = altitude_provider
 	_route_origin_x = route_origin_x
 	position.x = route_origin_x + surface_start_route_distance
+	position.y = _surface_frame_offset_y
 	scale.x = clampf(horizontal_distance_scale, 0.05, 1.0)
 	var validation_errors: PackedStringArray = validate()
 	if not validation_errors.is_empty():
@@ -264,6 +266,17 @@ func get_safe_altitude_y() -> float:
 
 func get_minimum_safe_altitude_meters() -> float:
 	return minimum_safe_altitude_meters
+
+
+func set_surface_frame_offset_y(offset_y: float) -> void:
+	if not is_finite(offset_y):
+		return
+	_surface_frame_offset_y = offset_y
+	position.y = offset_y
+
+
+func get_surface_frame_offset_y() -> float:
+	return _surface_frame_offset_y
 
 
 func get_active_sector_id() -> StringName:

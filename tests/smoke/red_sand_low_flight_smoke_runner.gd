@@ -193,7 +193,9 @@ func _enter_radar_segment(
 			sector.is_scan_visual_visible(),
 			"Fixed radar sector '%s' is not visible during stage 6." % sector.sector_id
 		)
-	await process_frame
+	for _sync_frame: int in 5:
+		await physics_frame
+		route._physics_process(0.0)
 
 
 func course_is_active(course: RedSandLowFlightCourse) -> bool:
@@ -213,7 +215,18 @@ func _test_world_altitude_ignores_facility_roofs(
 		route.get_altitude_reference_provider()
 	)
 	var pipeline_test_x: float = course.to_global(Vector2(7000.0, 0.0)).x
-	ship.global_position = Vector2(pipeline_test_x, 0.0)
+	var pipeline_route_distance: float = pipeline_test_x - route.route_origin_x
+	var ground_y: float = (
+		route.get_route_definition().get_ground_route_y(
+			pipeline_route_distance,
+			RADAR_SEGMENT_INDEX
+		)
+		+ route.get_surface_frame_offset_y()
+	)
+	ship.global_position = Vector2(
+		pipeline_test_x,
+		ground_y - 700.0 - 8.0
+	)
 	route.advance_route_state()
 	route._physics_process(0.25)
 	var altitude_meters: float = provider.get_radar_altitude_meters()

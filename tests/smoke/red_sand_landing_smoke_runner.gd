@@ -80,7 +80,11 @@ func _run_smoke() -> void:
 	)
 	flight_ship.velocity = Vector2(125.0, 4.0)
 	_check(route.advance_route_state(), "Landing stage could not be reached.")
-	route._physics_process(0.0)
+	# Directly crossing the late-stage boundaries moves the shared static terrain
+	# frame. Give PhysicsServer2D the same bounded sync window used by gameplay.
+	for _sync_frame: int in range(5):
+		await physics_frame
+		route._physics_process(0.0)
 	route._process(0.0)
 	var stage_entry_to_center: float = (
 		landing_zone.get_landing_center_route_distance()

@@ -54,6 +54,7 @@ var _last_approach_rotation: float = 0.0
 var _guidance_state_key: StringName = &""
 var _route_hints_visible: bool = false
 var _high_contrast_enabled: bool = false
+var _surface_frame_offset_y: float = 0.0
 
 
 func _ready() -> void:
@@ -81,6 +82,7 @@ func bind(
 	_settings_service = settings_service
 	_route_origin_x = route_origin_x
 	position.x = route_origin_x + landing_center_route_distance
+	position.y = _surface_frame_offset_y
 	var errors: PackedStringArray = validate()
 	if not errors.is_empty():
 		for error: String in errors:
@@ -288,6 +290,17 @@ func get_collision_activation_route_distance() -> float:
 
 func get_recommended_entry_altitude_meters() -> float:
 	return recommended_entry_altitude_meters
+
+
+func set_surface_frame_offset_y(offset_y: float) -> void:
+	if not is_finite(offset_y):
+		return
+	_surface_frame_offset_y = offset_y
+	position.y = offset_y
+
+
+func get_surface_frame_offset_y() -> float:
+	return _surface_frame_offset_y
 
 
 func is_pad_collision_active() -> bool:

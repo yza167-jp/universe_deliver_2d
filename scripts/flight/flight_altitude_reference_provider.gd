@@ -108,13 +108,18 @@ func update_from_canonical_frame(
 	reference_point: Node2D,
 	excluded_body: CollisionObject2D,
 	route_space: Node2D,
-	delta: float
+	delta: float,
+	validate_world_sample: bool = true
 ) -> void:
 	_apply_route_samples(
 		segment_index,
 		segment_progress,
 		route_distance,
-		_sample_world(reference_point, excluded_body, route_space),
+		(
+			_sample_world(reference_point, excluded_body, route_space)
+			if validate_world_sample
+			else TerrainSample.new()
+		),
 		_sample_profile(
 			ship_route_y,
 			profile_ground_y,
@@ -286,6 +291,13 @@ func get_failure_reason() -> StringName:
 
 func has_last_valid_agl() -> bool:
 	return _has_last_valid_agl
+
+
+func get_virtual_altitude_meters_for(
+	segment_index: int,
+	segment_progress: float
+) -> float:
+	return _resolve_virtual_altitude(segment_index, segment_progress)
 
 
 static func resolve_mode(segment_index: int) -> Mode:

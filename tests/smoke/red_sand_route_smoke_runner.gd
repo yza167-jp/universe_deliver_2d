@@ -165,6 +165,12 @@ func _run_smoke() -> void:
 		var velocity_before: Vector2 = flight_ship.velocity
 		var rotation_before: float = flight_ship.rotation
 		_check(route.advance_route_state(), "Route stage boundary was not detected.")
+		if index == 5:
+			# The surface frame moves StaticBody2D nodes during Stage 5→6. Give the
+			# physics server its bounded grace window before requiring the terrain ray.
+			for _sync_frame: int in 5:
+				await physics_frame
+				route._physics_process(0.0)
 		route._process(0.0)
 		if index <= FlightAltitudeReferenceProvider.ORBITAL_FINAL_SEGMENT_INDEX:
 			_check(

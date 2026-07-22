@@ -146,6 +146,8 @@ func _run_smoke() -> void:
 			and route.get_active_segment_index() == index,
 			"Gate C route did not advance continuously to stage %d." % index
 		)
+		if index == 5:
+			await physics_frame
 		if index == 3 and scenic_triggers.size() == 2:
 			ship.velocity = Vector2(140.0, 8.0)
 			route._process(4.1)

@@ -418,15 +418,14 @@ func _run_actual_input_entry(scenario: Dictionary) -> void:
 		return
 	var ship: FlightLabShip = route.get_flight_ship()
 	var provider: FlightAltitudeReferenceProvider = route.get_altitude_reference_provider()
-	ship.position = Vector2(
-		route.route_origin_x + float(scenario["start_distance"]),
-		float(scenario["start_y"])
-	)
+	ship.position = Vector2(route.route_origin_x + 20000.0, float(scenario["start_y"]))
 	ship.velocity = Vector2(170.0, 0.0)
 	ship.rotation = 0.0
 	ship.angular_velocity = 0.0
 	route.advance_route_state()
-	route._update_altitude_reference(STEP_SECONDS)
+	route._physics_process(STEP_SECONDS)
+	await physics_frame
+	ship.position.x = route.route_origin_x + float(scenario["start_distance"])
 	Input.action_press(&"flight_throttle")
 	Input.action_press(scenario["pitch_action"] as StringName)
 	if bool(scenario["boost"]):
@@ -499,6 +498,7 @@ func _test_camera_and_stage_label_independence() -> void:
 	)
 	ship.rotation = 0.0
 	route.advance_route_state()
+	await physics_frame
 	route._reset_altitude_reference()
 	var baseline_altitude: float = provider.get_altitude_meters()
 	var baseline_route_distance: float = provider.canonical_route_distance
@@ -534,6 +534,7 @@ func _test_checkpoint_and_restart_restore() -> void:
 	)
 	ship.velocity = Vector2(180.0, -15.0)
 	route.advance_route_state()
+	await physics_frame
 	route._update_altitude_reference(STEP_SECONDS)
 	var checkpoint_altitude: float = provider.get_altitude_meters()
 	ship.position += Vector2(240.0, 80.0)
