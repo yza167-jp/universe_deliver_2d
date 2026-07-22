@@ -182,6 +182,12 @@ func get_departure_controller() -> StationDepartureController:
 	) as StationDepartureController
 
 
+func get_return_state_controller() -> StationReturnStateController:
+	return get_node_or_null(
+		"StationReturnStateController"
+	) as StationReturnStateController
+
+
 func get_interactables() -> Array[Interactable2D]:
 	var interactables: Array[Interactable2D] = []
 	var interaction_root: Node = get_node_or_null("Interactables")
@@ -406,7 +412,18 @@ func _localize_feature_labels() -> void:
 	_set_label_text("FeatureLabels/WorkbenchLabel", "UI_STATION_WORKBENCH")
 	_set_label_text("FeatureLabels/CockpitEntryLabel", "UI_STATION_COCKPIT_ENTRY")
 	_set_label_text("FeatureLabels/LaoPiRestLabel", "UI_STATION_LAO_PI_REST")
-	_set_label_text("FeatureLabels/MemorabiliaLabel", "UI_STATION_MEMORABILIA_WALL")
+	var memorabilia_key: String = "UI_STATION_MEMORABILIA_WALL"
+	var game_state: GameStateModel
+	if is_inside_tree():
+		game_state = get_node_or_null("/root/GameState") as GameStateModel
+	if (
+		game_state != null
+		and game_state.has_station_upgrade(
+			M0ProgressIds.STATION_UPGRADE_FIRST_DELIVERY_DISPLAY
+		)
+	):
+		memorabilia_key = "UI_STATION_MEMORABILIA_WALL_FILLED"
+	_set_label_text("FeatureLabels/MemorabiliaLabel", memorabilia_key)
 	_set_label_text("FeatureLabels/EntranceLabel", "UI_STATION_ENTRANCE")
 
 

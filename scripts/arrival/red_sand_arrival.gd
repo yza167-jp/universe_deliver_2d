@@ -47,6 +47,7 @@ const PIPE_RUST: Color = Color("8b4e38")
 @onready var _camera: Camera2D = %Camera2D
 @onready var _technician: Interactable2D = %Technician
 @onready var _record_terminal: Interactable2D = %RecordTerminal
+@onready var _return_beacon: Interactable2D = %ReturnBeacon
 @onready var _landing_feedback_label: Label = %LandingFeedbackLabel
 @onready var _objective_label: Label = %ObjectiveLabel
 @onready var _status_panel: PanelContainer = %StatusPanel
@@ -54,6 +55,7 @@ const PIPE_RUST: Color = Color("8b4e38")
 
 var game_state_override: GameStateModel
 var dialogue_ui_override: DialogueUI
+var scene_router_override: SceneRouterService
 
 var _dialogue_ui: DialogueUI
 var _active_dialogue_kind: DialogueKind = DialogueKind.NONE
@@ -135,8 +137,12 @@ func get_record_terminal() -> Interactable2D:
 	return _record_terminal
 
 
+func get_return_beacon() -> Interactable2D:
+	return _return_beacon
+
+
 func get_interactables() -> Array[Interactable2D]:
-	return [_technician, _record_terminal]
+	return [_technician, _record_terminal, _return_beacon]
 
 
 func is_exploration_unlocked() -> bool:
@@ -195,6 +201,8 @@ func _connect_interactions() -> void:
 		_technician.interaction_triggered.connect(_on_technician_interacted)
 	if not _record_terminal.interaction_triggered.is_connected(_on_record_terminal_interacted):
 		_record_terminal.interaction_triggered.connect(_on_record_terminal_interacted)
+	if not _return_beacon.interaction_triggered.is_connected(_on_return_beacon_interacted):
+		_return_beacon.interaction_triggered.connect(_on_return_beacon_interacted)
 
 
 func _start_dialogue(sequence: DialogueSequence, kind: DialogueKind) -> bool:
@@ -267,6 +275,24 @@ func _on_record_terminal_interacted(_actor: Node) -> void:
 	_show_status(&"UI_RED_SAND_ARRIVAL_RECORD_DETAIL")
 
 
+func _on_return_beacon_interacted(_actor: Node) -> void:
+	if not _exploration_is_unlocked or _active_dialogue_kind != DialogueKind.NONE:
+		return
+	var scene_router: SceneRouterService = _resolve_scene_router()
+	if scene_router == null:
+		_show_status(&"UI_RED_SAND_ARRIVAL_STATUS_RETURN_ERROR")
+		return
+	_player.set_input_enabled(false)
+	_player.set_interaction_prompt_suppressed(true)
+	_objective_label.text = tr("UI_RED_SAND_ARRIVAL_OBJECTIVE_RETURNING")
+	if scene_router.request_stage(SceneRouterService.Stage.RESULTS):
+		return
+	_player.set_input_enabled(true)
+	_player.set_interaction_prompt_suppressed(false)
+	_objective_label.text = tr("UI_RED_SAND_ARRIVAL_OBJECTIVE_EXPLORE")
+	_show_status(&"UI_RED_SAND_ARRIVAL_STATUS_RETURN_ERROR")
+
+
 func _record_optional_trigger(trigger_id: StringName) -> void:
 	var run_state: OrderRunState = _get_active_run_state()
 	if run_state != null and not run_state.optional_trigger_ids.has(trigger_id):
@@ -284,6 +310,12 @@ func _resolve_game_state() -> GameStateModel:
 	if game_state_override != null:
 		return game_state_override
 	return get_node_or_null("/root/GameState") as GameStateModel
+
+
+func _resolve_scene_router() -> SceneRouterService:
+	if scene_router_override != null:
+		return scene_router_override
+	return get_node_or_null("/root/SceneRouter") as SceneRouterService
 
 
 func _get_active_run_state() -> OrderRunState:

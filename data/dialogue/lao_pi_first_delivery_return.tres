@@ -1,0 +1,45 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_sequence.gd" id="1_sequence"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_line.gd" id="2_line"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_effect.gd" id="3_effect"]
+[ext_resource type="Resource" path="res://data/characters/lao_pi.tres" id="4_lao_pi"]
+
+[sub_resource type="Resource" id="EffectReturnPendingCleared"]
+script = ExtResource("3_effect")
+effect_id = &"story_red_sand_return_dialogue_pending"
+bool_value = false
+
+[sub_resource type="Resource" id="EffectReturnDialogueCompleted"]
+script = ExtResource("3_effect")
+effect_id = &"story_red_sand_return_dialogue_completed"
+
+[sub_resource type="Resource" id="LineCompanySettlement"]
+script = ExtResource("2_line")
+id = &"return_company_settlement"
+speaker = ExtResource("4_lao_pi")
+text_key = &"DIALOGUE_LAO_PI_RETURN_SETTLEMENT"
+portrait_expression = &"relaxed"
+next_line_id = &"return_relay_reaction"
+
+[sub_resource type="Resource" id="LineRelayReaction"]
+script = ExtResource("2_line")
+id = &"return_relay_reaction"
+speaker = ExtResource("4_lao_pi")
+text_key = &"DIALOGUE_LAO_PI_RETURN_RELAY_REACTION"
+portrait_expression = &"concerned"
+next_line_id = &"return_display"
+
+[sub_resource type="Resource" id="LineDisplay"]
+script = ExtResource("2_line")
+id = &"return_display"
+speaker = ExtResource("4_lao_pi")
+text_key = &"DIALOGUE_LAO_PI_RETURN_DISPLAY"
+portrait_expression = &"friendly"
+effects = [SubResource("EffectReturnPendingCleared"), SubResource("EffectReturnDialogueCompleted")]
+
+[resource]
+script = ExtResource("1_sequence")
+id = &"dialogue_lao_pi_first_delivery_return"
+start_line_id = &"return_company_settlement"
+lines = [SubResource("LineCompanySettlement"), SubResource("LineRelayReaction"), SubResource("LineDisplay")]

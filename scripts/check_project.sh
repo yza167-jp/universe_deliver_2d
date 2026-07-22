@@ -122,6 +122,10 @@ run_step \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --quit-after 4 -- --red-sand-arrival
 
 run_step \
+  "Red Sand results direct debug boot smoke test" \
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --quit-after 4 -- --red-sand-results
+
+run_step \
   "Red Sand eight-stage route orchestration smoke test" \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/red_sand_route_smoke_runner.gd
 
@@ -140,6 +144,10 @@ run_step \
 run_step \
   "Red Sand arrival dialogue, bounded yard, and interaction smoke test" \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/red_sand_arrival_smoke_runner.gd
+
+run_step \
+  "Red Sand settlement, credits, station return, and Lao Pi response smoke test" \
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/red_sand_settlement_smoke_runner.gd
 
 run_step \
   "Red Sand parallax, particles, audio, and dynamic music smoke test" \

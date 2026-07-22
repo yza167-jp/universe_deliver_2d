@@ -1,4 +1,4 @@
-[gd_scene load_steps=31 format=3]
+[gd_scene load_steps=35 format=3]
 
 [ext_resource type="Script" path="res://scripts/station/station_hub.gd" id="1_hub"]
 [ext_resource type="PackedScene" path="res://scenes/station/station_player.tscn" id="2_player"]
@@ -18,6 +18,8 @@
 [ext_resource type="Script" path="res://scripts/station/station_ship_loadout_controller.gd" id="16_ship_loadout_controller"]
 [ext_resource type="Script" path="res://scripts/station/station_departure_controller.gd" id="17_departure_controller"]
 [ext_resource type="Script" path="res://scripts/station/station_modal_coordinator.gd" id="18_modal_coordinator"]
+[ext_resource type="Script" path="res://scripts/station/station_return_state_controller.gd" id="19_return_state"]
+[ext_resource type="Resource" path="res://data/dialogue/lao_pi_first_delivery_return.tres" id="20_return_dialogue"]
 
 [sub_resource type="SystemFont" id="SystemFontStation"]
 font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
@@ -88,6 +90,38 @@ corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleReturnProgress"]
+bg_color = Color(0.0352941, 0.105882, 0.137255, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.466667, 0.788235, 0.768627, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 9.0
+content_margin_top = 5.0
+content_margin_right = 9.0
+content_margin_bottom = 5.0
+
+[sub_resource type="StyleBoxFlat" id="StyleReturnStatus"]
+bg_color = Color(0.0705882, 0.0666667, 0.0980392, 0.97)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.905882, 0.658824, 0.356863, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 12.0
+content_margin_top = 7.0
+content_margin_right = 12.0
+content_margin_bottom = 7.0
 
 [node name="Station" type="Node2D"]
 script = ExtResource("1_hub")
@@ -282,6 +316,28 @@ metadata/state_change_id = &"workbench_upgrade"
 position = Vector2(480, 96)
 metadata/state_change_id = &"station_lighting_upgrade"
 
+[node name="FirstDeliveryDisplay" type="Node2D" parent="StateChangeAnchors"]
+unique_name_in_owner = true
+visible = false
+position = Vector2(652, 380)
+
+[node name="Backing" type="Polygon2D" parent="StateChangeAnchors/FirstDeliveryDisplay"]
+polygon = PackedVector2Array(-21, -15, 21, -15, 21, 15, -21, 15)
+color = Color(0.0823529, 0.164706, 0.270588, 1)
+
+[node name="Frame" type="Line2D" parent="StateChangeAnchors/FirstDeliveryDisplay"]
+points = PackedVector2Array(-21, -15, 21, -15, 21, 15, -21, 15, -21, -15)
+width = 3.0
+default_color = Color(0.905882, 0.658824, 0.356863, 1)
+
+[node name="RelayFragment" type="Polygon2D" parent="StateChangeAnchors/FirstDeliveryDisplay"]
+polygon = PackedVector2Array(-12, -8, 7, -11, 14, -2, 8, 10, -10, 8, -15, 0)
+color = Color(0.466667, 0.788235, 0.768627, 1)
+
+[node name="RelayCore" type="Polygon2D" parent="StateChangeAnchors/FirstDeliveryDisplay"]
+polygon = PackedVector2Array(-5, -3, 5, -5, 8, 2, 2, 6, -7, 4)
+color = Color(0.905882, 0.87451, 0.784314, 1)
+
 [node name="FeatureLabels" type="Control" parent="."]
 layout_mode = 3
 anchors_preset = 0
@@ -415,6 +471,11 @@ completion_sequence = ExtResource("9_complete")
 daily_sequence = ExtResource("10_daily")
 order_accepted_sequence = ExtResource("13_order_accepted")
 active_order_daily_sequence = ExtResource("14_active_order_daily")
+return_sequence = ExtResource("20_return_dialogue")
+
+[node name="StationReturnStateController" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("19_return_state")
 
 [node name="StationOrderTerminalController" type="Node" parent="."]
 unique_name_in_owner = true
@@ -478,6 +539,66 @@ layer = 20
 
 [node name="ShipLoadoutUI" parent="ShipLoadoutUILayer" instance=ExtResource("15_ship_loadout_ui")]
 unique_name_in_owner = true
+
+[node name="ReturnFeedbackLayer" type="CanvasLayer" parent="."]
+layer = 14
+
+[node name="ReturnProgressPanel" type="PanelContainer" parent="ReturnFeedbackLayer"]
+unique_name_in_owner = true
+visible = false
+offset_left = 398.0
+offset_top = 10.0
+offset_right = 632.0
+offset_bottom = 62.0
+theme = SubResource("ThemeStation")
+theme_override_styles/panel = SubResource("StyleReturnProgress")
+
+[node name="Content" type="VBoxContainer" parent="ReturnFeedbackLayer/ReturnProgressPanel"]
+layout_mode = 2
+theme_override_constants/separation = 1
+
+[node name="ReturnCreditLabel" type="Label" parent="ReturnFeedbackLayer/ReturnProgressPanel/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
+theme_override_font_sizes/font_size = 12
+text = "UI_STATION_RETURN_CREDITS_FORMAT"
+horizontal_alignment = 2
+
+[node name="ReturnUpgradeLabel" type="Label" parent="ReturnFeedbackLayer/ReturnProgressPanel/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.87451, 0.784314, 1)
+theme_override_font_sizes/font_size = 11
+text = "UI_STATION_RETURN_UPGRADE"
+horizontal_alignment = 2
+
+[node name="ReturnStatusPanel" type="PanelContainer" parent="ReturnFeedbackLayer"]
+unique_name_in_owner = true
+visible = false
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -235.0
+offset_top = -82.0
+offset_right = 235.0
+offset_bottom = -26.0
+grow_horizontal = 2
+grow_vertical = 0
+theme = SubResource("ThemeStation")
+theme_override_styles/panel = SubResource("StyleReturnStatus")
+
+[node name="ReturnStatusLabel" type="Label" parent="ReturnFeedbackLayer/ReturnStatusPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 12
+text = "UI_STATION_MEMORABILIA_RELAY_DETAIL"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
 
 [node name="DepartureUILayer" type="CanvasLayer" parent="."]
 layer = 25

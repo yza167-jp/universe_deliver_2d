@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3]
+[gd_scene load_steps=18 format=3]
 
 [ext_resource type="Script" path="res://scripts/arrival/red_sand_arrival.gd" id="1_arrival"]
 [ext_resource type="PackedScene" path="res://scenes/station/station_player.tscn" id="2_player"]
@@ -33,6 +33,9 @@ size = Vector2(38, 50)
 
 [sub_resource type="RectangleShape2D" id="ShapeTerminalInteraction"]
 size = Vector2(78, 52)
+
+[sub_resource type="RectangleShape2D" id="ShapeReturnInteraction"]
+size = Vector2(76, 48)
 
 [sub_resource type="StyleBoxFlat" id="StyleHeader"]
 bg_color = Color(0.0705882, 0.0666667, 0.0980392, 0.94)
@@ -201,6 +204,35 @@ color = Color(0.466667, 0.788235, 0.768627, 1)
 polygon = PackedVector2Array(-22, 1, 9, 1, 9, 4, -22, 4)
 color = Color(0.905882, 0.658824, 0.356863, 1)
 
+[node name="ReturnBeacon" type="Area2D" parent="Interactables" groups=["arrival_interactable"]]
+unique_name_in_owner = true
+position = Vector2(276, 282)
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("3_interactable")
+interaction_id = &"red_sand_return_beacon"
+prompt_key = &"UI_RED_SAND_ARRIVAL_INTERACT_RETURN"
+interaction_priority = 90
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Interactables/ReturnBeacon"]
+shape = SubResource("ShapeReturnInteraction")
+
+[node name="Base" type="Polygon2D" parent="Interactables/ReturnBeacon"]
+polygon = PackedVector2Array(-23, 11, 23, 11, 29, 18, -29, 18)
+color = Color(0.141176, 0.192157, 0.227451, 1)
+
+[node name="Beacon" type="Polygon2D" parent="Interactables/ReturnBeacon"]
+polygon = PackedVector2Array(-16, -8, 16, -8, 20, 10, -20, 10)
+color = Color(0.0352941, 0.105882, 0.137255, 1)
+
+[node name="Signal" type="Polygon2D" parent="Interactables/ReturnBeacon"]
+polygon = PackedVector2Array(-10, -3, 10, -3, 15, 4, -15, 4)
+color = Color(0.466667, 0.788235, 0.768627, 1)
+
+[node name="Indicator" type="Polygon2D" parent="Interactables/ReturnBeacon"]
+polygon = PackedVector2Array(-4, -17, 4, -17, 4, -9, -4, -9)
+color = Color(0.905882, 0.658824, 0.356863, 1)
+
 [node name="WorldLabels" type="Control" parent="."]
 layout_mode = 3
 anchors_preset = 0
@@ -233,6 +265,19 @@ theme_override_colors/font_outline_color = Color(0.0705882, 0.0666667, 0.0980392
 theme_override_constants/outline_size = 3
 theme_override_font_sizes/font_size = 12
 text = "UI_RED_SAND_ARRIVAL_RECORD_LABEL"
+horizontal_alignment = 1
+
+[node name="ReturnLabel" type="Label" parent="WorldLabels"]
+layout_mode = 0
+offset_left = 222.0
+offset_top = 238.0
+offset_right = 330.0
+offset_bottom = 257.0
+theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
+theme_override_colors/font_outline_color = Color(0.0705882, 0.0666667, 0.0980392, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 11
+text = "UI_RED_SAND_ARRIVAL_RETURN_LABEL"
 horizontal_alignment = 1
 
 [node name="ArrivalUI" type="CanvasLayer" parent="."]

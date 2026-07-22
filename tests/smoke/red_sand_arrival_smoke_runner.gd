@@ -73,6 +73,11 @@ func _run_smoke() -> void:
 		_arrival.get_objective_text() == tr("UI_RED_SAND_ARRIVAL_OBJECTIVE_EXPLORE"),
 		"Arrival exploration objective is missing or not localized."
 	)
+	_check(_arrival.get_return_beacon() != null, "Arrival return beacon is missing.")
+	_check(
+		_arrival.get_interactables().size() == 3,
+		"Arrival must expose the NPC, record terminal, and return beacon only."
+	)
 	_check(
 		is_equal_approx(_arrival.get_area_width_in_viewports(), 1.5),
 		"Arrival yard must remain a clearly bounded 1.5-screen area."

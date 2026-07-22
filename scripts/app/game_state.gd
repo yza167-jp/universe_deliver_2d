@@ -7,6 +7,7 @@ signal order_status_changed(order_id: StringName, status: OrderStatus)
 signal ship_configuration_changed
 signal departure_readiness_changed(confirmed: bool)
 signal travel_state_changed(state: TravelState, destination_id: StringName)
+signal progress_changed(credits: int)
 
 enum OrderStatus {
 	NOT_ACCEPTED,
@@ -29,6 +30,7 @@ const ORDER_ERROR_ACTIVE_ORDER: StringName = &"active_order"
 const ORDER_ERROR_ALREADY_ACCEPTED: StringName = &"already_accepted"
 const ORDER_ERROR_ALREADY_COMPLETED: StringName = &"already_completed"
 const ORDER_ERROR_NOT_ACTIVE: StringName = &"not_active"
+const ORDER_ERROR_INVALID_SETTLEMENT: StringName = &"invalid_settlement"
 
 const LOADOUT_ERROR_MISSING_DATA: StringName = &"missing_data"
 const LOADOUT_ERROR_ORDER_NOT_ACCEPTED: StringName = &"order_not_accepted"
@@ -51,6 +53,8 @@ var ship_configuration: Dictionary[StringName, StringName] = {}
 var story_flags: Dictionary[StringName, bool] = {}
 var read_dialogue_ids: Dictionary[StringName, bool] = {}
 var completed_order_ids: Dictionary[StringName, bool] = {}
+var credits: int = 0
+var station_upgrade_ids: Dictionary[StringName, bool] = {}
 var last_order_error: StringName = &""
 var departure_confirmed: bool = false
 var last_loadout_error: StringName = &""
@@ -73,6 +77,8 @@ func reset_runtime_state() -> void:
 	story_flags.clear()
 	read_dialogue_ids.clear()
 	completed_order_ids.clear()
+	credits = 0
+	station_upgrade_ids.clear()
 	last_order_error = &""
 	departure_confirmed = false
 	last_loadout_error = &""
@@ -150,8 +156,53 @@ func complete_current_order(order: OrderDefinition) -> bool:
 	return true
 
 
+## Commits the one-way main-order reward after the result has been calculated.
+func settle_current_order(
+	order: OrderDefinition,
+	settlement: OrderSettlementResult,
+	station_upgrade_id: StringName,
+	settlement_flags: Array[StringName] = []
+) -> bool:
+	last_order_error = &""
+	if (
+		not _has_required_order_data(order)
+		or settlement == null
+		or settlement.order_id != order.id
+		or settlement.total_reward < 0
+		or station_upgrade_id.is_empty()
+	):
+		last_order_error = ORDER_ERROR_INVALID_SETTLEMENT
+		return false
+	if has_completed_order(order.id):
+		last_order_error = ORDER_ERROR_ALREADY_COMPLETED
+		return false
+	if current_order_id != order.id:
+		last_order_error = ORDER_ERROR_NOT_ACTIVE
+		return false
+	if not complete_current_order(order):
+		return false
+
+	credits += settlement.total_reward
+	station_upgrade_ids[station_upgrade_id] = true
+	for settlement_flag: StringName in settlement_flags:
+		if not settlement_flag.is_empty():
+			set_story_flag(settlement_flag)
+	destination_id = &""
+	cargo_id = &""
+	progress_changed.emit(credits)
+	return true
+
+
 func has_completed_order(order_id: StringName) -> bool:
 	return not order_id.is_empty() and completed_order_ids.get(order_id, false)
+
+
+func get_credits() -> int:
+	return credits
+
+
+func has_station_upgrade(upgrade_id: StringName) -> bool:
+	return not upgrade_id.is_empty() and station_upgrade_ids.get(upgrade_id, false)
 
 
 func get_active_order_run_state() -> OrderRunState:

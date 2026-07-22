@@ -96,5 +96,21 @@ func run() -> Array[String]:
 		"Release builds must ignore the direct Red Sand arrival argument.",
 		failures
 	)
+	expect_true(
+		UniverseDeliverApp.should_start_in_red_sand_results(
+			true,
+			PackedStringArray([UniverseDeliverApp.DEBUG_RED_SAND_RESULTS_ARGUMENT])
+		),
+		"The explicit Red Sand results argument must enable the direct debug route.",
+		failures
+	)
+	expect_true(
+		not UniverseDeliverApp.should_start_in_red_sand_results(
+			false,
+			PackedStringArray([UniverseDeliverApp.DEBUG_RED_SAND_RESULTS_ARGUMENT])
+		),
+		"Release builds must ignore the direct Red Sand results argument.",
+		failures
+	)
 	main_scene.free()
 	return failures

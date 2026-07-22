@@ -10,6 +10,7 @@ const SEQUENCE_PATHS: PackedStringArray = [
 	"res://data/dialogue/lao_pi_station_daily.tres",
 	"res://data/dialogue/lao_pi_order_accepted.tres",
 	"res://data/dialogue/lao_pi_active_order_daily.tres",
+	"res://data/dialogue/lao_pi_first_delivery_return.tres",
 ]
 
 var _flow_events: Array[StringName] = []
@@ -56,6 +57,7 @@ func run() -> Array[String]:
 		failures
 	)
 	_check_completion_effects(failures)
+	_check_return_effects(failures)
 	return failures
 
 
@@ -76,6 +78,23 @@ func _check_completion_effects(failures: Array[String]) -> void:
 	expect_true(
 		_flow_events.has(StationTutorialController.FLOW_COMPLETE),
 		"Completion dialogue must emit its station flow event.",
+		failures
+	)
+	game_state.free()
+
+
+func _check_return_effects(failures: Array[String]) -> void:
+	var sequence: DialogueSequence = load(SEQUENCE_PATHS[7]) as DialogueSequence
+	var game_state: GameStateModel = GameStateModel.new()
+	game_state.set_story_flag(M0ProgressIds.STORY_RETURN_DIALOGUE_PENDING)
+	var runtime: DialogueRuntime = DialogueRuntime.new()
+	expect_true(runtime.start(sequence, game_state), "Return dialogue must start.", failures)
+	while runtime.is_running():
+		expect_true(runtime.advance(), "Return dialogue must advance.", failures)
+	expect_true(
+		not game_state.has_story_flag(M0ProgressIds.STORY_RETURN_DIALOGUE_PENDING)
+		and game_state.has_story_flag(M0ProgressIds.STORY_RETURN_DIALOGUE_COMPLETED),
+		"Completing the return dialogue must clear its pending flag exactly once.",
 		failures
 	)
 	game_state.free()

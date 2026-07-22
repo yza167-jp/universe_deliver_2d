@@ -5,6 +5,7 @@ const DEBUG_UI_ARGUMENT: String = "--show-debug-ui"
 const DEBUG_FLIGHT_LAB_ARGUMENT: String = "--flight-lab"
 const DEBUG_RED_SAND_ROUTE_ARGUMENT: String = "--red-sand-route"
 const DEBUG_RED_SAND_ARRIVAL_ARGUMENT: String = "--red-sand-arrival"
+const DEBUG_RED_SAND_RESULTS_ARGUMENT: String = "--red-sand-results"
 const FLIGHT_LAB_SCENE_PATH: String = "res://scenes/flight/flight_lab.tscn"
 const RED_SAND_ORDER_PATH: String = "res://data/orders/red_sand_m0.tres"
 const ASTEROID_LASER_PATH: String = "res://data/modules/asteroid_laser.tres"
@@ -43,6 +44,8 @@ func _ready() -> void:
 		call_deferred("_open_direct_red_sand_route")
 	elif should_start_in_red_sand_arrival(OS.is_debug_build(), user_arguments):
 		call_deferred("_open_direct_red_sand_arrival")
+	elif should_start_in_red_sand_results(OS.is_debug_build(), user_arguments):
+		call_deferred("_open_direct_red_sand_results")
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -91,25 +94,39 @@ func _open_direct_red_sand_route() -> void:
 
 
 func _open_direct_red_sand_arrival() -> void:
+	if not _prepare_red_sand_debug_result():
+		return
+	if not scene_router.debug_switch_to_stage(SceneRouterService.Stage.ARRIVAL):
+		push_error("App could not open Red Sand arrival: %s" % scene_router.last_error)
+
+
+func _open_direct_red_sand_results() -> void:
+	if not _prepare_red_sand_debug_result():
+		return
+	if not scene_router.debug_switch_to_stage(SceneRouterService.Stage.RESULTS):
+		push_error("App could not open Red Sand results: %s" % scene_router.last_error)
+
+
+func _prepare_red_sand_debug_result() -> bool:
 	var game_state: GameStateModel = get_node_or_null("/root/GameState") as GameStateModel
 	var order: OrderDefinition = load(RED_SAND_ORDER_PATH) as OrderDefinition
 	var laser_module: ShipModuleDefinition = load(ASTEROID_LASER_PATH) as ShipModuleDefinition
 	if game_state == null or order == null or laser_module == null:
-		push_error("App could not prepare the Red Sand arrival debug state.")
-		return
+		push_error("App could not prepare the Red Sand result debug state.")
+		return false
 	game_state.reset_runtime_state()
 	if not game_state.accept_order(order) or not game_state.equip_ship_module(laser_module):
-		push_error("App could not seed the Red Sand arrival order or loadout.")
-		return
+		push_error("App could not seed the Red Sand result order or loadout.")
+		return false
 	var run_state: OrderRunState = game_state.get_active_order_run_state()
 	if run_state == null:
-		push_error("App could not seed the Red Sand arrival order result.")
-		return
+		push_error("App could not seed the Red Sand order result.")
+		return false
 	run_state.entry_style = FlightStyleTracker.STYLE_BALANCED
 	run_state.cargo_integrity = 92.0
 	run_state.record_landing_result(OrderRunState.LANDING_RESULT_SMOOTH, 0.0)
-	if not scene_router.debug_switch_to_stage(SceneRouterService.Stage.ARRIVAL):
-		push_error("App could not open Red Sand arrival: %s" % scene_router.last_error)
+	game_state.set_story_flag(StationTutorialController.COMPLETION_FLAG)
+	return true
 
 
 func toggle_fullscreen() -> bool:
@@ -156,3 +173,10 @@ static func should_start_in_red_sand_arrival(
 	user_arguments: PackedStringArray
 ) -> bool:
 	return is_debug_build and user_arguments.has(DEBUG_RED_SAND_ARRIVAL_ARGUMENT)
+
+
+static func should_start_in_red_sand_results(
+	is_debug_build: bool,
+	user_arguments: PackedStringArray
+) -> bool:
+	return is_debug_build and user_arguments.has(DEBUG_RED_SAND_RESULTS_ARGUMENT)

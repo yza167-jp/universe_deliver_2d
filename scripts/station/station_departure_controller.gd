@@ -10,6 +10,7 @@ enum FlowState {
 	WAIT_FOR_ORDER,
 	WAIT_FOR_LOADOUT,
 	READY_FOR_COCKPIT,
+	FIRST_DELIVERY_COMPLETE,
 }
 
 const COCKPIT_LABEL_DEFAULT_COLOR: Color = Color("e7a85b")
@@ -57,7 +58,11 @@ func _notification(what: int) -> void:
 func get_flow_state() -> FlowState:
 	if _tutorial_controller == null or not _tutorial_controller.is_tutorial_complete():
 		return FlowState.WAIT_FOR_TUTORIAL
-	if _game_state == null or _game_state.current_order_id.is_empty():
+	if _game_state == null:
+		return FlowState.WAIT_FOR_ORDER
+	if _game_state.current_order_id.is_empty():
+		if _game_state.has_story_flag(M0ProgressIds.STORY_FIRST_DELIVERY_SETTLED):
+			return FlowState.FIRST_DELIVERY_COMPLETE
 		return FlowState.WAIT_FOR_ORDER
 	if not _game_state.departure_confirmed:
 		return FlowState.WAIT_FOR_LOADOUT
@@ -236,6 +241,8 @@ func _on_cockpit_entry_interacted(_actor: Node) -> void:
 			_show_temporary_objective("UI_STATION_COCKPIT_BLOCKED_LOADOUT")
 		FlowState.READY_FOR_COCKPIT:
 			_open_departure_gate()
+		FlowState.FIRST_DELIVERY_COMPLETE:
+			_show_temporary_objective("UI_STATION_OBJECTIVE_FIRST_DELIVERY_COMPLETE")
 
 
 func _open_departure_gate() -> void:
@@ -295,6 +302,9 @@ func _refresh_route_guidance() -> void:
 			prompt_key = &"UI_INTERACTION_COCKPIT_ENTRY_READY"
 			cockpit_label_key = "UI_STATION_COCKPIT_ENTRY_READY"
 			cockpit_label_color = COCKPIT_LABEL_READY_COLOR
+		FlowState.FIRST_DELIVERY_COMPLETE:
+			objective_key = "UI_STATION_OBJECTIVE_FIRST_DELIVERY_COMPLETE"
+			prompt_key = &"UI_INTERACTION_COCKPIT_ENTRY_ORDER_COMPLETE"
 		_:
 			return
 	_objective_root.visible = true

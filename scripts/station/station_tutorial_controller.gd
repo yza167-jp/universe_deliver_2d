@@ -29,6 +29,7 @@ const DIALOGUE_UI_SCENE: PackedScene = preload("res://scenes/narrative/dialogue_
 @export var daily_sequence: DialogueSequence
 @export var order_accepted_sequence: DialogueSequence
 @export var active_order_daily_sequence: DialogueSequence
+@export var return_sequence: DialogueSequence
 
 var _stage: Stage = Stage.BOOTSTRAP
 var _progress: StationTutorialProgress
@@ -135,6 +136,7 @@ func _initialize_tutorial() -> void:
 	if already_completed:
 		_player.set_input_enabled(true)
 		_set_stage(Stage.COMPLETE)
+		call_deferred("_begin_return_dialogue_if_pending")
 		return
 	_start_dialogue(intro_sequence)
 
@@ -173,7 +175,9 @@ func _on_lao_pi_interacted(_actor: Node) -> void:
 		return
 	if _stage == Stage.COMPLETE:
 		var context_sequence: DialogueSequence = daily_sequence
-		if _game_state != null and not _game_state.current_order_id.is_empty():
+		if _has_pending_return_dialogue():
+			context_sequence = return_sequence
+		elif _game_state != null and not _game_state.current_order_id.is_empty():
 			context_sequence = active_order_daily_sequence
 		_start_dialogue(context_sequence)
 		return
@@ -281,10 +285,24 @@ func _is_station_context_dialogue(sequence_id: StringName) -> bool:
 		daily_sequence,
 		order_accepted_sequence,
 		active_order_daily_sequence,
+		return_sequence,
 	]:
 		if sequence != null and sequence_id == sequence.id:
 			return true
 	return false
+
+
+func _begin_return_dialogue_if_pending() -> void:
+	if _stage == Stage.COMPLETE and _has_pending_return_dialogue():
+		_start_dialogue(return_sequence)
+
+
+func _has_pending_return_dialogue() -> bool:
+	return (
+		_game_state != null
+		and return_sequence != null
+		and _game_state.has_story_flag(M0ProgressIds.STORY_RETURN_DIALOGUE_PENDING)
+	)
 
 
 func _set_stage(new_stage: Stage) -> void:
