@@ -3,10 +3,7 @@ extends Node2D
 
 const FLOOR_BODY_DEPTH: float = 600.0
 const STAGE_LABEL_Y: float = 94.0
-const ATMOSPHERE_SEGMENT_INDEX: int = 3
-const STORM_SEGMENT_INDEX: int = 4
-const LOWER_CLOUDS_SEGMENT_INDEX: int = 5
-const PLANET_HORIZON_TRANSITION_SECONDS: float = 0.9
+const LOW_ALTITUDE_SEGMENT_INDEX: int = 5
 const PLANET_CURVATURE_SCALE: float = 5.8
 const PLANET_CURVATURE_POSITION: Vector2 = Vector2(350.0, 620.0)
 
@@ -40,8 +37,7 @@ const PLANET_CURVATURE_POSITION: Vector2 = Vector2(350.0, 620.0)
 
 var _route_definition: FlightRouteDefinition
 var _route_origin_x: float = 0.0
-var _last_segment_index: int = -1
-var _planet_transition_elapsed: float = 0.0
+var _orbit_transition: RedSandOrbitTransitionModel
 var _planet_alpha: float = 1.0
 var _horizon_alpha: float = 0.0
 
@@ -59,30 +55,28 @@ func configure(
 		return false
 	_route_definition = route_definition
 	_route_origin_x = route_origin_x
+	_orbit_transition = _create_orbit_transition()
 	_build_graybox_route()
 	reset_to_distance(0.0)
 	return true
 
 
-func update_visuals(route_distance: float, delta: float = 0.0) -> void:
-	if _route_definition == null or _planet_anchor == null:
+func update_visuals(route_distance: float, _delta: float = 0.0) -> void:
+	if (
+		_route_definition == null
+		or _planet_anchor == null
+		or _orbit_transition == null
+	):
 		return
-	var progress: float = _route_definition.get_overall_progress(route_distance)
-	var segment_index: int = _route_definition.get_segment_index(route_distance)
-	var segment: FlightRouteSegment = _route_definition.get_segment(route_distance)
+	_orbit_transition.advance_to_distance(route_distance)
+	var visual_distance: float = _orbit_transition.get_route_distance()
+	var progress: float = _route_definition.get_overall_progress(visual_distance)
+	var segment_index: int = _route_definition.get_segment_index(visual_distance)
+	var segment: FlightRouteSegment = _route_definition.get_segment(visual_distance)
 	if segment == null:
 		return
-	var segment_progress: float = segment.get_progress(route_distance)
-	if segment_index != _last_segment_index:
-		_begin_planet_stage(segment_index)
-		_last_segment_index = segment_index
-	var planet_scale: float = _route_definition.get_planet_scale(route_distance)
-	_update_planet_transition(
-		maxf(delta, 0.0),
-		segment_index,
-		segment_progress
-	)
-	_apply_planet_transform(segment_index, segment_progress, planet_scale)
+	var segment_progress: float = segment.get_progress(visual_distance)
+	_apply_orbit_transition(visual_distance, segment_index, segment_progress)
 	_planet_anchor.modulate.a = _planet_alpha
 	_planet_anchor.visible = _planet_alpha > 0.001
 	if _atmosphere_horizon != null:
@@ -109,21 +103,9 @@ func update_visuals(route_distance: float, delta: float = 0.0) -> void:
 
 
 func reset_to_distance(route_distance: float) -> void:
-	if _route_definition == null:
+	if _route_definition == null or _orbit_transition == null:
 		return
-	var segment_index: int = _route_definition.get_segment_index(route_distance)
-	var segment: FlightRouteSegment = _route_definition.get_segment(route_distance)
-	_last_segment_index = segment_index
-	_planet_transition_elapsed = 0.0
-	_planet_alpha = 1.0
-	_horizon_alpha = 0.0
-	if segment_index == ATMOSPHERE_SEGMENT_INDEX and segment != null:
-		if segment.get_progress(route_distance) > 0.02:
-			_planet_transition_elapsed = PLANET_HORIZON_TRANSITION_SECONDS
-	elif segment_index >= STORM_SEGMENT_INDEX:
-		_planet_transition_elapsed = PLANET_HORIZON_TRANSITION_SECONDS
-		_planet_alpha = 0.0
-		_horizon_alpha = 1.0 if segment_index <= LOWER_CLOUDS_SEGMENT_INDEX else 0.0
+	_orbit_transition.reset_to_distance(route_distance)
 	update_visuals(route_distance, 0.0)
 
 
@@ -146,11 +128,19 @@ func get_atmosphere_horizon_alpha() -> float:
 
 
 func get_planet_transition_progress() -> float:
-	return clampf(
-		_planet_transition_elapsed / PLANET_HORIZON_TRANSITION_SECONDS,
-		0.0,
-		1.0
+	return 0.0 if _orbit_transition == null else _orbit_transition.get_progress()
+
+
+func get_atmosphere_transition_progress() -> float:
+	return (
+		0.0
+		if _orbit_transition == null
+		else _orbit_transition.get_atmosphere_progress()
 	)
+
+
+func get_visual_route_distance() -> float:
+	return 0.0 if _orbit_transition == null else _orbit_transition.get_route_distance()
 
 
 func get_terrain_surface_stage_indices() -> PackedInt32Array:
@@ -165,78 +155,45 @@ func is_full_planet_visible() -> bool:
 	return _planet_anchor != null and _planet_anchor.visible
 
 
-func _begin_planet_stage(segment_index: int) -> void:
-	if segment_index < ATMOSPHERE_SEGMENT_INDEX:
-		_planet_alpha = 1.0
-		_horizon_alpha = 0.0
-		_planet_transition_elapsed = 0.0
-	elif segment_index == ATMOSPHERE_SEGMENT_INDEX:
-		_planet_alpha = 1.0
-		_horizon_alpha = 0.0
-		_planet_transition_elapsed = 0.0
-	else:
-		_planet_alpha = 0.0
-		_horizon_alpha = 1.0 if segment_index <= LOWER_CLOUDS_SEGMENT_INDEX else 0.0
-		_planet_transition_elapsed = PLANET_HORIZON_TRANSITION_SECONDS
-
-
-func _update_planet_transition(
-	delta: float,
+func _apply_orbit_transition(
+	route_distance: float,
 	segment_index: int,
 	segment_progress: float
 ) -> void:
-	if segment_index < ATMOSPHERE_SEGMENT_INDEX:
+	if route_distance < RedSandOrbitTransitionModel.TRANSITION_START_DISTANCE:
+		var route_planet_scale: float = _route_definition.get_planet_scale(route_distance)
+		_planet_anchor.scale = Vector2.ONE * route_planet_scale
+		_planet_anchor.position = _get_planet_position(segment_index, segment_progress)
 		_planet_alpha = 1.0
 		_horizon_alpha = 0.0
 		return
-	if segment_index == ATMOSPHERE_SEGMENT_INDEX:
-		_planet_transition_elapsed = minf(
-			_planet_transition_elapsed + delta,
-			PLANET_HORIZON_TRANSITION_SECONDS
-		)
-		var transition_progress: float = get_planet_transition_progress()
-		_horizon_alpha = smoothstep(0.0, 0.72, transition_progress)
-		_planet_alpha = 1.0 - smoothstep(0.52, 1.0, transition_progress)
-		return
-	if segment_index == STORM_SEGMENT_INDEX:
-		_planet_alpha = 0.0
-		_horizon_alpha = 1.0
-		return
-	if segment_index == LOWER_CLOUDS_SEGMENT_INDEX:
-		_planet_alpha = 0.0
+
+	_planet_anchor.position = _orbit_transition.get_planet_position()
+	_planet_anchor.scale = Vector2.ONE * _orbit_transition.get_planet_scale()
+	_planet_alpha = _orbit_transition.get_planet_alpha()
+	_horizon_alpha = _orbit_transition.get_atmosphere_progress()
+	if segment_index == LOW_ALTITUDE_SEGMENT_INDEX:
 		_horizon_alpha = 1.0 - smoothstep(0.35, 1.0, segment_progress)
-		return
-	_planet_alpha = 0.0
-	_horizon_alpha = 0.0
+	elif segment_index > LOW_ALTITUDE_SEGMENT_INDEX:
+		_horizon_alpha = 0.0
 
 
-func _apply_planet_transform(
-	segment_index: int,
-	segment_progress: float,
-	route_planet_scale: float
-) -> void:
-	if segment_index < ATMOSPHERE_SEGMENT_INDEX:
-		_planet_anchor.scale = Vector2.ONE * route_planet_scale
-		_planet_anchor.position = _get_planet_position(segment_index, segment_progress)
-		return
-	if segment_index == ATMOSPHERE_SEGMENT_INDEX:
-		var transition_progress: float = smoothstep(
-			0.0,
-			1.0,
-			get_planet_transition_progress()
-		)
-		_planet_anchor.scale = Vector2.ONE * lerpf(
-			route_planet_scale,
-			PLANET_CURVATURE_SCALE,
-			transition_progress
-		)
-		_planet_anchor.position = _get_planet_position(
-			segment_index,
-			segment_progress
-		).lerp(PLANET_CURVATURE_POSITION, transition_progress)
-		return
-	_planet_anchor.scale = Vector2.ONE * PLANET_CURVATURE_SCALE
-	_planet_anchor.position = PLANET_CURVATURE_POSITION
+func _create_orbit_transition() -> RedSandOrbitTransitionModel:
+	var start_distance: float = RedSandOrbitTransitionModel.TRANSITION_START_DISTANCE
+	var start_segment_index: int = _route_definition.get_segment_index(start_distance)
+	var start_segment: FlightRouteSegment = _route_definition.get_segment(start_distance)
+	if start_segment == null:
+		return null
+	var start_position: Vector2 = _get_planet_position(
+		start_segment_index,
+		start_segment.get_progress(start_distance)
+	)
+	return RedSandOrbitTransitionModel.new(
+		start_position,
+		_route_definition.get_planet_scale(start_distance),
+		PLANET_CURVATURE_POSITION,
+		PLANET_CURVATURE_SCALE
+	)
 
 
 func _get_planet_position(segment_index: int, segment_progress: float) -> Vector2:
@@ -355,7 +312,10 @@ func _build_terrain_surface(
 
 	var floor_body: StaticBody2D = StaticBody2D.new()
 	floor_body.name = "FloorBody%02d" % (index + 1)
-	floor_body.collision_layer = FlightWeaponRules.WORLD_COLLISION_LAYER
+	floor_body.collision_layer = (
+		FlightWeaponRules.WORLD_COLLISION_LAYER
+		| FlightAltitudeReferenceProvider.ALTITUDE_REFERENCE_COLLISION_LAYER
+	)
 	floor_body.collision_mask = 0
 	floor_body.set_meta(&"route_segment_index", index)
 	var floor_collision: CollisionPolygon2D = CollisionPolygon2D.new()
@@ -386,12 +346,15 @@ func _build_segment_landmarks(segment: FlightRouteSegment, index: int) -> void:
 			_build_guide_lines(segment, index, 3, Color(0.462745, 0.945098, 1.0, 0.28))
 		3:
 			_build_guide_lines(segment, index, 5, Color(0.905882, 0.658824, 0.356863, 0.3))
-		4, 5:
+		4:
 			_build_cloud_silhouettes(segment, index)
-		6:
+		5:
+			_build_cloud_silhouettes(segment, index)
 			_build_facility_silhouettes(segment, index)
+		6:
+			_build_landing_guides(segment, index, 4)
 		7:
-			_build_landing_guides(segment, index)
+			_build_landing_guides(segment, index, 8)
 
 
 func _build_asteroid_silhouettes(segment: FlightRouteSegment, index: int) -> void:
@@ -506,12 +469,17 @@ func _build_facility_silhouettes(segment: FlightRouteSegment, index: int) -> voi
 	add_child(container)
 
 
-func _build_landing_guides(segment: FlightRouteSegment, index: int) -> void:
+func _build_landing_guides(
+	segment: FlightRouteSegment,
+	index: int,
+	marker_count: int
+) -> void:
 	var container: Node2D = Node2D.new()
 	container.name = "LandingGuides%02d" % (index + 1)
 	container.z_index = 1
-	var spacing: float = segment.get_length() / 9.0
-	for marker_index: int in 8:
+	var safe_marker_count: int = maxi(marker_count, 1)
+	var spacing: float = segment.get_length() / float(safe_marker_count + 1)
+	for marker_index: int in safe_marker_count:
 		var marker_x: float = (
 			_route_origin_x
 			+ segment.start_distance

@@ -3,9 +3,7 @@ extends Area2D
 
 @export var sector_id: StringName = &"red_sand_radar_sector"
 @export_range(320.0, 20000.0, 1.0, "or_greater") var sector_width: float = 3200.0
-@export_range(-200.0, 800.0, 1.0) var safe_altitude_y: float = 350.0
-@export_range(1.0, 500.0, 1.0, "or_greater") var full_exposure_height: float = 120.0
-@export_range(0.1, 4.0, 0.05, "or_greater") var acquire_rate_multiplier: float = 1.0
+@export_range(-200.0, 800.0, 1.0) var safe_boundary_y: float = 220.0
 @export_range(-200.0, 800.0, 1.0) var emitter_y: float = 480.0
 
 @onready var _collision_shape: CollisionShape2D = %CollisionShape2D
@@ -13,6 +11,7 @@ extends Area2D
 @onready var _safe_boundary: Line2D = %SafeBoundary
 @onready var _sweep_line: Line2D = %SweepLine
 @onready var _emitter_visual: Node2D = %EmitterVisual
+@onready var _pulse_visual: Polygon2D = %Pulse
 
 
 func _ready() -> void:
@@ -26,33 +25,22 @@ func validate() -> PackedStringArray:
 		errors.append("Radar sector ID is empty.")
 	if sector_width < 320.0:
 		errors.append("Radar sector '%s' is too narrow." % sector_id)
-	if full_exposure_height <= 0.0:
-		errors.append("Radar sector '%s' has no altitude transition." % sector_id)
-	if acquire_rate_multiplier <= 0.0:
-		errors.append("Radar sector '%s' has no acquisition rate." % sector_id)
+	if safe_boundary_y >= emitter_y:
+		errors.append("Radar sector '%s' must scan upward from its emitter." % sector_id)
 	return errors
 
 
 func contains_global_point(global_point: Vector2) -> bool:
 	var local_point: Vector2 = to_local(global_point)
-	return (
-		absf(local_point.x) <= sector_width * 0.5
-		and local_point.y >= -420.0
-		and local_point.y <= 780.0
-	)
+	return absf(local_point.x) <= sector_width * 0.5
 
 
-func calculate_exposure(global_point: Vector2) -> float:
-	if not contains_global_point(global_point):
-		return 0.0
-	return FlightRadarModel.calculate_altitude_exposure(
-		global_point.y,
-		safe_altitude_y,
-		full_exposure_height
-	)
-
-
-func set_tracking_visual(active: bool, lock_risk: float, elapsed_seconds: float) -> void:
+func set_tracking_visual(
+	active: bool,
+	lock_risk: float,
+	elapsed_seconds: float,
+	pulse_active: bool = false
+) -> void:
 	var safe_risk: float = clampf(lock_risk, 0.0, 1.0)
 	if _scan_band != null:
 		_scan_band.visible = active
@@ -69,11 +57,26 @@ func set_tracking_visual(active: bool, lock_risk: float, elapsed_seconds: float)
 		)
 		_sweep_line.modulate.a = 0.42 + safe_risk * 0.58
 	if _emitter_visual != null:
+		_emitter_visual.visible = active
 		_emitter_visual.modulate = (
 			Color(1.0, 0.42, 0.32, 1.0)
 			if safe_risk >= 1.0
 			else Color(1.0, 0.78, 0.42, 0.88 if active else 0.58)
 		)
+	if _pulse_visual != null:
+		_pulse_visual.scale = Vector2.ONE * (1.75 if pulse_active else 1.0)
+		_pulse_visual.modulate.a = 1.0 if pulse_active else 0.72
+
+
+func is_scan_visual_visible() -> bool:
+	return (
+		_scan_band != null
+		and _scan_band.visible
+		and _safe_boundary != null
+		and _safe_boundary.visible
+		and _emitter_visual != null
+		and _emitter_visual.visible
+	)
 
 
 func _configure_geometry() -> void:
@@ -85,20 +88,20 @@ func _configure_geometry() -> void:
 		_collision_shape.position.y = 180.0
 	if _scan_band != null:
 		_scan_band.polygon = PackedVector2Array([
-			Vector2(-sector_width * 0.5, -420.0),
-			Vector2(sector_width * 0.5, -420.0),
-			Vector2(sector_width * 0.5, safe_altitude_y),
-			Vector2(-sector_width * 0.5, safe_altitude_y),
+			Vector2(-sector_width * 0.5, safe_boundary_y),
+			Vector2(sector_width * 0.5, safe_boundary_y),
+			Vector2(sector_width * 0.5, emitter_y),
+			Vector2(-sector_width * 0.5, emitter_y),
 		])
 	if _safe_boundary != null:
 		_safe_boundary.points = PackedVector2Array([
-			Vector2(-sector_width * 0.5, safe_altitude_y),
-			Vector2(sector_width * 0.5, safe_altitude_y),
+			Vector2(-sector_width * 0.5, safe_boundary_y),
+			Vector2(sector_width * 0.5, safe_boundary_y),
 		])
 	if _sweep_line != null:
 		_sweep_line.points = PackedVector2Array([
-			Vector2(0.0, -420.0),
-			Vector2(0.0, safe_altitude_y),
+			Vector2(0.0, emitter_y),
+			Vector2(0.0, safe_boundary_y),
 		])
 	if _emitter_visual != null:
 		_emitter_visual.position.y = emitter_y

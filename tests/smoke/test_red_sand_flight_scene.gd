@@ -79,8 +79,10 @@ func run() -> Array[String]:
 	expect_true(
 		route_scene.route_definition != null
 		and route_scene.route_definition.segments.size() == 8
-		and route_scene.route_definition.validate().is_empty(),
-		"Red Sand scene must bind the validated eight-stage route data.",
+		and route_scene.route_definition.validate().is_empty()
+		and route_scene.get_altitude_reference_provider()
+		is FlightAltitudeReferenceProvider,
+		"Red Sand scene must bind its route data and shared altitude provider.",
 		failures
 	)
 	var asteroid_hazards: Array[Node] = route_scene.find_children(
@@ -120,8 +122,11 @@ func run() -> Array[String]:
 			"FlightRadarCover",
 			true,
 			false
-		).size() == 3,
-		"T-042 route must bind its fixed canyon radar sectors and terrain covers.",
+		).is_empty()
+		and route_scene.get_node_or_null(
+			"World/LowFlightCourse/RouteHints/HighAltitudeSafeRouteLine"
+		) is Line2D,
+		"Gate C route must bind fixed low-altitude radar sectors and a high safe route.",
 		failures
 	)
 	expect_true(

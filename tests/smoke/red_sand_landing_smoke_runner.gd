@@ -1,6 +1,8 @@
 extends SceneTree
 
 const ORDER_ID: StringName = &"order_red_sand_m0"
+const EXPECTED_PAD_WIDTH_METERS: float = 2400.0
+const NORMAL_APPROACH_SPEED_METERS_PER_SECOND: float = 220.0
 
 var _failures: Array[String] = []
 var _original_locale: String = ""
@@ -74,17 +76,107 @@ func _run_smoke() -> void:
 	var final_segment: FlightRouteSegment = definition.segments[-1]
 	flight_ship.position = Vector2(
 		route.route_origin_x + final_segment.start_distance + 1.0,
-		230.0
+		-160.0
 	)
 	flight_ship.velocity = Vector2(125.0, 4.0)
 	_check(route.advance_route_state(), "Landing stage could not be reached.")
 	route._physics_process(0.0)
+	route._process(0.0)
+	var stage_entry_to_center: float = (
+		landing_zone.get_landing_center_route_distance()
+		- final_segment.start_distance
+	)
+	var stage_entry_to_pad_edge: float = (
+		landing_zone.get_pad_leading_edge_route_distance()
+		- final_segment.start_distance
+	)
+	var retry_route_distance: float = (
+		landing_zone.get_safe_checkpoint_position().x - route.route_origin_x
+	)
+	var retry_to_pad_edge: float = (
+		landing_zone.get_pad_leading_edge_route_distance() - retry_route_distance
+	)
+	var measured_approach_seconds: float = (
+		stage_entry_to_center / NORMAL_APPROACH_SPEED_METERS_PER_SECOND
+	)
 	_check(
 		route.get_active_segment_index() == definition.segments.size() - 1
 		and flight_ship.get_checkpoint_id() == final_segment.checkpoint_id
-		and landing_zone.get_pad_width() >= 960.0
+		and is_equal_approx(
+			landing_zone.get_pad_width(),
+			EXPECTED_PAD_WIDTH_METERS
+		)
 		and not route_hud.get_landing_text().is_empty(),
 		"Landing stage did not expose its readable pad, checkpoint, and guidance."
+	)
+	_check(
+		stage_entry_to_center >= 3000.0
+		and stage_entry_to_center <= 4000.0
+		and stage_entry_to_pad_edge >= 2500.0
+		and retry_to_pad_edge >= 2500.0
+		and is_equal_approx(
+			landing_zone.get_recommended_entry_altitude_meters(),
+			600.0
+		)
+		and measured_approach_seconds >= 12.0
+		and measured_approach_seconds <= 20.0,
+		"Stage 8 and its retry must provide a 3-4 km high approach lasting 12-20 seconds."
+	)
+	print(
+		(
+			"[red-sand-landing] measured stage7=%.0fm stage8-center=%.0fm "
+			+ "stage8-pad-edge=%.0fm height=%.0fm time@%.0fmps=%.1fs collision-center=%.0fm"
+		)
+		% [
+			definition.segments[-2].get_length(),
+			stage_entry_to_center,
+			stage_entry_to_pad_edge,
+			landing_zone.get_recommended_entry_altitude_meters(),
+			NORMAL_APPROACH_SPEED_METERS_PER_SECOND,
+			measured_approach_seconds,
+			landing_zone.get_landing_center_route_distance()
+			- landing_zone.get_collision_activation_route_distance(),
+		]
+	)
+	_check(
+		route.restart_from_checkpoint(false),
+		"Stage 8 safe checkpoint could not be restored for approach verification."
+	)
+	route._physics_process(0.0)
+	route._process(0.0)
+	_check(
+		route_hud.get_navigation_text().contains("4.0 km")
+		and route_hud.get_current_altitude_text().contains("600 m"),
+		"Stage 8 HUD did not report the real landing-center distance and recommended AGL: %s / %s"
+		% [
+			route_hud.get_navigation_text(),
+			route_hud.get_current_altitude_text(),
+		]
+	)
+	_check(
+		not landing_zone.is_pad_collision_active(),
+		"Platform collision activated at the start of final approach."
+	)
+	flight_ship.position.x = (
+		route.route_origin_x
+		+ landing_zone.get_collision_activation_route_distance()
+		- 1.0
+	)
+	route._physics_process(0.0)
+	_check(
+		not landing_zone.is_pad_collision_active(),
+		"Platform collision activated before the configured final approach region."
+	)
+	flight_ship.position.x += 1.0
+	route._physics_process(0.0)
+	_check(
+		landing_zone.is_pad_collision_active()
+		and is_equal_approx(
+			landing_zone.get_landing_center_route_distance()
+			- landing_zone.get_collision_activation_route_distance(),
+			2000.0
+		),
+		"Platform collision did not activate exactly 2 km before the landing point."
 	)
 	flight_ship.global_position = landing_zone.global_position + Vector2(0.0, 232.0)
 	flight_ship.velocity = Vector2(110.0, 0.0)

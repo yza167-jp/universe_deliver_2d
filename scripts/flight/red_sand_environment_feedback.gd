@@ -6,6 +6,8 @@ const AMBIENCE_LOOP_SECONDS: float = 1.0
 const MUSIC_SAMPLE_RATE: int = 11025
 const MUSIC_LOOP_SECONDS: float = 4.0
 const LIGHTNING_FLASH_SECONDS: float = 0.18
+const RADAR_PULSE_SECONDS: float = 0.18
+const RADAR_PULSE_SAMPLE_RATE: int = 11025
 const MUSIC_QUIET_VOLUME_DB: float = -30.0
 const MUSIC_DANGER_VOLUME_DB: float = -17.0
 
@@ -14,6 +16,8 @@ const MUSIC_DANGER_VOLUME_DB: float = -17.0
 @onready var _ambience_audio: AudioStreamPlayer = %AmbienceAudio
 @onready var _music_audio: AudioStreamPlayer = %MusicAudio
 @onready var _radar_pressure_tint: ColorRect = %RadarPressureTint
+@onready var _radar_pulse_flash: ColorRect = %RadarPulseFlash
+@onready var _radar_pulse_audio: AudioStreamPlayer = %RadarPulseAudio
 @onready var _speed_streak_particles: CPUParticles2D = %SpeedStreakParticles
 @onready var _entry_particles: CPUParticles2D = %AtmosphereEntryParticles
 @onready var _storm_particles: CPUParticles2D = %StormParticles
@@ -39,6 +43,9 @@ var _lightning_flash_peak_alpha: float = 0.0
 var _radar_pressure: float = 0.0
 var _radar_locked: bool = false
 var _radar_elapsed_seconds: float = 0.0
+var _radar_pulse_remaining: float = 0.0
+var _radar_pulse_peak_alpha: float = 0.0
+var _radar_pulse_count: int = 0
 var _base_tint: Color = Color.TRANSPARENT
 var _segment_music_intensity: float = 0.0
 var _target_music_intensity: float = 0.0
@@ -52,6 +59,10 @@ func _ready() -> void:
 	_set_environment_particles(&"")
 	if _lightning_flash != null:
 		_lightning_flash.color.a = 0.0
+	if _radar_pulse_flash != null:
+		_radar_pulse_flash.color.a = 0.0
+	if _radar_pulse_audio != null:
+		_radar_pulse_audio.stream = _create_radar_pulse_stream()
 	if _music_audio != null:
 		_music_audio.stream = _create_music_stream()
 		_music_audio.volume_db = MUSIC_QUIET_VOLUME_DB
@@ -63,6 +74,7 @@ func _process(delta: float) -> void:
 	var safe_delta: float = maxf(delta, 0.0)
 	_update_wind_bands(safe_delta)
 	_update_radar_feedback(safe_delta)
+	_update_radar_pulse(safe_delta)
 	_update_lightning_flash(safe_delta)
 	_update_music_mix(safe_delta)
 
@@ -79,8 +91,9 @@ func set_segment(segment: FlightRouteSegment) -> void:
 		_environment_tint.color = _base_tint
 	_apply_wind_visibility(segment.id == &"red_sand_storm_layer")
 	_set_environment_particles(segment.id)
-	if segment.id != &"red_sand_surface_route":
+	if segment.id != &"red_sand_low_altitude_control":
 		set_radar_pressure(0.0, false)
+		_clear_radar_pulse()
 	_set_ambience_stream(_active_audio_signature)
 
 
@@ -141,6 +154,7 @@ func stop_travel_feedback() -> void:
 		_entry_particles.emitting = false
 	if _storm_particles != null:
 		_storm_particles.emitting = false
+	_clear_radar_pulse()
 
 
 func set_radar_pressure(lock_risk: float, locked: bool) -> void:
@@ -155,6 +169,18 @@ func set_radar_pressure(lock_risk: float, locked: bool) -> void:
 		)
 		_radar_pressure_tint.color = tint_color
 	_refresh_music_target()
+
+
+func trigger_radar_pulse() -> void:
+	_radar_pulse_count += 1
+	_radar_pulse_remaining = RADAR_PULSE_SECONDS
+	if _radar_pulse_flash != null:
+		var pulse_color: Color = Color(1.0, 0.18, 0.1, 0.34)
+		_radar_pulse_peak_alpha = pulse_color.a
+		_radar_pulse_flash.color = pulse_color
+	if _radar_pulse_audio != null and DisplayServer.get_name() != "headless":
+		_radar_pulse_audio.stop()
+		_radar_pulse_audio.play()
 
 
 func flash_lightning(hit_ship: bool) -> void:
@@ -195,6 +221,22 @@ func is_radar_pressure_visible() -> bool:
 
 func get_radar_pressure() -> float:
 	return _radar_pressure
+
+
+func get_radar_pulse_count() -> int:
+	return _radar_pulse_count
+
+
+func get_radar_pulse_audio() -> AudioStreamPlayer:
+	return _radar_pulse_audio
+
+
+func is_radar_pulse_visible() -> bool:
+	return (
+		_radar_pulse_remaining > 0.0
+		and _radar_pulse_flash != null
+		and _radar_pulse_flash.color.a > 0.0
+	)
 
 
 func get_music_intensity() -> float:
@@ -326,6 +368,25 @@ func _update_radar_feedback(delta: float) -> void:
 		)
 
 
+func _update_radar_pulse(delta: float) -> void:
+	if _radar_pulse_flash == null or _radar_pulse_remaining <= 0.0:
+		return
+	_radar_pulse_remaining = maxf(_radar_pulse_remaining - delta, 0.0)
+	var fade: float = _radar_pulse_remaining / RADAR_PULSE_SECONDS
+	var flash_color: Color = _radar_pulse_flash.color
+	flash_color.a = _radar_pulse_peak_alpha * fade
+	_radar_pulse_flash.color = flash_color
+
+
+func _clear_radar_pulse() -> void:
+	_radar_pulse_remaining = 0.0
+	_radar_pulse_peak_alpha = 0.0
+	if _radar_pulse_flash != null:
+		_radar_pulse_flash.color.a = 0.0
+	if _radar_pulse_audio != null:
+		_radar_pulse_audio.stop()
+
+
 func _update_lightning_flash(delta: float) -> void:
 	if _lightning_flash == null or _lightning_flash_remaining <= 0.0:
 		return
@@ -360,10 +421,10 @@ func _resolve_audio_signature(segment_id: StringName) -> StringName:
 			return &"upper_air"
 		&"red_sand_storm_layer":
 			return &"storm_pressure"
-		&"red_sand_lower_clouds":
-			return &"lower_wind"
-		&"red_sand_surface_route":
+		&"red_sand_low_altitude_control":
 			return &"surface_dust"
+		&"red_sand_landing_preparation":
+			return &"lower_wind"
 		&"red_sand_landing_approach":
 			return &"landing_beacon"
 	return &"space_quiet"
@@ -381,10 +442,10 @@ func _resolve_music_intensity(segment_id: StringName) -> float:
 			return 0.62
 		&"red_sand_storm_layer":
 			return 1.0
-		&"red_sand_lower_clouds":
-			return 0.52
-		&"red_sand_surface_route":
+		&"red_sand_low_altitude_control":
 			return 0.68
+		&"red_sand_landing_preparation":
+			return 0.38
 		&"red_sand_landing_approach":
 			return 0.32
 	return 0.08
@@ -400,9 +461,9 @@ func _resolve_tint(segment_id: StringName) -> Color:
 			return Color(0.58, 0.2, 0.08, 0.055)
 		&"red_sand_storm_layer":
 			return Color(0.24, 0.12, 0.36, 0.13)
-		&"red_sand_lower_clouds":
+		&"red_sand_low_altitude_control":
 			return Color(0.56, 0.22, 0.09, 0.075)
-		&"red_sand_surface_route", &"red_sand_landing_approach":
+		&"red_sand_landing_preparation", &"red_sand_landing_approach":
 			return Color(0.48, 0.18, 0.07, 0.06)
 	return Color.TRANSPARENT
 
@@ -496,6 +557,40 @@ func _create_music_stream() -> AudioStreamWAV:
 			low_tone + fifth_tone + arpeggio + shimmer,
 			-0.48,
 			0.48
+		)
+		var encoded_sample: int = int(round(sample * 32767.0)) & 0xffff
+		audio_data[frame_index * 2] = encoded_sample & 0xff
+		audio_data[frame_index * 2 + 1] = (encoded_sample >> 8) & 0xff
+	stream.data = audio_data
+	return stream
+
+
+func _create_radar_pulse_stream() -> AudioStreamWAV:
+	var stream: AudioStreamWAV = AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = RADAR_PULSE_SAMPLE_RATE
+	stream.stereo = false
+	var frame_count: int = maxi(
+		int(RADAR_PULSE_SAMPLE_RATE * RADAR_PULSE_SECONDS),
+		1
+	)
+	var audio_data: PackedByteArray = PackedByteArray()
+	audio_data.resize(frame_count * 2)
+	for frame_index: int in frame_count:
+		var progress: float = float(frame_index) / float(frame_count)
+		var time_seconds: float = float(frame_index) / float(RADAR_PULSE_SAMPLE_RATE)
+		var envelope: float = exp(-progress * 5.4)
+		var frequency: float = lerpf(760.0, 105.0, progress)
+		var chirp: float = sin(TAU * frequency * time_seconds) * 0.46
+		var static_tone: float = (
+			sin(TAU * 941.0 * time_seconds)
+			* sin(TAU * 83.0 * time_seconds)
+			* 0.18
+		)
+		var sample: float = clampf(
+			(chirp + static_tone) * envelope,
+			-0.72,
+			0.72
 		)
 		var encoded_sample: int = int(round(sample * 32767.0)) & 0xffff
 		audio_data[frame_index * 2] = encoded_sample & 0xff

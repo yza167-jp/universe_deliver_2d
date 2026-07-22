@@ -26,6 +26,8 @@ const STATUS_DURATION_SECONDS: float = 2.4
 
 var _flight_ship: FlightLabShip
 var _route_definition: FlightRouteDefinition
+var _altitude_reference_provider: FlightAltitudeReferenceProvider
+var _landing_target_route_distance: float = -1.0
 var _segment_index: int = 0
 var _route_distance: float = 0.0
 var _elapsed_seconds: float = 0.0
@@ -75,10 +77,14 @@ func _notification(what: int) -> void:
 
 func bind(
 	flight_ship: FlightLabShip,
-	route_definition: FlightRouteDefinition
+	route_definition: FlightRouteDefinition,
+	altitude_reference_provider: FlightAltitudeReferenceProvider = null,
+	landing_target_route_distance: float = -1.0
 ) -> void:
 	_flight_ship = flight_ship
 	_route_definition = route_definition
+	_altitude_reference_provider = altitude_reference_provider
+	_landing_target_route_distance = landing_target_route_distance
 	refresh()
 
 
@@ -106,21 +112,22 @@ func refresh() -> void:
 	var segment: FlightRouteSegment = _route_definition.segments[safe_segment_index]
 	if segment == null:
 		return
+	var landing_target_distance: float = (
+		_landing_target_route_distance
+		if _landing_target_route_distance >= 0.0
+		else _route_definition.get_total_distance()
+	)
 	var distance_remaining: float = maxf(
-		_route_definition.get_total_distance() - _route_distance,
+		landing_target_distance - _route_distance,
 		0.0
 	)
-	var altitude: float = maxf(
-		_route_definition.get_altitude_reference_y(_route_distance)
-		- _flight_ship.position.y,
-		0.0
-	)
+	var altitude_text: String = _format_player_altitude()
 	_motion_label.text = tr("UI_RED_SAND_ROUTE_HUD_NAVIGATION") % [
 		_format_distance(distance_remaining),
 		roundi(_flight_ship.get_speed()),
-		roundi(altitude),
+		altitude_text,
 	]
-	_refresh_safety_label(altitude)
+	_refresh_safety_label()
 	var boost_state_key: StringName = (
 		&"UI_RED_SAND_ROUTE_BOOST_ACTIVE"
 		if _flight_ship.get_boost_feedback_strength() > 0.04
@@ -150,7 +157,7 @@ func refresh() -> void:
 	_instruction_label.visible = _route_details_visible
 	_refresh_radar()
 	_refresh_landing()
-	_refresh_diagnostics(segment, distance_remaining, altitude)
+	_refresh_diagnostics(segment, distance_remaining, altitude_text)
 
 
 func show_stage_transition(segment: FlightRouteSegment) -> void:
@@ -326,6 +333,10 @@ func get_navigation_text() -> String:
 	return "" if _motion_label == null else _motion_label.text
 
 
+func get_current_altitude_text() -> String:
+	return _format_player_altitude()
+
+
 func get_safety_text() -> String:
 	return "" if _safety_label == null else _safety_label.text
 
@@ -419,11 +430,7 @@ func _refresh_radar() -> void:
 		_radar_panel.visible = false
 		_radar_label.text = ""
 		return
-	_radar_label.text = (
-		tr(_radar_state_key)
-		if _landing_buffer_active
-		else tr(_radar_state_key) % roundi(_radar_risk * 100.0)
-	)
+	_radar_label.text = tr(_radar_state_key)
 	_radar_panel.visible = true
 
 
@@ -447,7 +454,7 @@ func _refresh_landing() -> void:
 	_landing_panel.queue_sort()
 
 
-func _refresh_safety_label(altitude: float) -> void:
+func _refresh_safety_label() -> void:
 	if _safety_label == null:
 		return
 	if _landing_buffer_active:
@@ -460,12 +467,12 @@ func _refresh_safety_label(altitude: float) -> void:
 	if not _radar_state_key.is_empty():
 		_safety_label.text = tr("UI_RED_SAND_ROUTE_HUD_RADAR_SAFETY") % [
 			roundi(_radar_safe_height),
-			roundi(maxf(_radar_altitude, altitude)),
+			_format_distance(_radar_altitude),
 		]
 		_safety_label.add_theme_color_override(
 			"font_color",
 			Color(1.0, 0.494118, 0.219608, 1.0)
-			if _radar_altitude > _radar_safe_height + 0.5
+			if _radar_altitude + 0.5 < _radar_safe_height
 			else Color(0.670588, 1.0, 0.941176, 1.0)
 		)
 		return
@@ -481,7 +488,7 @@ func _refresh_safety_label(altitude: float) -> void:
 func _refresh_diagnostics(
 	segment: FlightRouteSegment,
 	distance_remaining: float,
-	altitude: float
+	altitude_text: String
 ) -> void:
 	if _diagnostics_label == null or segment == null:
 		return
@@ -497,10 +504,19 @@ func _refresh_diagnostics(
 			)
 	var radar_state_text: String = "—"
 	if not _radar_state_key.is_empty():
-		radar_state_text = (
-			tr(_radar_state_key)
-			if _landing_buffer_active
-			else tr(_radar_state_key) % roundi(_radar_risk * 100.0)
+		radar_state_text = tr(_radar_state_key)
+	var altitude_mode_text: String = "—"
+	var virtual_altitude: float = 0.0
+	var terrain_altitude: float = 0.0
+	var terrain_hit_text: String = tr("UI_RED_SAND_ROUTE_TERRAIN_MISS")
+	if _altitude_reference_provider != null:
+		altitude_mode_text = tr(_get_altitude_mode_key())
+		virtual_altitude = _altitude_reference_provider.raw_virtual_altitude_meters
+		terrain_altitude = _altitude_reference_provider.raw_terrain_altitude_meters
+		terrain_hit_text = tr(
+			"UI_RED_SAND_ROUTE_TERRAIN_HIT"
+			if _altitude_reference_provider.terrain_hit_valid
+			else "UI_RED_SAND_ROUTE_TERRAIN_MISS"
 		)
 	var lines: PackedStringArray = PackedStringArray([
 		tr("UI_RED_SAND_ROUTE_DIAGNOSTICS_HINT"),
@@ -550,7 +566,13 @@ func _refresh_diagnostics(
 			_route_definition.segments.size(),
 			_route_distance,
 			_format_distance(distance_remaining),
-			roundi(altitude),
+			altitude_text,
+		],
+		tr("UI_RED_SAND_ROUTE_DIAGNOSTICS_ALTITUDE") % [
+			altitude_mode_text,
+			virtual_altitude,
+			terrain_altitude,
+			terrain_hit_text,
 		],
 		tr("UI_RED_SAND_ROUTE_DIAGNOSTICS_RADAR") % [
 			radar_state_text,
@@ -559,6 +581,29 @@ func _refresh_diagnostics(
 		tr("UI_FLIGHT_DEBUG_CHECKPOINT") % String(_checkpoint_id),
 	])
 	_diagnostics_label.text = "\n".join(lines)
+
+
+func _format_player_altitude() -> String:
+	if (
+		_altitude_reference_provider == null
+		or not _altitude_reference_provider.has_numeric_altitude()
+	):
+		return tr("UI_RED_SAND_ROUTE_ALTITUDE_HIGH")
+	return tr("UI_RED_SAND_ROUTE_ALTITUDE_VALUE") % _format_distance(
+		_altitude_reference_provider.get_display_altitude_meters()
+	)
+
+
+func _get_altitude_mode_key() -> StringName:
+	if _altitude_reference_provider == null:
+		return &"UI_RED_SAND_ROUTE_ALTITUDE_MODE_ORBITAL"
+	match _altitude_reference_provider.get_mode_name():
+		&"ATMOSPHERE_ENTRY":
+			return &"UI_RED_SAND_ROUTE_ALTITUDE_MODE_ATMOSPHERE_ENTRY"
+		&"AGL":
+			return &"UI_RED_SAND_ROUTE_ALTITUDE_MODE_AGL"
+		_:
+			return &"UI_RED_SAND_ROUTE_ALTITUDE_MODE_ORBITAL"
 
 
 func _format_distance(distance_meters: float) -> String:

@@ -138,8 +138,8 @@ func get_planet_scale(route_distance: float) -> float:
 	return segment.get_planet_scale(route_distance)
 
 
-## Returns the compressed flight-altitude datum used by the route HUD.
-## It remains available before physical terrain appears, but never creates collision.
+## Returns the compressed route-surface datum used by graybox geometry and diagnostics.
+## Player-visible altitude is provided separately by FlightAltitudeReferenceProvider.
 func get_altitude_reference_y(route_distance: float) -> float:
 	var segment_index: int = get_segment_index(route_distance)
 	if segment_index < 0:

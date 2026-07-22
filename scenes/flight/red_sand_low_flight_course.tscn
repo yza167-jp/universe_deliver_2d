@@ -1,11 +1,19 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/flight/red_sand_low_flight_course.gd" id="1_course"]
 [ext_resource type="PackedScene" path="res://scenes/flight/flight_radar_sector.tscn" id="2_sector"]
-[ext_resource type="PackedScene" path="res://scenes/flight/flight_radar_cover.tscn" id="3_cover"]
 
 [node name="RedSandLowFlightCourse" type="Node2D"]
 script = ExtResource("1_course")
+active_segment_id = &"red_sand_low_altitude_control"
+surface_start_route_distance = 23000.0
+radar_exit_route_distance = 30500.0
+horizontal_distance_scale = 0.32
+minimum_safe_altitude_meters = 300.0
+warning_seconds = 1.0
+locked_seconds = 0.45
+pulse_seconds = 0.12
+cooldown_seconds = 1.8
 
 [node name="CollisionGeometry" type="Node2D" parent="."]
 unique_name_in_owner = true
@@ -126,72 +134,48 @@ unique_name_in_owner = true
 position = Vector2(4900, 0)
 sector_id = &"red_sand_radar_sector_a"
 sector_width = 8200.0
-safe_altitude_y = 350.0
-full_exposure_height = 130.0
-acquire_rate_multiplier = 1.0
+safe_boundary_y = 220.0
 emitter_y = 505.0
 
 [node name="SectorB" parent="RadarSectors" instance=ExtResource("2_sector")]
 position = Vector2(12500, 0)
 sector_id = &"red_sand_radar_sector_b"
 sector_width = 7000.0
-safe_altitude_y = 340.0
-full_exposure_height = 120.0
-acquire_rate_multiplier = 1.1
-emitter_y = 468.0
+safe_boundary_y = 220.0
+emitter_y = 488.0
 
 [node name="SectorC" parent="RadarSectors" instance=ExtResource("2_sector")]
 position = Vector2(19750, 0)
 sector_id = &"red_sand_radar_sector_c"
 sector_width = 7500.0
-safe_altitude_y = 360.0
-full_exposure_height = 130.0
-acquire_rate_multiplier = 1.15
-emitter_y = 446.0
-
-[node name="RadarCovers" type="Node2D" parent="."]
-unique_name_in_owner = true
-
-[node name="PipelineShadow" parent="RadarCovers" instance=ExtResource("3_cover")]
-position = Vector2(7200, 376)
-cover_id = &"red_sand_cover_pipeline"
-cover_size = Vector2(2000, 180)
-
-[node name="TunnelShadow" parent="RadarCovers" instance=ExtResource("3_cover")]
-position = Vector2(12000, 370)
-cover_id = &"red_sand_cover_tunnel"
-cover_size = Vector2(2400, 220)
-
-[node name="FacilityGateShadow" parent="RadarCovers" instance=ExtResource("3_cover")]
-position = Vector2(17250, 346)
-cover_id = &"red_sand_cover_facility_gate"
-cover_size = Vector2(900, 90)
+safe_boundary_y = 220.0
+emitter_y = 468.0
 
 [node name="RouteHints" type="Node2D" parent="."]
 unique_name_in_owner = true
 z_index = 6
 
-[node name="SafeRouteLine" type="Line2D" parent="RouteHints"]
-points = PackedVector2Array(800, 405, 2300, 402, 3100, 398, 4700, 404, 6200, 382, 7200, 365, 8400, 390, 10600, 388, 12000, 348, 13700, 386, 16200, 376, 17250, 346, 18400, 376, 20500, 382, 22400, 390, 23500, 398)
+[node name="HighAltitudeSafeRouteLine" type="Line2D" parent="RouteHints"]
+points = PackedVector2Array(800, 70, 3100, 68, 6200, 72, 8400, 66, 10600, 70, 13700, 64, 16200, 70, 18400, 66, 20500, 72, 23500, 68)
 width = 3.0
 default_color = Color(0.462745, 0.945098, 1, 0.78)
 
 [node name="ChevronA" type="Polygon2D" parent="RouteHints"]
-position = Vector2(6900, 365)
+position = Vector2(6900, 70)
 polygon = PackedVector2Array(-16, -8, 0, 0, -16, 8, -10, 0)
 color = Color(0.670588, 1, 0.941176, 0.94)
 
 [node name="ChevronB" type="Polygon2D" parent="RouteHints"]
-position = Vector2(11700, 350)
+position = Vector2(11700, 68)
 polygon = PackedVector2Array(-16, -8, 0, 0, -16, 8, -10, 0)
 color = Color(0.670588, 1, 0.941176, 0.94)
 
 [node name="ChevronC" type="Polygon2D" parent="RouteHints"]
-position = Vector2(16950, 346)
+position = Vector2(16950, 68)
 polygon = PackedVector2Array(-16, -8, 0, 0, -16, 8, -10, 0)
 color = Color(0.670588, 1, 0.941176, 0.94)
 
 [node name="ChevronD" type="Polygon2D" parent="RouteHints"]
-position = Vector2(21300, 382)
+position = Vector2(21300, 70)
 polygon = PackedVector2Array(-16, -8, 0, 0, -16, 8, -10, 0)
 color = Color(0.670588, 1, 0.941176, 0.94)

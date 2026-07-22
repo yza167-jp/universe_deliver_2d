@@ -34,6 +34,9 @@ func _run_smoke() -> void:
 	var route_hud: RedSandRouteHUD = route.get_route_hud()
 	var definition: FlightRouteDefinition = route.get_route_definition()
 	var landing_zone: RedSandLandingZone = route.get_landing_zone()
+	var altitude_provider: FlightAltitudeReferenceProvider = (
+		route.get_altitude_reference_provider()
+	)
 	_check(flight_ship != null, "Red Sand route ship is missing.")
 	_check(flight_camera != null and flight_camera.enabled, "Red Sand route camera is inactive.")
 	_check(route_hud != null, "Red Sand route HUD is missing.")
@@ -49,6 +52,7 @@ func _run_smoke() -> void:
 		or route_hud == null
 		or definition == null
 		or landing_zone == null
+		or altitude_provider == null
 	):
 		route.queue_free()
 		await process_frame
@@ -91,7 +95,8 @@ func _run_smoke() -> void:
 		"ApproachGuides04",
 		"CloudSilhouettes05",
 		"CloudSilhouettes06",
-		"FacilitySilhouettes07",
+		"FacilitySilhouettes06",
+		"LandingGuides07",
 		"LandingGuides08",
 	]
 	for landmark_name: String in landmark_names:
@@ -108,7 +113,8 @@ func _run_smoke() -> void:
 		and viewport_bounds.encloses(route_hud.get_route_panel_rect())
 		and route_hud.get_navigation_text().contains("距着陆点")
 		and route_hud.get_navigation_text().contains("m/s")
-		and route_hud.get_navigation_text().contains("高度")
+		and route_hud.get_current_altitude_text() == tr("UI_RED_SAND_ROUTE_ALTITUDE_HIGH")
+		and not route_hud.get_navigation_text().contains("高度 0 m")
 		and not route_hud.get_navigation_text().contains("前向")
 		and not route_hud.has_visible_mouse_interception(),
 		"Red Sand Essential HUD omitted labeled navigation units or blocks input."
@@ -117,7 +123,8 @@ func _run_smoke() -> void:
 	route_hud.show_stage_transition(definition.segments[0])
 	_check(
 		viewport_bounds.encloses(route_hud.get_diagnostics_rect()),
-		"Full route diagnostics escaped the 640x360 viewport."
+		"Full route diagnostics escaped the 640x360 viewport: %s"
+		% route_hud.get_diagnostics_rect()
 	)
 	_check(
 		route_hud.get_diagnostics_text().contains("完整诊断")
@@ -159,6 +166,40 @@ func _run_smoke() -> void:
 		var rotation_before: float = flight_ship.rotation
 		_check(route.advance_route_state(), "Route stage boundary was not detected.")
 		route._process(0.0)
+		if index <= FlightAltitudeReferenceProvider.ORBITAL_FINAL_SEGMENT_INDEX:
+			_check(
+				route_hud.get_current_altitude_text()
+				== tr("UI_RED_SAND_ROUTE_ALTITUDE_HIGH")
+				and not route_hud.get_current_altitude_text().contains("0 m"),
+				"Stages 1-3 must keep the Essential HUD in > 1 km orbital mode."
+			)
+		elif index <= FlightAltitudeReferenceProvider.ATMOSPHERE_FINAL_SEGMENT_INDEX:
+			_check(
+				altitude_provider.get_mode_name() == &"ATMOSPHERE_ENTRY"
+				and altitude_provider.has_numeric_altitude()
+				and not route_hud.get_current_altitude_text().contains("0 m"),
+				"Atmosphere entry did not expose a nonzero km/m virtual altitude."
+			)
+		else:
+			route._physics_process(0.25)
+			route._process(0.0)
+			var altitude_value: float = altitude_provider.get_display_altitude_meters()
+			var expected_altitude_text: String = (
+				"%.1f km" % (altitude_value / 1000.0)
+				if altitude_value >= 1000.0
+				else "%d m" % roundi(altitude_value)
+			)
+			_check(
+				altitude_provider.get_mode_name() == &"AGL"
+				and altitude_provider.terrain_hit_valid
+				and altitude_provider.has_numeric_altitude()
+				and not route_hud.get_current_altitude_text().contains("0 m")
+				and (
+					index != 5
+					or route_hud.get_safety_text().contains(expected_altitude_text)
+				),
+				"Stages 6-8 did not share a valid local-terrain AGL reading."
+			)
 		_check(
 			route.get_active_segment_index() == index,
 			"Route stage order skipped or regressed at index %d." % index

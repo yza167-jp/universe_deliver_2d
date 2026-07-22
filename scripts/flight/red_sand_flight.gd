@@ -48,6 +48,9 @@ var _controls_help_open: bool = false
 var _was_tree_paused: bool = false
 var _direct_test_mode: bool = false
 var _active_assist_index: int = 1
+var _altitude_reference_provider: FlightAltitudeReferenceProvider = (
+	FlightAltitudeReferenceProvider.new()
+)
 
 
 func _ready() -> void:
@@ -71,7 +74,8 @@ func _ready() -> void:
 	if not low_flight_course.bind(
 		flight_ship,
 		route_origin_x,
-		_resolve_settings_service()
+		_resolve_settings_service(),
+		_altitude_reference_provider
 	):
 		push_error("Red Sand route could not configure its low-flight course.")
 		return
@@ -120,8 +124,14 @@ func _ready() -> void:
 	environment_feedback.set_segment(first_segment)
 	low_flight_course.set_active_segment(first_segment.id)
 	landing_zone.set_active_segment(first_segment.id)
+	_reset_altitude_reference()
 	_sync_order_run_checkpoint(first_segment.checkpoint_id)
-	route_hud.bind(flight_ship, route_definition)
+	route_hud.bind(
+		flight_ship,
+		route_definition,
+		_altitude_reference_provider,
+		landing_zone.get_landing_center_route_distance()
+	)
 	_sync_camera_to_ship()
 	_update_route_visuals()
 	_refresh_hud()
@@ -152,6 +162,7 @@ func _physics_process(delta: float) -> void:
 		return
 	var wind_acceleration: Vector2 = hazard_director.step_physics(delta)
 	environment_feedback.set_wind_acceleration(wind_acceleration)
+	_update_altitude_reference(delta)
 	low_flight_course.step_physics(delta)
 	landing_zone.step_physics(delta)
 	_sync_low_flight_feedback()
@@ -242,6 +253,10 @@ func get_low_flight_course() -> RedSandLowFlightCourse:
 
 func get_landing_zone() -> RedSandLandingZone:
 	return landing_zone
+
+
+func get_altitude_reference_provider() -> FlightAltitudeReferenceProvider:
+	return _altitude_reference_provider
 
 
 func get_active_segment_index() -> int:
@@ -427,6 +442,7 @@ func restart_from_checkpoint(is_automatic: bool = false) -> bool:
 	landing_zone.reset_for_checkpoint()
 	landing_zone.set_active_segment(get_active_segment().id)
 	route_visuals.reset_to_distance(_maximum_route_distance)
+	_reset_altitude_reference()
 	if (
 		_active_segment_index >= ENTRY_START_SEGMENT_INDEX
 		and _active_segment_index < ENTRY_FINALIZE_SEGMENT_INDEX
@@ -474,6 +490,7 @@ func _enter_segment(segment_index: int) -> void:
 	environment_feedback.set_segment(segment)
 	low_flight_course.set_active_segment(segment.id)
 	landing_zone.set_active_segment(segment.id)
+	_update_altitude_reference(0.0)
 	flight_ship.capture_checkpoint(
 		segment.checkpoint_id,
 		segment.checkpoint_fuel_floor
@@ -573,6 +590,41 @@ func _update_route_visuals(delta: float = 0.0) -> void:
 			flight_ship.air_density,
 			flight_ship.is_failed or flight_ship.is_landed or _route_completed
 		)
+
+
+func _update_altitude_reference(delta: float) -> void:
+	if (
+		_altitude_reference_provider == null
+		or flight_ship == null
+		or route_definition == null
+	):
+		return
+	var segment: FlightRouteSegment = get_active_segment()
+	if segment == null:
+		return
+	_altitude_reference_provider.update_from_world(
+		_active_segment_index,
+		segment.get_progress(_maximum_route_distance),
+		flight_ship,
+		delta
+	)
+
+
+func _reset_altitude_reference() -> void:
+	if (
+		_altitude_reference_provider == null
+		or flight_ship == null
+		or route_definition == null
+	):
+		return
+	var segment: FlightRouteSegment = get_active_segment()
+	if segment == null:
+		return
+	_altitude_reference_provider.reset_to_route_state_from_world(
+		_active_segment_index,
+		segment.get_progress(_maximum_route_distance),
+		flight_ship
+	)
 
 
 func _refresh_hud() -> void:
@@ -734,6 +786,7 @@ func _on_radar_lock_consequence_requested(
 	if flight_ship == null:
 		return
 	if flight_ship.apply_environment_damage(damage, cargo_damage, reason_key):
+		environment_feedback.trigger_radar_pulse()
 		route_hud.show_radar_consequence(damage, cargo_damage)
 		_start_camera_shake(FlightCollisionResult.Severity.GRAZE)
 
@@ -756,21 +809,27 @@ func _on_landing_failed(reason_key: StringName) -> void:
 
 
 func _sync_low_flight_feedback() -> void:
-	if low_flight_course == null or route_hud == null or environment_feedback == null:
+	if (
+		low_flight_course == null
+		or route_hud == null
+		or environment_feedback == null
+		or _altitude_reference_provider == null
+	):
 		return
-	var altitude_reference_y: float = route_definition.get_altitude_reference_y(
-		get_route_distance()
+	var altitude: float = _altitude_reference_provider.get_radar_altitude_meters()
+	var landing_preparation_active: bool = (
+		get_active_segment() != null
+		and get_active_segment().id == &"red_sand_landing_preparation"
 	)
-	var altitude: float = maxf(
-		altitude_reference_y - flight_ship.position.y,
-		0.0
-	)
+	var radar_state_key: StringName = low_flight_course.get_radar_state_key()
+	if landing_preparation_active:
+		radar_state_key = &"UI_RED_SAND_RADAR_STATE_LANDING_BUFFER"
 	route_hud.set_radar_state(
-		low_flight_course.get_radar_state_key(),
+		radar_state_key,
 		low_flight_course.get_lock_risk(),
 		altitude,
-		low_flight_course.get_safe_height_ceiling(altitude_reference_y),
-		low_flight_course.is_landing_buffer_active()
+		low_flight_course.get_minimum_safe_altitude_meters(),
+		landing_preparation_active
 	)
 	environment_feedback.set_radar_pressure(
 		low_flight_course.get_lock_risk(),

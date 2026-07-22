@@ -50,6 +50,7 @@ polygon = PackedVector2Array(-20, -8, 20, -8, 12, 4, 0, 11, -12, 4)
 color = Color(0.905882, 0.658824, 0.356863, 0.92)
 
 [node name="Pulse" type="Polygon2D" parent="EmitterVisual"]
+unique_name_in_owner = true
 position = Vector2(0, -15)
 polygon = PackedVector2Array(0, -4, 4, 0, 0, 4, -4, 0)
 color = Color(1, 0.407843, 0.286275, 0.95)

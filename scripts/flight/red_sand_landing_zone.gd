@@ -13,16 +13,20 @@ const GUIDANCE_APPROACH_KEY: StringName = &"UI_RED_SAND_LANDING_GUIDANCE_APPROAC
 const GUIDANCE_SLOW_KEY: StringName = &"UI_RED_SAND_LANDING_GUIDANCE_SLOW"
 const GUIDANCE_LEVEL_KEY: StringName = &"UI_RED_SAND_LANDING_GUIDANCE_LEVEL"
 const GUIDANCE_READY_KEY: StringName = &"UI_RED_SAND_LANDING_GUIDANCE_READY"
+const MINIMUM_STAGE_ENTRY_TO_PAD_METERS: float = 2500.0
 
 @export var landing_segment_id: StringName = &"red_sand_landing_approach"
 @export_range(0.0, 1000000.0, 1.0, "or_greater")
-var landing_center_route_distance: float = 36800.0
+var landing_center_route_distance: float = 37000.0
 @export_range(960.0, 10000.0, 1.0, "or_greater") var pad_width: float = 2400.0
 @export_range(0.0, 720.0, 1.0) var pad_surface_y: float = 328.0
 @export_range(0.0, 720.0, 1.0) var touchdown_center_y: float = 318.0
 @export_range(0.0, 10000.0, 1.0, "or_greater")
-var approach_half_width: float = 3600.0
-@export var safe_checkpoint_offset: Vector2 = Vector2(-2600.0, 232.0)
+var approach_half_width: float = 4200.0
+@export_range(1200.0, 5000.0, 1.0, "or_greater")
+var collision_activation_distance_before_center: float = 2000.0
+@export_range(400.0, 800.0, 1.0) var recommended_entry_altitude_meters: float = 600.0
+@export var safe_checkpoint_offset: Vector2 = Vector2(-4000.0, -160.0)
 @export var safe_checkpoint_velocity: Vector2 = Vector2(110.0, 0.0)
 
 @onready var _approach_sensor: Area2D = %ApproachSensor
@@ -37,7 +41,9 @@ var approach_half_width: float = 3600.0
 
 var _flight_ship: FlightLabShip
 var _settings_service: SettingsServiceModel
+var _route_origin_x: float = 0.0
 var _active: bool = false
+var _pad_collision_active: bool = false
 var _attempt_resolved: bool = false
 var _has_approach_sample: bool = false
 var _last_approach_velocity: Vector2 = Vector2.ZERO
@@ -65,6 +71,7 @@ func bind(
 ) -> bool:
 	_flight_ship = flight_ship
 	_settings_service = settings_service
+	_route_origin_x = route_origin_x
 	position.x = route_origin_x + landing_center_route_distance
 	var errors: PackedStringArray = validate()
 	if not errors.is_empty():
@@ -93,6 +100,15 @@ func validate() -> PackedStringArray:
 		errors.append("Landing pad is not large enough for a readable M0 target.")
 	if approach_half_width <= pad_width * 0.5:
 		errors.append("Landing approach must begin before the pad edge.")
+	if collision_activation_distance_before_center <= pad_width * 0.5:
+		errors.append("Landing collision must activate before the visible pad edge.")
+	if collision_activation_distance_before_center >= approach_half_width:
+		errors.append("Landing collision activation must stay inside the approach corridor.")
+	var checkpoint_to_pad_edge: float = -pad_width * 0.5 - safe_checkpoint_offset.x
+	if checkpoint_to_pad_edge < MINIMUM_STAGE_ENTRY_TO_PAD_METERS:
+		errors.append("Landing retry checkpoint needs at least 2500 m before pad contact.")
+	if absf(safe_checkpoint_offset.x) > approach_half_width:
+		errors.append("Landing retry checkpoint must stay inside the approach corridor.")
 	if touchdown_center_y >= pad_surface_y:
 		errors.append("Touchdown center must stay above the pad surface.")
 	if _approach_sensor == null or _approach_shape == null:
@@ -109,13 +125,18 @@ func set_active_segment(segment_id: StringName) -> void:
 	_active = should_be_active
 	if not _active:
 		_guidance_state_key = &""
+	_set_pad_collision_active(false)
 
 
 func step_physics(_delta: float) -> void:
 	if not _active or _attempt_resolved or _flight_ship == null:
+		_set_pad_collision_active(false)
 		return
 	if _flight_ship.is_failed or _flight_ship.is_landed:
 		return
+	_set_pad_collision_active(
+		_get_route_distance() >= get_collision_activation_route_distance()
+	)
 	var local_ship_position: Vector2 = to_local(_flight_ship.global_position)
 	_guidance_state_key = _resolve_guidance_state(local_ship_position)
 	if absf(local_ship_position.x) > approach_half_width:
@@ -165,6 +186,7 @@ func reset_for_checkpoint() -> void:
 	_last_approach_velocity = Vector2.ZERO
 	_last_approach_rotation = 0.0
 	_guidance_state_key = GUIDANCE_APPROACH_KEY if _active else &""
+	_set_pad_collision_active(false)
 
 
 func refresh_accessibility() -> void:
@@ -194,6 +216,26 @@ func get_safe_checkpoint_position() -> Vector2:
 
 func get_safe_checkpoint_velocity() -> Vector2:
 	return safe_checkpoint_velocity
+
+
+func get_landing_center_route_distance() -> float:
+	return landing_center_route_distance
+
+
+func get_pad_leading_edge_route_distance() -> float:
+	return landing_center_route_distance - pad_width * 0.5
+
+
+func get_collision_activation_route_distance() -> float:
+	return landing_center_route_distance - collision_activation_distance_before_center
+
+
+func get_recommended_entry_altitude_meters() -> float:
+	return recommended_entry_altitude_meters
+
+
+func is_pad_collision_active() -> bool:
+	return _pad_collision_active
 
 
 func get_pad_width() -> float:
@@ -251,8 +293,8 @@ func _configure_geometry() -> void:
 	if _approach_shape != null:
 		approach_rectangle = _approach_shape.shape as RectangleShape2D
 	if approach_rectangle != null:
-		approach_rectangle.size = Vector2(approach_half_width * 2.0, 520.0)
-		_approach_shape.position.y = 180.0
+		approach_rectangle.size = Vector2(approach_half_width * 2.0, 900.0)
+		_approach_shape.position.y = 100.0
 
 	var pad_rectangle: RectangleShape2D = null
 	if _pad_shape != null:
@@ -281,6 +323,21 @@ func _configure_geometry() -> void:
 			Vector2(-half_width, pad_surface_y + 160.0),
 			Vector2(-half_width, pad_surface_y),
 		])
+	_set_pad_collision_active(false)
+
+
+func _get_route_distance() -> float:
+	if _flight_ship == null:
+		return 0.0
+	return maxf(_flight_ship.global_position.x - _route_origin_x, 0.0)
+
+
+func _set_pad_collision_active(active: bool) -> void:
+	_pad_collision_active = active and _active
+	if _pad_body != null:
+		_pad_body.collision_layer = (
+			FlightWeaponRules.WORLD_COLLISION_LAYER if _pad_collision_active else 0
+		)
 
 
 func _refresh_label() -> void:

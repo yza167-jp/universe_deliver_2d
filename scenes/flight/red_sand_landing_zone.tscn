@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://scripts/flight/red_sand_landing_zone.gd" id="1_landing"]
 
 [sub_resource type="RectangleShape2D" id="ShapeApproach"]
-size = Vector2(7200, 520)
+size = Vector2(8400, 760)
 
 [sub_resource type="RectangleShape2D" id="ShapePad"]
 size = Vector2(2400, 160)
@@ -83,21 +83,21 @@ unique_name_in_owner = true
 z_index = 5
 
 [node name="GlideSlope" type="Line2D" parent="RouteHints"]
-points = PackedVector2Array(-3500, 188, -2600, 218, -1800, 256, -1120, 294)
+points = PackedVector2Array(-4000, -160, -3200, -90, -2400, 30, -1700, 145, -1120, 250)
 width = 3.0
 default_color = Color(0.462745, 0.945098, 1, 0.72)
 
 [node name="ChevronA" type="Polygon2D" parent="RouteHints"]
-position = Vector2(-2700, 214)
+position = Vector2(-3200, -90)
 polygon = PackedVector2Array(-18, -9, 0, 0, -18, 9, -11, 0)
 color = Color(0.670588, 1, 0.941176, 0.92)
 
 [node name="ChevronB" type="Polygon2D" parent="RouteHints"]
-position = Vector2(-1900, 252)
+position = Vector2(-2400, 30)
 polygon = PackedVector2Array(-18, -9, 0, 0, -18, 9, -11, 0)
 color = Color(0.670588, 1, 0.941176, 0.92)
 
 [node name="ChevronC" type="Polygon2D" parent="RouteHints"]
-position = Vector2(-1220, 290)
+position = Vector2(-1700, 145)
 polygon = PackedVector2Array(-18, -9, 0, 0, -18, 9, -11, 0)
 color = Color(0.670588, 1, 0.941176, 0.92)

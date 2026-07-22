@@ -351,6 +351,16 @@ offset_bottom = 1.0
 mouse_filter = 2
 color = Color(0.905882, 0.658824, 0.356863, 0.42)
 
+[node name="RadarPulseFlash" type="ColorRect" parent="EnvironmentFeedback"]
+unique_name_in_owner = true
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 0.196078, 0.12549, 0)
+
 [node name="LightningFlash" type="ColorRect" parent="EnvironmentFeedback"]
 unique_name_in_owner = true
 anchors_preset = 15
@@ -368,6 +378,10 @@ volume_db = -22.0
 [node name="MusicAudio" type="AudioStreamPlayer" parent="EnvironmentFeedback"]
 unique_name_in_owner = true
 volume_db = -30.0
+
+[node name="RadarPulseAudio" type="AudioStreamPlayer" parent="EnvironmentFeedback"]
+unique_name_in_owner = true
+volume_db = -7.0
 
 [node name="SpeedStreakParticles" type="CPUParticles2D" parent="EnvironmentFeedback"]
 unique_name_in_owner = true

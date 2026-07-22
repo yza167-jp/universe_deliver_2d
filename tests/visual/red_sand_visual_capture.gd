@@ -1,12 +1,13 @@
 extends SceneTree
 
 const ROUTE_SCENE_PATH: String = "res://scenes/flight/red_sand_flight.tscn"
-const CAPTURE_DIRECTORY: String = "res://.omx/artifacts/t045_gate_c_round_3"
+const CAPTURE_DIRECTORY: String = "res://.omx/artifacts/t045_gate_c_round_3_rework"
 const SYSTEM_EDGE_SEGMENT_INDEX: int = 0
 const NEAR_ORBIT_SEGMENT_INDEX: int = 2
 const ATMOSPHERE_SEGMENT_INDEX: int = 3
 const STORM_SEGMENT_INDEX: int = 4
-const SURFACE_SEGMENT_INDEX: int = 6
+const LOW_ALTITUDE_CONTROL_SEGMENT_INDEX: int = 5
+const LANDING_PREPARATION_SEGMENT_INDEX: int = 6
 const LANDING_SEGMENT_INDEX: int = 7
 
 
@@ -31,8 +32,6 @@ func _capture_route_frames() -> void:
 	await process_frame
 	route.close_controls_help()
 	var hud: RedSandRouteHUD = route.get_route_hud()
-	if hud != null:
-		hud.visible = false
 	var ship: FlightLabShip = route.get_flight_ship()
 	if ship == null:
 		printerr("[red-sand-visual] Flight ship is missing.")
@@ -46,9 +45,11 @@ func _capture_route_frames() -> void:
 		route, ship, SYSTEM_EDGE_SEGMENT_INDEX, 0.05, 184.0, 0.55, 0.0
 	)
 	await _settle_particles(45)
-	if not _save_frame("stage_1_system_edge.png"):
+	if not _save_frame("stage_1_orbital_hud.png"):
 		quit(1)
 		return
+	if hud != null:
+		hud.visible = false
 
 	_prepare_stage_frame(
 		route, ship, NEAR_ORBIT_SEGMENT_INDEX, 0.95, 170.0, 1.0, 1.0
@@ -59,18 +60,41 @@ func _capture_route_frames() -> void:
 		return
 
 	_prepare_stage_frame(
-		route, ship, ATMOSPHERE_SEGMENT_INDEX, 0.02, 176.0, 0.9, 0.0
+		route, ship, NEAR_ORBIT_SEGMENT_INDEX, 0.99998, 174.0, 0.9, 0.0
 	)
-	route._process(0.45)
+	await _settle_particles(2)
+	if not _save_frame("stage_3_boundary_last.png"):
+		quit(1)
+		return
+	_prepare_stage_frame(
+		route, ship, ATMOSPHERE_SEGMENT_INDEX, 0.0, 174.0, 0.9, 0.0
+	)
+	await _settle_particles(2)
+	if not _save_frame("stage_4_boundary_first.png"):
+		quit(1)
+		return
+	_prepare_stage_frame(
+		route, ship, ATMOSPHERE_SEGMENT_INDEX, 0.08889, 176.0, 0.9, 0.0
+	)
 	await _settle_particles(12)
 	if not _save_frame("stage_4_transition_mid.png"):
 		quit(1)
 		return
-	route._process(0.5)
+	_prepare_stage_frame(
+		route, ship, ATMOSPHERE_SEGMENT_INDEX, 0.33334, 180.0, 0.82, 0.0
+	)
 	await _settle_particles(12)
 	if not _save_frame("stage_4_atmosphere_horizon.png"):
 		quit(1)
 		return
+	if hud != null:
+		hud.visible = true
+	await _settle_particles(2)
+	if not _save_frame("stage_4_atmosphere_altitude_hud.png"):
+		quit(1)
+		return
+	if hud != null:
+		hud.visible = false
 
 	_prepare_stage_frame(
 		route, ship, STORM_SEGMENT_INDEX, 0.55, 142.0, 0.82, 0.0
@@ -83,10 +107,32 @@ func _capture_route_frames() -> void:
 	if hud != null:
 		hud.visible = true
 	_prepare_stage_frame(
-		route, ship, SURFACE_SEGMENT_INDEX, 0.24, 405.0, 0.45, 0.0
+		route, ship, LOW_ALTITUDE_CONTROL_SEGMENT_INDEX, 0.42, 96.0, 0.45, 0.0
 	)
 	await _settle_particles(12)
-	if not _save_frame("stage_7_essential_hud.png"):
+	if not _save_frame("stage_6_high_altitude_safe.png"):
+		quit(1)
+		return
+	_prepare_stage_frame(
+		route, ship, LOW_ALTITUDE_CONTROL_SEGMENT_INDEX, 0.62, 396.0, 0.45, 0.0
+	)
+	route._physics_process(0.7)
+	route._process(0.0)
+	await _settle_particles(12)
+	if not _save_frame("stage_6_low_altitude_warning.png"):
+		quit(1)
+		return
+	route._physics_process(0.8)
+	route._process(0.0)
+	await _settle_particles(2)
+	if not _save_frame("stage_6_low_altitude_pulse.png"):
+		quit(1)
+		return
+	_prepare_stage_frame(
+		route, ship, LANDING_PREPARATION_SEGMENT_INDEX, 0.3, -200.0, 0.34, 0.0
+	)
+	await _settle_particles(12)
+	if not _save_frame("stage_7_preparation_hud.png"):
 		quit(1)
 		return
 	if hud != null:
@@ -97,19 +143,18 @@ func _capture_route_frames() -> void:
 		return
 	if hud != null:
 		hud.toggle_full_diagnostics()
-		hud.visible = false
 
 	_prepare_stage_frame(
-		route, ship, LANDING_SEGMENT_INDEX, 0.55, 264.0, 0.34, 0.0
+		route, ship, LANDING_SEGMENT_INDEX, 0.0, -180.0, 0.34, 0.0
 	)
-	await _settle_particles(210)
-	if not _save_frame("stage_8_landing_approach.png"):
+	await _settle_particles(45)
+	if not _save_frame("stage_8_high_descent_entry.png"):
 		quit(1)
 		return
 
 	print(
-		"[red-sand-visual] PASS: saved orbit/atmosphere transition, Essential HUD, "
-		+ "Full Diagnostics, storm, and landing 640x360 frames."
+		"[red-sand-visual] PASS: saved boundary-continuous atmosphere, orbital/AGL HUD, "
+		+ "low-altitude radar, preparation, diagnostics, storm, and high landing entry frames."
 	)
 	route.queue_free()
 	await process_frame
@@ -141,6 +186,15 @@ func _prepare_stage_frame(
 	ship.integrate_motion(throttle, 0.0, 0.0, 0.2, boost)
 	ship._update_engine_feedback()
 	route.advance_route_state()
+	var altitude_provider: FlightAltitudeReferenceProvider = (
+		route.get_altitude_reference_provider()
+	)
+	if altitude_provider != null:
+		altitude_provider.reset_to_route_state_from_world(
+			segment_index,
+			segment_progress,
+			ship
+		)
 	route._physics_process(1.0 / 60.0)
 	route._process(0.0)
 	var feedback: RedSandEnvironmentFeedback = route.get_environment_feedback()

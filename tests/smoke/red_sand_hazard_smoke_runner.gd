@@ -179,12 +179,12 @@ func _test_storm_partition(
 
 	ship.set_assist_strength(0.0)
 	ship.velocity = Vector2.ZERO
-	hazards.set_active_segment(&"red_sand_lower_clouds")
+	hazards.set_active_segment(&"red_sand_low_altitude_control")
 	hazards.set_active_segment(storm_segment.id)
 	var no_assist_wind: Vector2 = hazards.step_physics(1.0 / 60.0)
 	ship.set_assist_strength(1.0)
 	ship.velocity = Vector2.ZERO
-	hazards.set_active_segment(&"red_sand_lower_clouds")
+	hazards.set_active_segment(&"red_sand_low_altitude_control")
 	hazards.set_active_segment(storm_segment.id)
 	var full_assist_wind: Vector2 = hazards.step_physics(1.0 / 60.0)
 	_check(

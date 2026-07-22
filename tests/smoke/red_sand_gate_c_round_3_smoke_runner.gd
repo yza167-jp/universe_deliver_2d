@@ -150,7 +150,8 @@ func _test_help_reopen_and_test_tools(
 	_check(
 		hud.is_full_diagnostics_visible()
 		and hud.get_diagnostics_text().contains("完整诊断")
-		and hud.get_diagnostics_text().contains("路线")
+		and hud.get_diagnostics_text().contains("航段")
+		and hud.get_diagnostics_text().contains("高度")
 		and hud.get_navigation_text().contains("距着陆点"),
 		"H did not open full diagnostics while preserving Essential navigation."
 	)
@@ -191,8 +192,10 @@ func _test_planet_stages_and_checkpoint(
 		and is_equal_approx(stage_one_scale, 0.36),
 		"Stage 1 did not show the small Red Sand disc."
 	)
-	var near_orbit: FlightRouteSegment = definition.segments[2]
-	ship.position.x = route.route_origin_x + near_orbit.end_distance - 1.0
+	ship.position.x = (
+		route.route_origin_x
+		+ RedSandOrbitTransitionModel.TRANSITION_START_DISTANCE
+	)
 	route.advance_route_state()
 	route._process(0.0)
 	var stage_three_scale: float = visuals.get_planet_scale()
@@ -203,32 +206,70 @@ func _test_planet_stages_and_checkpoint(
 		and visuals.get_planet_position() != stage_one_position,
 		"Stage 3 planet did not grow 2.5-4x and move across the approach."
 	)
-	var atmosphere: FlightRouteSegment = definition.segments[3]
-	ship.position.x = route.route_origin_x + atmosphere.start_distance + 1.0
+	var transition_duration: float = RedSandOrbitTransitionModel.get_nominal_duration_seconds(
+		definition.get_estimated_cruise_speed()
+	)
+	_check(
+		is_equal_approx(
+			RedSandOrbitTransitionModel.TRANSITION_WINDOW_DISTANCE,
+			2200.0
+		)
+		and transition_duration >= 6.0
+		and transition_duration <= 10.0,
+		"Orbit-to-atmosphere geometry must span 2200 m and roughly 6-10 seconds."
+	)
+
+	ship.position.x = route.route_origin_x + 13499.999
 	route.advance_route_state()
-	route._process(0.45)
+	route._process(0.0)
+	var stage_three_last_position: Vector2 = visuals.get_planet_position()
+	var stage_three_last_scale: float = visuals.get_planet_scale()
+	var stage_three_last_alpha: float = visuals.get_planet_alpha()
+	var stage_three_last_horizon: float = visuals.get_atmosphere_horizon_alpha()
+	ship.position.x = route.route_origin_x + 13500.0
+	route.advance_route_state()
+	route._process(0.0)
+	var stage_four_first_position: Vector2 = visuals.get_planet_position()
+	var stage_four_first_scale: float = visuals.get_planet_scale()
+	var stage_four_first_alpha: float = visuals.get_planet_alpha()
+	var stage_four_first_horizon: float = visuals.get_atmosphere_horizon_alpha()
 	_check(
 		visuals.is_full_planet_visible()
+		and stage_three_last_position.distance_to(stage_four_first_position) < 0.01
+		and absf(stage_three_last_scale - stage_four_first_scale) < 0.001
+		and absf(stage_three_last_alpha - stage_four_first_alpha) < 0.001
+		and absf(stage_three_last_horizon - stage_four_first_horizon) < 0.001
 		and visuals.get_planet_transition_progress() > 0.0
 		and visuals.get_planet_transition_progress() < 1.0
 		and visuals.get_planet_scale() > stage_three_scale
 		and visuals.get_atmosphere_horizon_alpha() > 0.0
 		and visuals.get_atmosphere_horizon_alpha() < 1.0,
-		"Atmosphere entry did not continuously grow the disc into a curved horizon."
+		"Stage 4 first frame did not inherit the final Stage 3 planet transform and glow."
 	)
-	route._process(0.5)
+	var stage_four_checkpoint_position: Vector2 = stage_four_first_position
+	var stage_four_checkpoint_scale: float = stage_four_first_scale
+	var stage_four_checkpoint_progress: float = visuals.get_planet_transition_progress()
+	ship.position.x = (
+		route.route_origin_x
+		+ RedSandOrbitTransitionModel.TRANSITION_END_DISTANCE
+	)
+	route._process(0.0)
 	_check(
 		not visuals.is_full_planet_visible()
 		and is_equal_approx(visuals.get_planet_transition_progress(), 1.0)
+		and is_zero_approx(visuals.get_planet_alpha())
 		and is_equal_approx(visuals.get_atmosphere_horizon_alpha(), 1.0),
-		"The 0.9-second disc-to-horizon handoff did not finish continuously."
+		"The 2200 m disc-to-horizon geometry did not finish at the route window end."
 	)
 	_check(route.restart_from_checkpoint(false), "Atmosphere checkpoint did not restore.")
 	_check(
 		visuals.is_full_planet_visible()
-		and is_zero_approx(visuals.get_planet_transition_progress())
-		and is_zero_approx(visuals.get_atmosphere_horizon_alpha()),
-		"Atmosphere retry did not restore the start of the visual transition."
+		and visuals.get_planet_position().distance_to(stage_four_checkpoint_position) < 0.01
+		and absf(visuals.get_planet_scale() - stage_four_checkpoint_scale) < 0.001
+		and absf(
+			visuals.get_planet_transition_progress() - stage_four_checkpoint_progress
+		) < 0.001,
+		"Atmosphere retry did not restore the exact route-driven visual state."
 	)
 	var storm: FlightRouteSegment = definition.segments[4]
 	ship.fuel = 1.0

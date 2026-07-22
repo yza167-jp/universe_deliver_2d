@@ -8,8 +8,8 @@ const EXPECTED_SEGMENT_IDS: Array[StringName] = [
 	&"red_sand_near_orbit",
 	&"red_sand_atmosphere_edge",
 	&"red_sand_storm_layer",
-	&"red_sand_lower_clouds",
-	&"red_sand_surface_route",
+	&"red_sand_low_altitude_control",
+	&"red_sand_landing_preparation",
 	&"red_sand_landing_approach",
 ]
 
@@ -54,6 +54,17 @@ func run() -> Array[String]:
 		"Compressed route distance must preserve the accepted baseline cruise scale.",
 		failures
 	)
+	expect_true(
+		is_equal_approx(route.segments[5].start_distance, 23000.0)
+		and is_equal_approx(route.segments[5].end_distance, 30500.0)
+		and is_equal_approx(route.segments[5].get_length(), 7500.0)
+		and is_equal_approx(route.segments[6].start_distance, 30500.0)
+		and is_equal_approx(route.segments[6].end_distance, 33000.0)
+		and is_equal_approx(route.segments[6].get_length(), 2500.0)
+		and is_equal_approx(route.segments[7].get_length(), 5000.0),
+		"Stages 6-8 must remain control radar, preparation corridor, and final approach.",
+		failures
+	)
 
 	var catalog: LocalizationCatalog = LocalizationCatalog.load_csv(CATALOG_PATH)
 	var previous_end: float = 0.0
@@ -94,7 +105,7 @@ func run() -> Array[String]:
 		)
 		expect_true(
 			segment.terrain_surface_enabled == (index >= 5),
-			"Only lower-cloud, surface-route, and landing stages may expose terrain.",
+			"Only low-altitude control, preparation, and landing stages may expose terrain.",
 			failures
 		)
 		expect_true(
@@ -122,6 +133,9 @@ func run() -> Array[String]:
 		route.get_segment_index(0.0) == 0
 		and route.get_segment_index(3999.0) == 0
 		and route.get_segment_index(4000.0) == 1
+		and route.get_segment_index(23000.0) == 5
+		and route.get_segment_index(30500.0) == 6
+		and route.get_segment_index(33000.0) == 7
 		and route.get_segment_index(38000.0) == 7,
 		"Route lookup must switch exactly at segment boundaries and hold the final stage.",
 		failures
@@ -143,7 +157,7 @@ func run() -> Array[String]:
 		is_equal_approx(route.get_altitude_reference_y(0.0), 1000.0)
 		and route.get_altitude_reference_y(18000.0) > 540.0
 		and is_equal_approx(route.get_altitude_reference_y(38000.0), 350.0),
-		"HUD altitude datum must descend continuously without creating early collision.",
+		"Internal compressed route datum must descend without creating early collision.",
 		failures
 	)
 	return failures

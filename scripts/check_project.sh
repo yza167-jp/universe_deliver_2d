@@ -126,7 +126,7 @@ run_step \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/red_sand_hazard_smoke_runner.gd
 
 run_step \
-  "Red Sand canyon and radar low-flight smoke test" \
+  "Red Sand low-altitude control radar smoke test" \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/red_sand_low_flight_smoke_runner.gd
 
 run_step \
@@ -143,7 +143,7 @@ run_step \
 
 run_step \
   "Gate C Round 3 route rework and flight-baseline regression smoke test" \
-  run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/red_sand_gate_c_round_2_smoke_runner.gd
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/red_sand_gate_c_round_3_smoke_runner.gd
 
 run_step \
   "Station hub layout and reachability smoke test" \
