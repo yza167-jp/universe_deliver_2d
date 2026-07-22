@@ -58,15 +58,30 @@ func _run_smoke() -> void:
 	var landing_zone: RedSandLandingZone = route.get_landing_zone()
 	var route_hud: RedSandRouteHUD = route.get_route_hud()
 	var definition: FlightRouteDefinition = route.get_route_definition()
+	var altitude_provider: FlightAltitudeReferenceProvider = (
+		route.get_altitude_reference_provider()
+	)
+	var altitude_reference_point: Node2D = (
+		flight_ship.get_node_or_null("AltitudeReferencePoint") as Node2D
+		if flight_ship != null
+		else null
+	)
 	_check(flight_ship != null, "Landing smoke route ship is missing.")
 	_check(landing_zone != null, "Landing smoke zone is missing.")
 	_check(route_hud != null, "Landing smoke HUD is missing.")
 	_check(definition != null, "Landing smoke route definition is missing.")
+	_check(altitude_provider != null, "Landing smoke altitude provider is missing.")
+	_check(
+		altitude_reference_point != null,
+		"Landing smoke bottom-center altitude reference is missing."
+	)
 	if (
 		flight_ship == null
 		or landing_zone == null
 		or route_hud == null
 		or definition == null
+		or altitude_provider == null
+		or altitude_reference_point == null
 	):
 		await _cleanup()
 		_finish()
@@ -198,6 +213,82 @@ func _run_smoke() -> void:
 		and landing_label.get_global_rect().size.y >= 24.0,
 		"Landing guidance label did not receive a readable 640x360 layout."
 	)
+
+	# The profile and RayCast must use the same rotated bottom-center X at the
+	# platform rear edge, even when the ship center has already crossed it.
+	landing_zone.reset_for_checkpoint()
+	var trailing_edge_distance: float = (
+		landing_zone.get_pad_trailing_edge_route_distance()
+	)
+	flight_ship.rotation = deg_to_rad(30.0)
+	flight_ship.global_position = (
+		landing_zone.get_altitude_surface_global_position() + Vector2(0.0, -120.0)
+	)
+	var edge_reference_position: Vector2 = (
+		landing_zone.get_altitude_surface_global_position()
+		+ Vector2(landing_zone.get_pad_width() * 0.5 - 1.0, -120.0)
+	)
+	flight_ship.global_position += (
+		edge_reference_position - altitude_reference_point.global_position
+	)
+	flight_ship.velocity = Vector2(110.0, 0.0)
+	route._physics_process(0.0)
+	await physics_frame
+	route._physics_process(1.0 / 60.0)
+	_check(
+		flight_ship.position.x - route.route_origin_x > trailing_edge_distance
+		and absf(
+			altitude_provider.canonical_route_distance
+			- (trailing_edge_distance - 1.0)
+		) < 0.1
+		and altitude_provider.is_current_source_valid()
+		and altitude_provider.cross_source_consistency_valid
+		and altitude_provider.get_ground_node_name() == &"PadBody"
+		and absf(altitude_provider.raw_profile_altitude_meters - 120.0) < 0.5
+		and altitude_provider.ray_profile_difference_meters
+		<= altitude_provider.ray_profile_tolerance_meters,
+		"Rear-edge AGL did not sample profile and PadBody beneath the same reference point: %s"
+		% route.get_altitude_diagnostic_snapshot()
+	)
+
+	# Missing the finite pad is a normal failed approach, not an undefined route
+	# tail where AGL may switch beneath the ship or disagree with PadBody.
+	landing_zone.reset_for_checkpoint()
+	flight_ship.rotation = 0.0
+	var missed_reference_position: Vector2 = (
+		landing_zone.get_altitude_surface_global_position()
+		+ Vector2(landing_zone.get_pad_width() * 0.5 + 1.0, -120.0)
+	)
+	flight_ship.global_position += (
+		missed_reference_position - altitude_reference_point.global_position
+	)
+	flight_ship.velocity = Vector2(110.0, 0.0)
+	route._physics_process(1.0 / 60.0)
+	for _failed_frame: int in range(5):
+		route._physics_process(1.0 / 60.0)
+	_check(
+		flight_ship.is_failed
+		and route.is_retry_pending()
+		and landing_zone.is_attempt_resolved()
+		and not route.is_route_completed()
+		and altitude_provider.is_current_source_valid()
+		and not route.has_altitude_invariant_violation()
+		and route_hud.get_status_text().contains(
+			tr(RedSandLandingZone.MISSED_APPROACH_FAILURE_KEY)
+		),
+		"Passing the platform rear edge did not fail clearly before corrupting AGL."
+	)
+	var missed_retry_delay: float = flight_ship.tuning.failure_retry_delay_seconds
+	route._process(missed_retry_delay + 0.1)
+	_check(
+		not flight_ship.is_failed
+		and not route.is_retry_pending()
+		and flight_ship.position == landing_zone.get_safe_checkpoint_position()
+		and altitude_provider.is_current_source_valid()
+		and not route.has_altitude_invariant_violation(),
+		"Missed-approach retry did not restore the safe Stage 8 altitude frame."
+	)
+
 	landing_zone.reset_for_checkpoint()
 
 	_touch_down(
@@ -337,8 +428,8 @@ func _finish() -> void:
 	TranslationServer.set_locale(_original_locale)
 	if _failures.is_empty():
 		print(
-			"[red-sand-landing] PASS: readable pad, failed-touchdown retry, rough "
-			+ "cargo result, and FLIGHT-to-ARRIVAL handoff."
+			"[red-sand-landing] PASS: readable finite pad, rear-edge retry, "
+			+ "failed touchdown, cargo result, and FLIGHT-to-ARRIVAL handoff."
 		)
 		quit(0)
 		return

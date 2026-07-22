@@ -9,6 +9,9 @@ signal landing_resolved(
 signal landing_failed(reason_key: StringName)
 
 const FAILURE_KEY: StringName = &"UI_RED_SAND_LANDING_FAILURE"
+const MISSED_APPROACH_FAILURE_KEY: StringName = (
+	&"UI_RED_SAND_LANDING_MISSED_APPROACH_FAILURE"
+)
 const GUIDANCE_APPROACH_KEY: StringName = &"UI_RED_SAND_LANDING_GUIDANCE_APPROACH"
 const GUIDANCE_SLOW_KEY: StringName = &"UI_RED_SAND_LANDING_GUIDANCE_SLOW"
 const GUIDANCE_LEVEL_KEY: StringName = &"UI_RED_SAND_LANDING_GUIDANCE_LEVEL"
@@ -139,15 +142,30 @@ func set_active_segment(segment_id: StringName) -> void:
 	_set_pad_collision_active(false)
 
 
-func step_physics(_delta: float) -> void:
+func step_physics(
+	_delta: float,
+	altitude_reference_route_distance: float = -1.0
+) -> void:
 	if not _active or _attempt_resolved or _flight_ship == null:
 		_set_pad_collision_active(false)
 		return
 	if _flight_ship.is_failed or _flight_ship.is_landed:
 		return
+	var reference_route_distance: float = (
+		altitude_reference_route_distance
+		if (
+			is_finite(altitude_reference_route_distance)
+			and altitude_reference_route_distance >= 0.0
+		)
+		else _get_route_distance()
+	)
 	_set_pad_collision_active(
 		_get_route_distance() >= get_collision_activation_route_distance()
 	)
+	if reference_route_distance > get_pad_trailing_edge_route_distance():
+		_attempt_resolved = true
+		landing_failed.emit(MISSED_APPROACH_FAILURE_KEY)
+		return
 	var local_ship_position: Vector2 = to_local(_flight_ship.global_position)
 	_guidance_state_key = _resolve_guidance_state(local_ship_position)
 	if absf(local_ship_position.x) > approach_half_width:
@@ -284,6 +302,10 @@ func get_pad_leading_edge_route_distance() -> float:
 	return landing_center_route_distance - pad_width * 0.5
 
 
+func get_pad_trailing_edge_route_distance() -> float:
+	return landing_center_route_distance + pad_width * 0.5
+
+
 func get_collision_activation_route_distance() -> float:
 	return landing_center_route_distance - collision_activation_distance_before_center
 
@@ -321,8 +343,7 @@ func has_altitude_surface_override(route_distance: float) -> bool:
 		_active
 		and _pad_collision_active
 		and route_distance >= get_pad_leading_edge_route_distance()
-		and route_distance
-		<= landing_center_route_distance + pad_width * 0.5
+		and route_distance <= get_pad_trailing_edge_route_distance()
 	)
 
 

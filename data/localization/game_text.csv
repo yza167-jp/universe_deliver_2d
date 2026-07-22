@@ -439,6 +439,7 @@ UI_RED_SAND_LANDING_GUIDANCE_LEVEL,"姿态过大，把船身放平","Pitch too s
 UI_RED_SAND_LANDING_GUIDANCE_READY,"条件可接受，保持下降","Conditions acceptable; continue descent"
 UI_RED_SAND_LANDING_HUD,"着陆：%s\n水平 %d/%d · 下降 %d/%d · 姿态 %d°/%d°","Landing: %s\nHorizontal %d/%d · Descent %d/%d · Pitch %d°/%d°"
 UI_RED_SAND_LANDING_FAILURE,"着陆冲击过大，飞船失控","Landing impact exceeded safe limits"
+UI_RED_SAND_LANDING_MISSED_APPROACH_FAILURE,"已错过着陆平台，正在返回进场检查点","Landing pad missed; returning to the approach checkpoint"
 UI_RED_SAND_LANDING_RESULT_SMOOTH,"老皮：漂亮。货物完整度 %d%%，这次公司只能表扬我们。","Lao Pi: Clean. Cargo integrity %d%%; the company may have to praise us."
 UI_RED_SAND_LANDING_RESULT_ROUGH,"老皮：落地了。货物完整度 %d%%，把它叫作有控制的接触。","Lao Pi: We're down. Cargo integrity %d%%; call it controlled contact."
 UI_RED_SAND_ARRIVAL_LANDING_SMOOTH,"平稳着陆 · 货物完整度 %d%%","Smooth landing · cargo integrity %d%%"

@@ -191,9 +191,13 @@ func _physics_process(delta: float) -> void:
 	var wind_acceleration: Vector2 = hazard_director.step_physics(delta)
 	environment_feedback.set_wind_acceleration(wind_acceleration)
 	_update_surface_frame()
+	landing_zone.step_physics(delta, _get_altitude_reference_route_distance())
+	if flight_ship.is_failed or flight_ship.is_landed:
+		_sync_low_flight_feedback()
+		_sync_landing_feedback()
+		return
 	_update_altitude_reference(delta)
 	low_flight_course.step_physics(delta)
-	landing_zone.step_physics(delta)
 	_sync_low_flight_feedback()
 	_sync_landing_feedback()
 
@@ -672,7 +676,7 @@ func _update_altitude_reference(delta: float) -> void:
 	var segment: FlightRouteSegment = get_active_segment()
 	if segment == null:
 		return
-	var route_distance: float = get_route_distance()
+	var route_distance: float = _get_altitude_reference_route_distance()
 	var profile_ground_y: float = _get_canonical_ground_route_y(route_distance)
 	var profile_valid: bool = (
 		_active_segment_index >= FlightAltitudeReferenceProvider.ATMOSPHERE_FINAL_SEGMENT_INDEX
@@ -784,7 +788,7 @@ func _reset_altitude_reference() -> void:
 	var segment: FlightRouteSegment = get_active_segment()
 	if segment == null:
 		return
-	var route_distance: float = get_route_distance()
+	var route_distance: float = _get_altitude_reference_route_distance()
 	_altitude_reference_provider.reset_to_canonical_frame(
 		_active_segment_index,
 		segment.get_progress(_maximum_route_distance),
@@ -838,6 +842,16 @@ func _get_canonical_ground_route_y(route_distance: float) -> float:
 			landing_zone.get_altitude_surface_global_position()
 		).y
 	return ground_y
+
+
+## Profile and RayCast must sample beneath the same rotated bottom-center point.
+func _get_altitude_reference_route_distance() -> float:
+	if altitude_reference_point == null:
+		return get_route_distance()
+	return maxf(
+		to_local(altitude_reference_point.global_position).x - route_origin_x,
+		0.0
+	)
 
 
 func _update_altitude_invariant(delta: float) -> void:

@@ -473,9 +473,10 @@ Tween，也不重设任何变换。
 飞船追踪，检查点恢复沿用同一值；回到 `20000 m` 前的检查点才重置并重新获取。
 
 `FlightAltitudeReferenceProvider` 是 HUD 与低空雷达的唯一高度源。实时入口只
-接受 canonical route vertical frame：路线根根据飞船实际 X 计算路线距离，
-根据船体底部中心 `AltitudeReferencePoint` 计算 `ship_reference_route_y`，再由
-`FlightRouteDefinition.get_ground_route_y(actual_distance, active_segment)` 加上
+接受 canonical route vertical frame：路线根把船体底部中心
+`AltitudeReferencePoint` 转换为路线空间，同时以其实际 X 作为剖面查询距离、
+以其 Y 作为 `ship_reference_route_y`，再由
+`FlightRouteDefinition.get_ground_route_y(reference_distance, active_segment)` 加上
 已锁定的 `surface_frame_offset_y` 查询地表 Y。相机、屏幕位置、视觉最大进度和
 切段标签都不能改写这些输入；世界坐标
 只用于专用地表层 RayCast。短距离倒车时，查询距离被限制在当前阶段的连续剖面，
@@ -493,7 +494,9 @@ invalid duration / failure reason`。阶段 1–3 返回无数值的高空状态
 真实 `0 m`/`1 m` 仍是合法高度，禁止用数值哨兵掩盖错误。瞬时无效最多以
 `HOLD_LAST_VALID` 保持 `0.20 s`，随后进入 `INVALID` 并输出诊断；低空雷达仅在
 当前源有效时评估阈值，HUD 与雷达逐帧读取同一个 Final AGL。平台顶面通过
-`RedSandLandingZone` 覆盖同一地表查询，而不是另建高度坐标。Full Diagnostics
+`RedSandLandingZone` 覆盖同一参考点 X 的地表查询，而不是另建高度坐标；因此
+船体俯仰导致船体中心先越过平台边缘时，RayCast 与剖面也不会分采两个表面。
+Full Diagnostics
 同时显示实际路线距离、飞船/地表 route Y、AGL 路线单位、剖面段、阶段 5→6
 混合值、无效持续时间、射线路径及射线/剖面差值。Debug 路线还以 `0.45 s`
 运动窗口检测“坐标预期变化但 Final AGL 固定”的不变量并输出完整快照。
@@ -561,7 +564,10 @@ T-043 使用局部 `RedSandLandingZone` 组合大型可读 `StaticBody2D` 着陆
 `2400 m`，所以阶段 8 开始时距中心 `4000 m`、距平台前缘 `2800 m`。推荐
 进入高度为 `600 m`，正常 `220 m/s` 进场到中心名义约 `18.18 s`。平台碰撞
 只在路线 `35000 m`（距中心 `2000 m`、距可见前缘 `800 m`）后启用，不会在
-远处尚不可辨识时阻挡推荐路线。
+远处尚不可辨识时阻挡推荐路线。平台尾缘保持在 `38200 m`；船底高度参考点越过
+该有限边界而尚未完成接地时，`RedSandLandingZone` 使用本地化原因触发既有
+失败/自动重试流。失败冻结期间不再更新 AGL，不允许进入路线尾部后再切换到
+普通地表剖面；这不是加长平台或放宽成功区。
 
 进入最终阶段时，`FlightLabShip` 以固定安全位置和速度替换重试快照，但保留
 当时的环境、辅助驾驶和资源状态。重试位置为中心前 `4000 m`、推荐高度
