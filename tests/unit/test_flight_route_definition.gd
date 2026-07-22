@@ -154,10 +154,29 @@ func run() -> Array[String]:
 		failures
 	)
 	expect_true(
-		is_equal_approx(route.get_altitude_reference_y(0.0), 1000.0)
-		and route.get_altitude_reference_y(18000.0) > 540.0
-		and is_equal_approx(route.get_altitude_reference_y(38000.0), 350.0),
+		is_equal_approx(route.get_ground_route_y(0.0), 1000.0)
+		and route.get_ground_route_y(18000.0) > 540.0
+		and is_equal_approx(route.get_ground_route_y(38000.0), 350.0),
 		"Internal compressed route datum must descend without creating early collision.",
+		failures
+	)
+	expect_true(
+		is_equal_approx(route.get_ground_route_y(23000.0, 5), 660.0)
+		and is_equal_approx(route.get_ground_route_y(22900.0, 5), 660.0)
+		and absf(
+			route.get_ground_route_y(30499.999, 5)
+			- route.get_ground_route_y(30500.0, 6)
+		) < 0.01
+		and absf(
+			route.get_ground_route_y(32999.999, 6)
+			- route.get_ground_route_y(33000.0, 7)
+		) < 0.01
+		and route.has_ground_profile(5)
+		and route.has_ground_profile(6)
+		and route.has_ground_profile(7)
+		and route.get_ground_profile_segment_id(5)
+		== &"red_sand_low_altitude_control",
+		"Canonical terrain lookup must cover Stages 6-8 continuously and survive short reverse corrections.",
 		failures
 	)
 	return failures

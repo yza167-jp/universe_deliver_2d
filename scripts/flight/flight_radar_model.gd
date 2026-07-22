@@ -1,6 +1,8 @@
 class_name FlightRadarModel
 extends RefCounted
 
+const ALTITUDE_COMPARISON_TOLERANCE_METERS: float = 0.01
+
 
 static func calculate_altitude_exposure(
 	altitude_meters: float,
@@ -19,7 +21,10 @@ static func is_low_altitude(
 	altitude_meters: float,
 	minimum_safe_altitude_meters: float
 ) -> bool:
-	return altitude_meters < maxf(minimum_safe_altitude_meters, 0.0)
+	return (
+		altitude_meters + ALTITUDE_COMPARISON_TOLERANCE_METERS
+		< maxf(minimum_safe_altitude_meters, 0.0)
+	)
 
 
 static func calculate_phase_progress(elapsed_seconds: float, duration_seconds: float) -> float:

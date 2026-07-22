@@ -11,8 +11,12 @@ const NO_RETRY_PENDING: float = -1.0
 const NO_ARRIVAL_TRANSITION_PENDING: float = -1.0
 const ENTRY_START_SEGMENT_INDEX: int = 3
 const ENTRY_FINALIZE_SEGMENT_INDEX: int = 7
+const ALTITUDE_INVARIANT_WINDOW_SECONDS: float = 0.45
+const ALTITUDE_INVARIANT_EXPECTED_CHANGE_METERS: float = 12.0
+const ALTITUDE_INVARIANT_MAX_FINAL_CHANGE_METERS: float = 0.75
 
 @onready var flight_ship: FlightLabShip = %FlightShip
+@onready var altitude_reference_point: Node2D = %AltitudeReferencePoint
 @onready var flight_camera: Camera2D = %FlightCamera
 @onready var route_hud: RedSandRouteHUD = %RedSandRouteHUD
 @onready var route_visuals: RedSandRouteVisuals = %RouteGeometry
@@ -45,6 +49,11 @@ var _camera_shake_duration: float = 0.0
 var _camera_shake_elapsed: float = 0.0
 var _camera_shake_amplitude: float = 0.0
 var _altitude_failure_latched: bool = false
+var _altitude_invariant_latched: bool = false
+var _altitude_invariant_elapsed: float = 0.0
+var _altitude_invariant_start_ship_y: float = 0.0
+var _altitude_invariant_start_ground_y: float = 0.0
+var _altitude_invariant_start_final_agl: float = 0.0
 var _controls_help_open: bool = false
 var _was_tree_paused: bool = false
 var _direct_test_mode: bool = false
@@ -466,6 +475,7 @@ func restart_from_checkpoint(is_automatic: bool = false) -> bool:
 func _validate_runtime_dependencies() -> bool:
 	if (
 		flight_ship == null
+		or altitude_reference_point == null
 		or flight_camera == null
 		or route_hud == null
 		or route_visuals == null
@@ -494,11 +504,21 @@ func _enter_segment(segment_index: int) -> void:
 	low_flight_course.set_active_segment(segment.id)
 	landing_zone.set_active_segment(segment.id)
 	_update_altitude_reference(0.0)
-	flight_ship.capture_checkpoint(
-		segment.checkpoint_id,
-		segment.checkpoint_fuel_floor
+	var altitude_handoff_valid: bool = (
+		_altitude_reference_provider.get_mode_name() != &"AGL"
+		or _altitude_reference_provider.is_current_source_valid()
 	)
-	_sync_order_run_checkpoint(segment.checkpoint_id)
+	if altitude_handoff_valid:
+		flight_ship.capture_checkpoint(
+			segment.checkpoint_id,
+			segment.checkpoint_fuel_floor
+		)
+		_sync_order_run_checkpoint(segment.checkpoint_id)
+	else:
+		push_error(
+			"Red Sand refused an invalid Stage %d altitude checkpoint: %s"
+			% [segment_index + 1, get_altitude_diagnostic_snapshot()]
+		)
 	if segment_index == ENTRY_START_SEGMENT_INDEX:
 		_begin_entry_style_tracking()
 	elif segment_index == ENTRY_FINALIZE_SEGMENT_INDEX:
@@ -603,38 +623,63 @@ func _update_altitude_reference(delta: float) -> void:
 	if (
 		_altitude_reference_provider == null
 		or flight_ship == null
+		or altitude_reference_point == null
 		or route_definition == null
 	):
 		return
 	var segment: FlightRouteSegment = get_active_segment()
 	if segment == null:
 		return
-	_altitude_reference_provider.update_from_world(
+	var route_distance: float = get_route_distance()
+	var profile_ground_y: float = _get_canonical_ground_route_y(route_distance)
+	var profile_valid: bool = (
+		_active_segment_index >= FlightAltitudeReferenceProvider.ATMOSPHERE_FINAL_SEGMENT_INDEX
+		and route_definition.has_ground_profile(_active_segment_index)
+	)
+	_altitude_reference_provider.update_from_canonical_frame(
 		_active_segment_index,
 		segment.get_progress(_maximum_route_distance),
+		route_distance,
+		to_local(altitude_reference_point.global_position).y,
+		profile_ground_y,
+		profile_valid,
+		route_definition.get_ground_profile_segment_id(_active_segment_index),
+		altitude_reference_point,
 		flight_ship,
-		delta,
-		route_definition.get_altitude_reference_y(_maximum_route_distance)
+		self,
+		delta
 	)
 	_validate_agl_source()
+	_update_altitude_invariant(delta)
 
 
 func _reset_altitude_reference() -> void:
 	if (
 		_altitude_reference_provider == null
 		or flight_ship == null
+		or altitude_reference_point == null
 		or route_definition == null
 	):
 		return
 	var segment: FlightRouteSegment = get_active_segment()
 	if segment == null:
 		return
-	_altitude_reference_provider.reset_to_route_state_from_world(
+	var route_distance: float = get_route_distance()
+	_altitude_reference_provider.reset_to_canonical_frame(
 		_active_segment_index,
 		segment.get_progress(_maximum_route_distance),
+		route_distance,
+		to_local(altitude_reference_point.global_position).y,
+		_get_canonical_ground_route_y(route_distance),
+		_active_segment_index >= FlightAltitudeReferenceProvider.ATMOSPHERE_FINAL_SEGMENT_INDEX
+		and route_definition.has_ground_profile(_active_segment_index),
+		route_definition.get_ground_profile_segment_id(_active_segment_index),
+		altitude_reference_point,
 		flight_ship,
-		route_definition.get_altitude_reference_y(_maximum_route_distance)
+		self
 	)
+	_altitude_invariant_latched = false
+	_reset_altitude_invariant_window()
 	_validate_agl_source()
 
 
@@ -643,19 +688,119 @@ func _validate_agl_source() -> void:
 		return
 	var agl_failed: bool = (
 		_altitude_reference_provider.get_mode_name() == &"AGL"
-		and not _altitude_reference_provider.altitude_source_valid
+		and not _altitude_reference_provider.has_numeric_altitude()
 	)
-	if agl_failed and not _altitude_failure_latched:
+	var source_mismatch: bool = (
+		_altitude_reference_provider.get_mode_name() == &"AGL"
+		and _altitude_reference_provider.has_cross_source_mismatch()
+	)
+	if (agl_failed or source_mismatch) and not _altitude_failure_latched:
 		push_error(
-			"Red Sand AGL source failed in stage %d: source=%s reason=%s ground=%s"
+			"Red Sand AGL source failed in stage %d: %s"
 			% [
 				_active_segment_index + 1,
-				_altitude_reference_provider.get_source_name(),
-				_altitude_reference_provider.get_failure_reason(),
-				_altitude_reference_provider.get_ground_node_path(),
+				get_altitude_diagnostic_snapshot(),
 			]
 		)
-	_altitude_failure_latched = agl_failed
+	_altitude_failure_latched = agl_failed or source_mismatch
+
+
+func _get_canonical_ground_route_y(route_distance: float) -> float:
+	var ground_y: float = route_definition.get_ground_route_y(
+		route_distance,
+		_active_segment_index
+	)
+	if (
+		landing_zone != null
+		and landing_zone.has_altitude_surface_override(route_distance)
+	):
+		ground_y = to_local(
+			landing_zone.get_altitude_surface_global_position()
+		).y
+	return ground_y
+
+
+func _update_altitude_invariant(delta: float) -> void:
+	if not OS.is_debug_build() or delta <= 0.0:
+		return
+	if (
+		_altitude_reference_provider.get_mode_name() != &"AGL"
+		or not _altitude_reference_provider.is_current_source_valid()
+		or not _altitude_reference_provider.has_numeric_altitude()
+		or flight_ship.is_on_floor()
+	):
+		_reset_altitude_invariant_window()
+		return
+	if _altitude_invariant_elapsed <= 0.0:
+		_altitude_invariant_start_ship_y = (
+			_altitude_reference_provider.ship_reference_route_y
+		)
+		_altitude_invariant_start_ground_y = (
+			_altitude_reference_provider.ground_route_y
+		)
+		_altitude_invariant_start_final_agl = (
+			_altitude_reference_provider.final_agl_altitude_meters
+		)
+	_altitude_invariant_elapsed += delta
+	if _altitude_invariant_elapsed < ALTITUDE_INVARIANT_WINDOW_SECONDS:
+		return
+	if (
+		FlightAltitudeReferenceProvider.is_motion_invariant_violated(
+			_altitude_invariant_start_ship_y,
+			_altitude_reference_provider.ship_reference_route_y,
+			_altitude_invariant_start_ground_y,
+			_altitude_reference_provider.ground_route_y,
+			_altitude_invariant_start_final_agl,
+			_altitude_reference_provider.final_agl_altitude_meters,
+			_altitude_reference_provider.meters_per_route_unit,
+			ALTITUDE_INVARIANT_EXPECTED_CHANGE_METERS,
+			ALTITUDE_INVARIANT_MAX_FINAL_CHANGE_METERS
+		)
+		and not _altitude_invariant_latched
+	):
+		_altitude_invariant_latched = true
+		push_error(
+			"Altitude invariant violated: vertical_velocity=%.2f %s"
+			% [flight_ship.get_vertical_speed(), get_altitude_diagnostic_snapshot()]
+		)
+	_reset_altitude_invariant_window()
+
+
+func _reset_altitude_invariant_window() -> void:
+	_altitude_invariant_elapsed = 0.0
+	_altitude_invariant_start_ship_y = 0.0
+	_altitude_invariant_start_ground_y = 0.0
+	_altitude_invariant_start_final_agl = 0.0
+
+
+func has_altitude_invariant_violation() -> bool:
+	return _altitude_invariant_latched
+
+
+func get_altitude_diagnostic_snapshot() -> String:
+	if _altitude_reference_provider == null:
+		return "provider=<missing>"
+	return (
+		"stage=%d route=%.2f source=%s valid=%s ship_y=%.2f ground_y=%.2f "
+		+ "agl=%.2f raw_ray=%.2f raw_profile=%.2f last=%.2f invalid=%.3f "
+		+ "ray_hit=%s profile=%s blend=%.3f failure=%s"
+	) % [
+		_active_segment_index + 1,
+		_altitude_reference_provider.canonical_route_distance,
+		_altitude_reference_provider.get_source_name(),
+		_altitude_reference_provider.has_numeric_altitude(),
+		_altitude_reference_provider.ship_reference_route_y,
+		_altitude_reference_provider.ground_route_y,
+		_altitude_reference_provider.final_agl_altitude_meters,
+		_altitude_reference_provider.raw_raycast_altitude_meters,
+		_altitude_reference_provider.raw_profile_altitude_meters,
+		_altitude_reference_provider.last_valid_agl_meters,
+		_altitude_reference_provider.invalid_duration_seconds,
+		_altitude_reference_provider.get_ground_node_path(),
+		_altitude_reference_provider.terrain_profile_segment_id,
+		_altitude_reference_provider.atmosphere_to_agl_blend,
+		_altitude_reference_provider.get_failure_reason(),
+	]
 
 
 func _refresh_hud() -> void:

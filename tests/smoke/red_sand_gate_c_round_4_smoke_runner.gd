@@ -109,10 +109,10 @@ func _test_real_input_descends_below_radar_threshold(
 ) -> void:
 	var segment: FlightRouteSegment = definition.segments[RADAR_SEGMENT_INDEX]
 	var route_distance: float = 24000.0
-	var profile_ground_y: float = definition.get_altitude_reference_y(route_distance)
+	var profile_ground_y: float = definition.get_ground_route_y(route_distance)
 	ship.position = Vector2(
 		route.route_origin_x + route_distance,
-		profile_ground_y - 600.0
+		profile_ground_y - 600.0 - 8.0
 	)
 	ship.velocity = Vector2(140.0, 0.0)
 	ship.rotation = 0.0
@@ -120,12 +120,7 @@ func _test_real_input_descends_below_radar_threshold(
 	ship.is_failed = false
 	ship.is_landed = false
 	route.advance_route_state()
-	provider.reset_to_route_state_from_world(
-		RADAR_SEGMENT_INDEX,
-		segment.get_progress(route_distance),
-		ship,
-		profile_ground_y
-	)
+	route._reset_altitude_reference()
 	_real_input_minimum_altitude = provider.get_altitude_meters()
 	Input.action_press(&"flight_throttle")
 	Input.action_press(&"flight_pitch_down")
@@ -247,19 +242,16 @@ func _test_live_agl_and_radar(
 ) -> void:
 	var segment: FlightRouteSegment = definition.segments[RADAR_SEGMENT_INDEX]
 	var route_distance: float = 24000.0
-	var profile_ground_y: float = definition.get_altitude_reference_y(route_distance)
+	var profile_ground_y: float = definition.get_ground_route_y(route_distance)
 	ship.position.x = route.route_origin_x + route_distance
+	ship.rotation = 0.0
+	ship.angular_velocity = 0.0
 	route.advance_route_state()
 	course.set_active_segment(segment.id)
 	for altitude: float in [600.0, 300.0, 280.0, 150.0, 400.0]:
-		ship.position.y = profile_ground_y - altitude
+		ship.position.y = profile_ground_y - altitude - 8.0
 		await physics_frame
-		provider.reset_to_route_state_from_world(
-			RADAR_SEGMENT_INDEX,
-			segment.get_progress(route_distance),
-			ship,
-			profile_ground_y
-		)
+		route._reset_altitude_reference()
 		_check(
 			provider.has_numeric_altitude()
 			and absf(provider.get_hud_altitude_meters() - altitude) < 0.5
@@ -268,6 +260,8 @@ func _test_live_agl_and_radar(
 			== provider.get_radar_altitude_meters(),
 			"Live ground sampling did not expose one final %.0f m AGL to HUD and radar."
 			% altitude
+			+ " "
+			+ route.get_altitude_diagnostic_snapshot()
 		)
 		course.reset_for_checkpoint()
 		if altitude >= course.minimum_safe_altitude_meters:
@@ -291,23 +285,28 @@ func _test_live_agl_and_radar(
 				and course.get_pulse_count() == pulse_count_before + 1,
 				"The live 150 m AGL sample did not reach one radar pulse."
 			)
-	ship.position.y = profile_ground_y + 20.0
-	await physics_frame
-	provider.reset_to_route_state_from_world(
+	var invalid_provider: FlightAltitudeReferenceProvider = (
+		FlightAltitudeReferenceProvider.new()
+	)
+	invalid_provider.reset_to_canonical_samples(
 		RADAR_SEGMENT_INDEX,
 		segment.get_progress(route_distance),
-		ship,
-		profile_ground_y
+		route_distance,
+		profile_ground_y + 20.0,
+		profile_ground_y,
+		true,
+		0.0,
+		false,
+		segment.id
 	)
 	_check(
-		not provider.terrain_hit_valid
-		and provider.profile_altitude_valid
-		and provider.has_numeric_altitude()
-		and provider.get_source_name() == &"TERRAIN_PROFILE_FALLBACK"
-		and provider.get_altitude_meters()
-		>= FlightAltitudeReferenceProvider.MINIMUM_VALID_AGL_METERS
-		and not provider.get_failure_reason().is_empty(),
-		"A ray starting inside terrain did not use the diagnosed profile fallback."
+		not invalid_provider.terrain_hit_valid
+		and not invalid_provider.profile_altitude_valid
+		and not invalid_provider.has_numeric_altitude()
+		and invalid_provider.get_source_name() == &"INVALID"
+		and invalid_provider.get_failure_reason()
+		== &"REFERENCE_BELOW_TERRAIN_PROFILE",
+		"A reference below terrain was converted into a numeric sentinel instead of explicit invalidity."
 	)
 
 
@@ -320,9 +319,9 @@ func _test_stage_seven_three_height_traversal(
 	var segment: FlightRouteSegment = definition.segments[PREPARATION_SEGMENT_INDEX]
 	var start_x: float = route.route_origin_x + segment.start_distance + 1.0
 	var motion_x: float = segment.get_length() - 2.0
-	var ground_y: float = definition.get_altitude_reference_y(segment.start_distance)
+	var ground_y: float = definition.get_ground_route_y(segment.start_distance)
 	for altitude: float in [600.0, 280.0, 150.0]:
-		ship.position = Vector2(start_x, ground_y - altitude)
+		ship.position = Vector2(start_x, ground_y - altitude - 8.0)
 		ship.velocity = Vector2.ZERO
 		await physics_frame
 		var collision: KinematicCollision2D = KinematicCollision2D.new()

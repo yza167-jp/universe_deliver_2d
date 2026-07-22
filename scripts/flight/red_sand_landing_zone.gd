@@ -26,7 +26,8 @@ var approach_half_width: float = 4200.0
 @export_range(1200.0, 5000.0, 1.0, "or_greater")
 var collision_activation_distance_before_center: float = 2000.0
 @export_range(400.0, 800.0, 1.0) var recommended_entry_altitude_meters: float = 600.0
-@export var safe_checkpoint_offset: Vector2 = Vector2(-4000.0, -80.0)
+## Ship center is 8 m above the canonical bottom-center altitude reference.
+@export var safe_checkpoint_offset: Vector2 = Vector2(-4000.0, -88.0)
 @export var safe_checkpoint_velocity: Vector2 = Vector2(110.0, 0.0)
 
 @onready var _approach_sensor: Area2D = %ApproachSensor
@@ -299,6 +300,21 @@ func get_pad_width() -> float:
 
 func get_pad_surface_y() -> float:
 	return pad_surface_y
+
+
+## The visible pad top is a local override of the shared route ground profile.
+func has_altitude_surface_override(route_distance: float) -> bool:
+	return (
+		_active
+		and _pad_collision_active
+		and route_distance >= get_pad_leading_edge_route_distance()
+		and route_distance
+		<= landing_center_route_distance + pad_width * 0.5
+	)
+
+
+func get_altitude_surface_global_position() -> Vector2:
+	return to_global(Vector2(0.0, pad_surface_y))
 
 
 func get_touchdown_center_y() -> float:

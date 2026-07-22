@@ -150,6 +150,10 @@ run_step \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/red_sand_gate_c_round_4_smoke_runner.gd
 
 run_step \
+  "Gate C Round 5 Stage 5-to-6 altitude continuity and repeatability smoke test" \
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/red_sand_gate_c_round_5_altitude_smoke_runner.gd
+
+run_step \
   "Station hub layout and reachability smoke test" \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/station_hub_smoke_runner.gd
 

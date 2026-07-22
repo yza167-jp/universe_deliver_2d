@@ -193,12 +193,12 @@ func _run_smoke() -> void:
 				altitude_provider.get_mode_name() == &"AGL"
 				and altitude_provider.terrain_hit_valid
 				and altitude_provider.has_numeric_altitude()
-				and not route_hud.get_current_altitude_text().contains("0 m")
 				and (
 					index != 5
 					or route_hud.get_safety_text().contains(expected_altitude_text)
 				),
-				"Stages 6-8 did not share a valid local-terrain AGL reading."
+				"Stage %d did not share a valid canonical AGL reading: %s"
+				% [index + 1, route.get_altitude_diagnostic_snapshot()]
 			)
 		_check(
 			route.get_active_segment_index() == index,

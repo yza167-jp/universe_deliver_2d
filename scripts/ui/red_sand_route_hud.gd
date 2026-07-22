@@ -517,6 +517,12 @@ func _refresh_diagnostics(
 	var ground_path_text: String = "—"
 	var altitude_failure_text: String = "—"
 	var terrain_hit_text: String = tr("UI_RED_SAND_ROUTE_TERRAIN_MISS")
+	var ship_route_y: float = 0.0
+	var ground_route_y: float = 0.0
+	var altitude_blend: float = 0.0
+	var altitude_invalid_duration: float = 0.0
+	var ray_profile_difference: float = 0.0
+	var profile_segment_text: String = "—"
 	if _altitude_reference_provider != null:
 		altitude_mode_text = tr(_get_altitude_mode_key())
 		virtual_altitude = _altitude_reference_provider.raw_virtual_altitude_meters
@@ -533,12 +539,24 @@ func _refresh_diagnostics(
 		ground_node_text = String(_altitude_reference_provider.get_ground_node_name())
 		ground_path_text = String(_altitude_reference_provider.get_ground_node_path())
 		altitude_failure_text = String(_altitude_reference_provider.get_failure_reason())
+		ship_route_y = _altitude_reference_provider.ship_reference_route_y
+		ground_route_y = _altitude_reference_provider.ground_route_y
+		altitude_blend = _altitude_reference_provider.atmosphere_to_agl_blend
+		altitude_invalid_duration = _altitude_reference_provider.invalid_duration_seconds
+		ray_profile_difference = (
+			_altitude_reference_provider.ray_profile_difference_meters
+		)
+		profile_segment_text = String(
+			_altitude_reference_provider.terrain_profile_segment_id
+		)
 		if ground_node_text.is_empty():
 			ground_node_text = "—"
 		if ground_path_text.is_empty():
 			ground_path_text = "—"
 		if altitude_failure_text.is_empty():
 			altitude_failure_text = "—"
+		if profile_segment_text.is_empty():
+			profile_segment_text = "—"
 		terrain_hit_text = tr(
 			"UI_RED_SAND_ROUTE_TERRAIN_HIT"
 			if _altitude_reference_provider.terrain_hit_valid
@@ -606,6 +624,15 @@ func _refresh_diagnostics(
 			raycast_altitude,
 			profile_altitude,
 			final_agl_altitude,
+		],
+		tr("UI_RED_SAND_ROUTE_DIAGNOSTICS_VERTICAL_FRAME") % [
+			ship_route_y,
+			ground_route_y,
+			final_agl_altitude,
+			profile_segment_text,
+			altitude_blend,
+			altitude_invalid_duration,
+			ray_profile_difference,
 		],
 		tr("UI_RED_SAND_ROUTE_DIAGNOSTICS_GROUND") % [
 			ground_node_text,

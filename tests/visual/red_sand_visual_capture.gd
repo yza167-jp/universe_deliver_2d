@@ -247,12 +247,7 @@ func _prepare_stage_frame(
 		route.get_altitude_reference_provider()
 	)
 	if altitude_provider != null:
-		altitude_provider.reset_to_route_state_from_world(
-			segment_index,
-			segment_progress,
-			ship,
-			definition.get_altitude_reference_y(route_distance)
-		)
+		route._reset_altitude_reference()
 	route._physics_process(1.0 / 60.0)
 	route._process(0.0)
 	var feedback: RedSandEnvironmentFeedback = route.get_environment_feedback()

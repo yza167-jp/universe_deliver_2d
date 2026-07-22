@@ -472,14 +472,20 @@ func _has_numeric_altitude() -> bool:
 		_altitude_provider == null
 		or not is_instance_valid(_altitude_provider)
 		or not _altitude_provider.has_method(&"has_numeric_altitude")
-		or not _altitude_provider.has_method(&"get_display_altitude_meters")
+		or not _altitude_provider.has_method(&"get_radar_altitude_meters")
 	):
 		return false
 	var availability: Variant = _altitude_provider.call(&"has_numeric_altitude")
 	if typeof(availability) != TYPE_BOOL or not bool(availability):
 		return false
+	if _altitude_provider.has_method(&"is_current_source_valid"):
+		var current_source_valid: Variant = _altitude_provider.call(
+			&"is_current_source_valid"
+		)
+		if typeof(current_source_valid) != TYPE_BOOL or not bool(current_source_valid):
+			return false
 	var altitude_value: Variant = _altitude_provider.call(
-		&"get_display_altitude_meters"
+		&"get_radar_altitude_meters"
 	)
 	if typeof(altitude_value) not in [TYPE_FLOAT, TYPE_INT]:
 		return false
@@ -489,7 +495,7 @@ func _has_numeric_altitude() -> bool:
 func _get_numeric_altitude_meters() -> float:
 	if _altitude_provider == null or not is_instance_valid(_altitude_provider):
 		return INF
-	return float(_altitude_provider.call(&"get_display_altitude_meters"))
+	return float(_altitude_provider.call(&"get_radar_altitude_meters"))
 
 
 func _prepare_course_geometry() -> void:

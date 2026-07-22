@@ -53,6 +53,7 @@ func validate() -> PackedStringArray:
 
 	var previous_end: float = 0.0
 	var previous_planet_scale: float = 0.0
+	var terrain_surface_started: bool = false
 	var seen_ids: Dictionary[StringName, bool] = {}
 	var seen_checkpoints: Dictionary[StringName, bool] = {}
 	for index: int in segments.size():
@@ -89,6 +90,12 @@ func validate() -> PackedStringArray:
 			errors.append("Flight route planet scale decreases before '%s'." % segment.id)
 		if segment.planet_scale_end + DISTANCE_EPSILON < segment.planet_scale_start:
 			errors.append("Flight route planet scale decreases inside '%s'." % segment.id)
+		if segment.terrain_surface_enabled:
+			terrain_surface_started = true
+		elif terrain_surface_started:
+			errors.append(
+				"Flight route terrain profile has a gap after segment '%s'." % segment.id
+			)
 		previous_end = segment.end_distance
 		previous_planet_scale = segment.planet_scale_end
 	return errors
@@ -138,11 +145,16 @@ func get_planet_scale(route_distance: float) -> float:
 	return segment.get_planet_scale(route_distance)
 
 
-## Returns the compressed route-surface datum used by graybox geometry and diagnostics.
-## Player-visible altitude is provided separately by FlightAltitudeReferenceProvider.
-func get_altitude_reference_y(route_distance: float) -> float:
-	var segment_index: int = get_segment_index(route_distance)
+## Returns the canonical route-space ground datum. Passing the active segment keeps
+## a short reverse correction on that segment's continuous terrain profile.
+func get_ground_route_y(
+	route_distance: float,
+	active_segment_index: int = -1
+) -> float:
+	var segment_index: int = active_segment_index
 	if segment_index < 0:
+		segment_index = get_segment_index(route_distance)
+	if segment_index < 0 or segment_index >= segments.size():
 		return 0.0
 	var segment: FlightRouteSegment = segments[segment_index]
 	if segment == null:
@@ -152,4 +164,23 @@ func get_altitude_reference_y(route_distance: float) -> float:
 		if segment_index == 0 or segments[segment_index - 1] == null
 		else segments[segment_index - 1].floor_y
 	)
-	return lerpf(start_y, segment.floor_y, segment.get_progress(route_distance))
+	var query_distance: float = clampf(
+		route_distance,
+		segment.start_distance,
+		segment.end_distance
+	)
+	return lerpf(start_y, segment.floor_y, segment.get_progress(query_distance))
+
+
+func get_ground_profile_segment_id(active_segment_index: int) -> StringName:
+	if active_segment_index < 0 or active_segment_index >= segments.size():
+		return &""
+	var segment: FlightRouteSegment = segments[active_segment_index]
+	return &"" if segment == null else segment.id
+
+
+func has_ground_profile(active_segment_index: int) -> bool:
+	if active_segment_index < 0 or active_segment_index >= segments.size():
+		return false
+	var segment: FlightRouteSegment = segments[active_segment_index]
+	return segment != null and is_finite(segment.floor_y)

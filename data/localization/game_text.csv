@@ -410,6 +410,7 @@ UI_RED_SAND_ROUTE_DIAGNOSTICS_PROPULSION,"燃 %d（%.2f/s）· B %d（%.1f/s / +
 UI_RED_SAND_ROUTE_DIAGNOSTICS_ROUTE,"航段 %d/%d · x %.0f · 着陆 %s · %s","Stage %d/%d · x %.0f · Landing %s · %s"
 UI_RED_SAND_ROUTE_DIAGNOSTICS_ALTITUDE,"高度 %s · 虚拟 %.0f · 地形 %.0f · %s","Altitude %s · Virtual %.0f · Terrain %.0f · %s"
 UI_RED_SAND_ROUTE_DIAGNOSTICS_ALTITUDE_SOURCE,"高度源 %s · %s · 射线 %.0f · 剖面 %.0f · 最终 %.0f","Altitude source %s · %s · Ray %.0f · Profile %.0f · Final %.0f"
+UI_RED_SAND_ROUTE_DIAGNOSTICS_VERTICAL_FRAME,"垂直坐标 船Y %.1f · 地面Y %.1f · AGL %.1f · 段 %s · 混合 %.2f · 失效 %.2fs · 双源差 %.1f","Vertical frame Ship Y %.1f · Ground Y %.1f · AGL %.1f · Segment %s · Blend %.2f · Invalid %.2fs · Source delta %.1f"
 UI_RED_SAND_ROUTE_DIAGNOSTICS_GROUND,"地表节点 %s · %s · 失败 %s","Ground node %s · %s · Failure %s"
 UI_RED_SAND_ROUTE_DIAGNOSTICS_COLLIDER,"最近碰撞 航段 %d · %s · 层/掩码 %d/%d · 法线 %s · %s","Last collision Stage %d · %s · Layer/mask %d/%d · Normal %s · %s"
 UI_RED_SAND_ROUTE_TERRAIN_HIT,"有效","VALID"
