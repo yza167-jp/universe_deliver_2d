@@ -1,59 +1,320 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://scripts/arrival/red_sand_arrival.gd" id="1_arrival"]
+[ext_resource type="PackedScene" path="res://scenes/station/station_player.tscn" id="2_player"]
+[ext_resource type="Script" path="res://scripts/station/interactable_2d.gd" id="3_interactable"]
+[ext_resource type="Resource" path="res://data/dialogue/red_sand_arrival_main.tres" id="4_main"]
+[ext_resource type="Resource" path="res://data/dialogue/red_sand_arrival_optional.tres" id="5_optional"]
 
-[node name="Arrival" type="Control"]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+[sub_resource type="SystemFont" id="SystemFontArrival"]
+font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
+allow_system_fallback = true
+
+[sub_resource type="Theme" id="ThemeArrival"]
+default_font = SubResource("SystemFontArrival")
+
+[sub_resource type="RectangleShape2D" id="ShapeOuterHorizontal"]
+size = Vector2(960, 24)
+
+[sub_resource type="RectangleShape2D" id="ShapeOuterVertical"]
+size = Vector2(40, 360)
+
+[sub_resource type="RectangleShape2D" id="ShapeBuilding"]
+size = Vector2(220, 104)
+
+[sub_resource type="RectangleShape2D" id="ShapeTerminal"]
+size = Vector2(70, 38)
+
+[sub_resource type="RectangleShape2D" id="ShapeNpcBody"]
+size = Vector2(22, 32)
+
+[sub_resource type="RectangleShape2D" id="ShapeNpcInteraction"]
+size = Vector2(38, 50)
+
+[sub_resource type="RectangleShape2D" id="ShapeTerminalInteraction"]
+size = Vector2(78, 52)
+
+[sub_resource type="StyleBoxFlat" id="StyleHeader"]
+bg_color = Color(0.0705882, 0.0666667, 0.0980392, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.905882, 0.658824, 0.356863, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 8.0
+content_margin_top = 5.0
+content_margin_right = 8.0
+content_margin_bottom = 5.0
+
+[sub_resource type="StyleBoxFlat" id="StyleStatus"]
+bg_color = Color(0.0352941, 0.105882, 0.137255, 0.97)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.466667, 0.788235, 0.768627, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 12.0
+content_margin_top = 7.0
+content_margin_right = 12.0
+content_margin_bottom = 7.0
+
+[node name="Arrival" type="Node2D"]
 script = ExtResource("1_arrival")
+main_dialogue_sequence = ExtResource("4_main")
+optional_dialogue_sequence = ExtResource("5_optional")
 
-[node name="Background" type="ColorRect" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+[node name="CollisionBodies" type="Node2D" parent="."]
+
+[node name="TopBoundary" type="StaticBody2D" parent="CollisionBodies"]
+position = Vector2(480, 193)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CollisionBodies/TopBoundary"]
+shape = SubResource("ShapeOuterHorizontal")
+
+[node name="BottomBoundary" type="StaticBody2D" parent="CollisionBodies"]
+position = Vector2(480, 342)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CollisionBodies/BottomBoundary"]
+shape = SubResource("ShapeOuterHorizontal")
+
+[node name="LeftBoundary" type="StaticBody2D" parent="CollisionBodies"]
+position = Vector2(20, 180)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CollisionBodies/LeftBoundary"]
+shape = SubResource("ShapeOuterVertical")
+
+[node name="RightBoundary" type="StaticBody2D" parent="CollisionBodies"]
+position = Vector2(940, 180)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CollisionBodies/RightBoundary"]
+shape = SubResource("ShapeOuterVertical")
+
+[node name="RepairBuildingBody" type="StaticBody2D" parent="CollisionBodies"]
+position = Vector2(510, 168)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CollisionBodies/RepairBuildingBody"]
+shape = SubResource("ShapeBuilding")
+
+[node name="TechnicianBody" type="StaticBody2D" parent="CollisionBodies"]
+position = Vector2(500, 270)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CollisionBodies/TechnicianBody"]
+shape = SubResource("ShapeNpcBody")
+
+[node name="RecordTerminalBody" type="StaticBody2D" parent="CollisionBodies"]
+position = Vector2(790, 235)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CollisionBodies/RecordTerminalBody"]
+shape = SubResource("ShapeTerminal")
+
+[node name="StationPlayer" parent="." instance=ExtResource("2_player")]
+unique_name_in_owner = true
+position = Vector2(150, 292)
+initial_facing_direction = Vector2(1, 0)
+
+[node name="Camera2D" type="Camera2D" parent="."]
+unique_name_in_owner = true
+position = Vector2(320, 180)
+position_smoothing_enabled = false
+limit_left = 0
+limit_top = 0
+limit_right = 960
+limit_bottom = 360
+
+[node name="Interactables" type="Node2D" parent="."]
+
+[node name="Technician" type="Area2D" parent="Interactables" groups=["arrival_interactable"]]
+unique_name_in_owner = true
+position = Vector2(500, 270)
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("3_interactable")
+interaction_id = &"red_sand_technician"
+prompt_key = &"UI_RED_SAND_ARRIVAL_INTERACT_TECHNICIAN"
+interaction_priority = 100
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Interactables/Technician"]
+shape = SubResource("ShapeNpcInteraction")
+
+[node name="Shadow" type="Polygon2D" parent="Interactables/Technician"]
+polygon = PackedVector2Array(-17, 17, 17, 17, 12, 22, -12, 22)
+color = Color(0.0823529, 0.0509804, 0.0627451, 0.6)
+
+[node name="Legs" type="Polygon2D" parent="Interactables/Technician"]
+polygon = PackedVector2Array(-11, 7, -2, 7, -3, 19, -12, 19, 3, 7, 12, 7, 13, 19, 4, 19)
+color = Color(0.109804, 0.145098, 0.172549, 1)
+
+[node name="Body" type="Polygon2D" parent="Interactables/Technician"]
+polygon = PackedVector2Array(-15, -15, 11, -15, 16, 9, -13, 9)
+color = Color(0.164706, 0.286275, 0.305882, 1)
+
+[node name="Harness" type="Polygon2D" parent="Interactables/Technician"]
+polygon = PackedVector2Array(-12, -5, 13, -5, 14, 1, -11, 1)
+color = Color(0.905882, 0.658824, 0.356863, 1)
+
+[node name="Head" type="Polygon2D" parent="Interactables/Technician"]
+polygon = PackedVector2Array(-12, -30, 8, -31, 15, -24, 11, -14, -12, -14, -17, -22)
+color = Color(0.698039, 0.470588, 0.337255, 1)
+
+[node name="Visor" type="Polygon2D" parent="Interactables/Technician"]
+polygon = PackedVector2Array(-9, -27, 8, -27, 11, -22, -8, -22)
+color = Color(0.466667, 0.788235, 0.768627, 1)
+
+[node name="RecordTerminal" type="Area2D" parent="Interactables" groups=["arrival_interactable"]]
+unique_name_in_owner = true
+position = Vector2(790, 235)
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("3_interactable")
+interaction_id = &"red_sand_order_record_terminal"
+prompt_key = &"UI_RED_SAND_ARRIVAL_INTERACT_RECORD"
+interaction_priority = 80
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Interactables/RecordTerminal"]
+shape = SubResource("ShapeTerminalInteraction")
+
+[node name="Stand" type="Polygon2D" parent="Interactables/RecordTerminal"]
+polygon = PackedVector2Array(-7, 13, 7, 13, 11, 29, -11, 29)
+color = Color(0.109804, 0.145098, 0.172549, 1)
+
+[node name="Housing" type="Polygon2D" parent="Interactables/RecordTerminal"]
+polygon = PackedVector2Array(-35, -19, 35, -19, 35, 19, -35, 19)
+color = Color(0.141176, 0.192157, 0.227451, 1)
+
+[node name="Screen" type="Polygon2D" parent="Interactables/RecordTerminal"]
+polygon = PackedVector2Array(-27, -12, 27, -12, 27, 9, -27, 9)
+color = Color(0.0352941, 0.105882, 0.137255, 1)
+
+[node name="ScanLine" type="Polygon2D" parent="Interactables/RecordTerminal"]
+polygon = PackedVector2Array(-22, -7, 18, -7, 18, -4, -22, -4)
+color = Color(0.466667, 0.788235, 0.768627, 1)
+
+[node name="WarningLine" type="Polygon2D" parent="Interactables/RecordTerminal"]
+polygon = PackedVector2Array(-22, 1, 9, 1, 9, 4, -22, 4)
+color = Color(0.905882, 0.658824, 0.356863, 1)
+
+[node name="WorldLabels" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 960.0
+offset_bottom = 360.0
 mouse_filter = 2
-color = Color(0.180392, 0.0705882, 0.0470588, 1)
+theme = SubResource("ThemeArrival")
 
-[node name="Content" type="VBoxContainer" parent="."]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -180.0
-offset_top = -48.0
-offset_right = 180.0
-offset_bottom = 48.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_constants/separation = 10
-alignment = 1
-
-[node name="StageLabel" type="Label" parent="Content"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.952941, 0.686275, 0.45098, 1)
-theme_override_font_sizes/font_size = 30
-text = "UI_STAGE_ARRIVAL"
+[node name="TechnicianLabel" type="Label" parent="WorldLabels"]
+layout_mode = 0
+offset_left = 438.0
+offset_top = 221.0
+offset_right = 562.0
+offset_bottom = 240.0
+theme_override_colors/font_color = Color(0.905882, 0.87451, 0.784314, 1)
+theme_override_colors/font_outline_color = Color(0.0705882, 0.0666667, 0.0980392, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 12
+text = "CHARACTER_RED_SAND_RECIPIENT_NAME"
 horizontal_alignment = 1
 
-[node name="PlaceholderLabel" type="Label" parent="Content"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.87451, 0.741176, 0.619608, 1)
-text = "UI_STAGE_PLACEHOLDER"
+[node name="RecordLabel" type="Label" parent="WorldLabels"]
+layout_mode = 0
+offset_left = 716.0
+offset_top = 185.0
+offset_right = 864.0
+offset_bottom = 206.0
+theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
+theme_override_colors/font_outline_color = Color(0.0705882, 0.0666667, 0.0980392, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 12
+text = "UI_RED_SAND_ARRIVAL_RECORD_LABEL"
 horizontal_alignment = 1
 
-[node name="LandingFeedbackLabel" type="Label" parent="Content"]
+[node name="ArrivalUI" type="CanvasLayer" parent="."]
+layer = 5
+
+[node name="LocationPanel" type="PanelContainer" parent="ArrivalUI"]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 306.0
+offset_bottom = 61.0
+theme = SubResource("ThemeArrival")
+theme_override_styles/panel = SubResource("StyleHeader")
+
+[node name="Content" type="VBoxContainer" parent="ArrivalUI/LocationPanel"]
+layout_mode = 2
+theme_override_constants/separation = 1
+
+[node name="LocationLabel" type="Label" parent="ArrivalUI/LocationPanel/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
+theme_override_font_sizes/font_size = 15
+text = "UI_RED_SAND_ARRIVAL_LOCATION"
+
+[node name="ScopeLabel" type="Label" parent="ArrivalUI/LocationPanel/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.686275, 0.737255, 0.764706, 1)
+theme_override_font_sizes/font_size = 11
+text = "UI_RED_SAND_ARRIVAL_SCOPE"
+
+[node name="OutcomePanel" type="PanelContainer" parent="ArrivalUI"]
+offset_left = 314.0
+offset_top = 8.0
+offset_right = 632.0
+offset_bottom = 72.0
+theme = SubResource("ThemeArrival")
+theme_override_styles/panel = SubResource("StyleHeader")
+
+[node name="Content" type="VBoxContainer" parent="ArrivalUI/OutcomePanel"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="LandingFeedbackLabel" type="Label" parent="ArrivalUI/OutcomePanel/Content"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.670588, 1, 0.941176, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
+theme_override_font_sizes/font_size = 12
 text = "UI_RED_SAND_ARRIVAL_LANDING_SMOOTH"
 horizontal_alignment = 1
+
+[node name="ObjectiveLabel" type="Label" parent="ArrivalUI/OutcomePanel/Content"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.87451, 0.784314, 1)
+theme_override_font_sizes/font_size = 12
+text = "UI_RED_SAND_ARRIVAL_OBJECTIVE_EXPLORE"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="StatusPanel" type="PanelContainer" parent="ArrivalUI"]
+unique_name_in_owner = true
+visible = false
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -230.0
+offset_top = -88.0
+offset_right = 230.0
+offset_bottom = -28.0
+grow_horizontal = 2
+grow_vertical = 0
+theme = SubResource("ThemeArrival")
+theme_override_styles/panel = SubResource("StyleStatus")
+
+[node name="StatusLabel" type="Label" parent="ArrivalUI/StatusPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 13
+text = "UI_RED_SAND_ARRIVAL_RECORD_DETAIL"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2

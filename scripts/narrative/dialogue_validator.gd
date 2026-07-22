@@ -115,7 +115,10 @@ static func _validate_conditions(
 			continue
 		if (
 			condition.condition_type < DialogueCondition.ConditionType.STORY_FLAG_EQUALS
-			or condition.condition_type > DialogueCondition.ConditionType.ENTRY_STYLE_EQUALS
+			or (
+				condition.condition_type
+				> DialogueCondition.ConditionType.CARGO_INTEGRITY_AT_LEAST
+			)
 		):
 			errors.append("%s condition %d has an unsupported type." % [label, index])
 			continue
@@ -129,9 +132,18 @@ static func _validate_conditions(
 			DialogueCondition.ConditionType.ENTRY_STYLE_EQUALS:
 				if not FlightStyleTracker.is_valid_style(condition.entry_style):
 					errors.append(
-					"%s condition %d entry_style must be DIVE, GLIDE, or BALANCED."
-					% [label, index]
-				)
+						"%s condition %d entry_style must be DIVE, GLIDE, or BALANCED."
+						% [label, index]
+					)
+			DialogueCondition.ConditionType.CARGO_INTEGRITY_AT_LEAST:
+				if (
+					condition.cargo_integrity_threshold < 0.0
+					or condition.cargo_integrity_threshold > 100.0
+				):
+					errors.append(
+						"%s condition %d cargo_integrity_threshold must be between 0 and 100."
+						% [label, index]
+					)
 
 
 static func _validate_effects(

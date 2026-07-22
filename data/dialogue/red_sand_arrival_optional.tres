@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_sequence.gd" id="1_sequence"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_line.gd" id="2_line"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_effect.gd" id="3_effect"]
+[ext_resource type="Resource" path="res://data/characters/red_sand_recipient.tres" id="4_recipient"]
+
+[sub_resource type="Resource" id="EffectOptionalDialogueCompleted"]
+script = ExtResource("3_effect")
+effect_id = &"story_red_sand_arrival_optional_dialogue_completed"
+
+[sub_resource type="Resource" id="LineDailyWork"]
+script = ExtResource("2_line")
+id = &"optional_daily_work"
+speaker = ExtResource("4_recipient")
+text_key = &"DIALOGUE_RED_SAND_ARRIVAL_OPTIONAL_DAILY"
+portrait_expression = &"relaxed"
+next_line_id = &"optional_company_stance"
+
+[sub_resource type="Resource" id="LineCompanyStance"]
+script = ExtResource("2_line")
+id = &"optional_company_stance"
+speaker = ExtResource("4_recipient")
+text_key = &"DIALOGUE_RED_SAND_ARRIVAL_OPTIONAL_COMPANY"
+portrait_expression = &"serious"
+effects = [SubResource("EffectOptionalDialogueCompleted")]
+
+[resource]
+script = ExtResource("1_sequence")
+id = &"dialogue_red_sand_arrival_optional"
+start_line_id = &"optional_daily_work"
+lines = [SubResource("LineDailyWork"), SubResource("LineCompanyStance")]

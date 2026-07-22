@@ -1,0 +1,149 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=25 format=3]
+
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_sequence.gd" id="1_sequence"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_line.gd" id="2_line"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_condition.gd" id="3_condition"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_effect.gd" id="4_effect"]
+[ext_resource type="Resource" path="res://data/characters/red_sand_recipient.tres" id="5_recipient"]
+
+[sub_resource type="Resource" id="ConditionStyleDive"]
+script = ExtResource("3_condition")
+condition_type = 2
+entry_style = &"DIVE"
+
+[sub_resource type="Resource" id="ConditionStyleGlide"]
+script = ExtResource("3_condition")
+condition_type = 2
+entry_style = &"GLIDE"
+
+[sub_resource type="Resource" id="ConditionStyleBalanced"]
+script = ExtResource("3_condition")
+condition_type = 2
+entry_style = &"BALANCED"
+
+[sub_resource type="Resource" id="ConditionCargoHigh"]
+script = ExtResource("3_condition")
+condition_type = 3
+cargo_integrity_threshold = 80.0
+
+[sub_resource type="Resource" id="ConditionCargoLow"]
+script = ExtResource("3_condition")
+condition_type = 3
+cargo_integrity_threshold = 80.0
+expected_value = false
+
+[sub_resource type="Resource" id="ConditionLaserEquipped"]
+script = ExtResource("3_condition")
+condition_type = 1
+module_id = &"module_asteroid_laser"
+
+[sub_resource type="Resource" id="ConditionLaserUnequipped"]
+script = ExtResource("3_condition")
+condition_type = 1
+module_id = &"module_asteroid_laser"
+expected_value = false
+
+[sub_resource type="Resource" id="EffectMainDialogueCompleted"]
+script = ExtResource("4_effect")
+effect_id = &"story_red_sand_arrival_main_dialogue_completed"
+
+[sub_resource type="Resource" id="LineGreeting"]
+script = ExtResource("2_line")
+id = &"arrival_greeting"
+speaker = ExtResource("5_recipient")
+text_key = &"DIALOGUE_RED_SAND_ARRIVAL_GREETING"
+portrait_expression = &"neutral"
+next_line_id = &"arrival_motive"
+
+[sub_resource type="Resource" id="LineMotive"]
+script = ExtResource("2_line")
+id = &"arrival_motive"
+speaker = ExtResource("5_recipient")
+text_key = &"DIALOGUE_RED_SAND_ARRIVAL_MOTIVE"
+portrait_expression = &"serious"
+next_line_id = &"arrival_style_dive"
+
+[sub_resource type="Resource" id="LineStyleDive"]
+script = ExtResource("2_line")
+id = &"arrival_style_dive"
+speaker = ExtResource("5_recipient")
+text_key = &"DIALOGUE_RED_SAND_ARRIVAL_STYLE_DIVE"
+portrait_expression = &"concerned"
+conditions = [SubResource("ConditionStyleDive")]
+next_line_id = &"arrival_style_glide"
+
+[sub_resource type="Resource" id="LineStyleGlide"]
+script = ExtResource("2_line")
+id = &"arrival_style_glide"
+speaker = ExtResource("5_recipient")
+text_key = &"DIALOGUE_RED_SAND_ARRIVAL_STYLE_GLIDE"
+portrait_expression = &"friendly"
+conditions = [SubResource("ConditionStyleGlide")]
+next_line_id = &"arrival_style_balanced"
+
+[sub_resource type="Resource" id="LineStyleBalanced"]
+script = ExtResource("2_line")
+id = &"arrival_style_balanced"
+speaker = ExtResource("5_recipient")
+text_key = &"DIALOGUE_RED_SAND_ARRIVAL_STYLE_BALANCED"
+portrait_expression = &"neutral"
+conditions = [SubResource("ConditionStyleBalanced")]
+next_line_id = &"arrival_cargo_high"
+
+[sub_resource type="Resource" id="LineCargoHigh"]
+script = ExtResource("2_line")
+id = &"arrival_cargo_high"
+speaker = ExtResource("5_recipient")
+text_key = &"DIALOGUE_RED_SAND_ARRIVAL_CARGO_HIGH"
+portrait_expression = &"friendly"
+conditions = [SubResource("ConditionCargoHigh")]
+next_line_id = &"arrival_cargo_low"
+
+[sub_resource type="Resource" id="LineCargoLow"]
+script = ExtResource("2_line")
+id = &"arrival_cargo_low"
+speaker = ExtResource("5_recipient")
+text_key = &"DIALOGUE_RED_SAND_ARRIVAL_CARGO_LOW"
+portrait_expression = &"concerned"
+conditions = [SubResource("ConditionCargoLow")]
+next_line_id = &"arrival_laser_equipped"
+
+[sub_resource type="Resource" id="LineLaserEquipped"]
+script = ExtResource("2_line")
+id = &"arrival_laser_equipped"
+speaker = ExtResource("5_recipient")
+text_key = &"DIALOGUE_RED_SAND_ARRIVAL_LASER"
+portrait_expression = &"serious"
+conditions = [SubResource("ConditionLaserEquipped")]
+next_line_id = &"arrival_laser_unequipped"
+
+[sub_resource type="Resource" id="LineLaserUnequipped"]
+script = ExtResource("2_line")
+id = &"arrival_laser_unequipped"
+speaker = ExtResource("5_recipient")
+text_key = &"DIALOGUE_RED_SAND_ARRIVAL_NO_LASER"
+portrait_expression = &"relaxed"
+conditions = [SubResource("ConditionLaserUnequipped")]
+next_line_id = &"arrival_records"
+
+[sub_resource type="Resource" id="LineRecords"]
+script = ExtResource("2_line")
+id = &"arrival_records"
+speaker = ExtResource("5_recipient")
+text_key = &"DIALOGUE_RED_SAND_ARRIVAL_RECORDS"
+portrait_expression = &"serious"
+next_line_id = &"arrival_close"
+
+[sub_resource type="Resource" id="LineClose"]
+script = ExtResource("2_line")
+id = &"arrival_close"
+speaker = ExtResource("5_recipient")
+text_key = &"DIALOGUE_RED_SAND_ARRIVAL_CLOSE"
+portrait_expression = &"friendly"
+effects = [SubResource("EffectMainDialogueCompleted")]
+
+[resource]
+script = ExtResource("1_sequence")
+id = &"dialogue_red_sand_arrival_main"
+start_line_id = &"arrival_greeting"
+lines = [SubResource("LineGreeting"), SubResource("LineMotive"), SubResource("LineStyleDive"), SubResource("LineStyleGlide"), SubResource("LineStyleBalanced"), SubResource("LineCargoHigh"), SubResource("LineCargoLow"), SubResource("LineLaserEquipped"), SubResource("LineLaserUnequipped"), SubResource("LineRecords"), SubResource("LineClose")]
