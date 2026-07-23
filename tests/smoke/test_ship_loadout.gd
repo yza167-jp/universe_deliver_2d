@@ -21,8 +21,10 @@ func run() -> Array[String]:
 		"PowerSlot",
 		"DefenseSlot",
 		"UtilitySlot",
+		"BackupPowerSlot",
 		"ConfirmButton",
 		"LaserMountVisual",
+		"ShieldBackupPowerVisual",
 	]:
 		expect_true(
 			loadout_ui.find_child(node_name, true, false) != null,

@@ -235,8 +235,8 @@ func equip_ship_module(module: ShipModuleDefinition) -> bool:
 	if module == null or module.id.is_empty():
 		last_loadout_error = LOADOUT_ERROR_INVALID_MODULE
 		return false
-	var slot_id: StringName = ShipLoadoutRules.get_slot_id(module.slot_type)
-	if slot_id.is_empty():
+	var slot_id: StringName = ShipLoadoutRules.get_configuration_slot_id(module)
+	if slot_id.is_empty() or not ShipLoadoutRules.is_valid_slot_id(slot_id):
 		last_loadout_error = LOADOUT_ERROR_INVALID_MODULE
 		return false
 	if ship_configuration.get(slot_id, &"") == module.id:
@@ -253,8 +253,8 @@ func unequip_ship_module(module: ShipModuleDefinition) -> bool:
 	if module == null or module.id.is_empty():
 		last_loadout_error = LOADOUT_ERROR_INVALID_MODULE
 		return false
-	var slot_id: StringName = ShipLoadoutRules.get_slot_id(module.slot_type)
-	if slot_id.is_empty():
+	var slot_id: StringName = ShipLoadoutRules.get_configuration_slot_id(module)
+	if slot_id.is_empty() or not ShipLoadoutRules.is_valid_slot_id(slot_id):
 		last_loadout_error = LOADOUT_ERROR_INVALID_MODULE
 		return false
 	if ship_configuration.get(slot_id, &"") != module.id:

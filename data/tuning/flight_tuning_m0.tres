@@ -30,6 +30,7 @@ boost_energy_recovery_per_second = 12.0
 boost_recovery_delay_seconds = 0.6
 limited_cargo_boost_cap = 0.75
 emergency_thrust_multiplier = 0.3
+shield_regeneration_per_second = 2.5
 beam_max_range = 560.0
 beam_width = 3.0
 beam_damage_per_tick = 1

@@ -50,6 +50,9 @@ func _ready() -> void:
 	_connect_ship_signals()
 	_connect_scenic_triggers()
 	flight_ship.set_laser_enabled(_resolve_laser_enabled_from_loadout())
+	flight_ship.set_shield_backup_power_enabled(
+		_resolve_shield_backup_power_enabled_from_loadout()
+	)
 	debug_hud.bind_ship(flight_ship)
 	debug_hud.bind_entry_style_tracker(_entry_style_tracker, flight_ship.tuning)
 	debug_hud.bind_course(_course)
@@ -533,6 +536,19 @@ func _resolve_laser_enabled_from_loadout() -> bool:
 	return FlightWeaponRules.has_asteroid_laser(
 		game_state.ship_configuration,
 		data_registry.modules
+	)
+
+
+func _resolve_shield_backup_power_enabled_from_loadout() -> bool:
+	if data_registry == null:
+		return false
+	var game_state: GameStateModel = _resolve_game_state()
+	if game_state == null:
+		return false
+	return ShipLoadoutRules.has_capability(
+		game_state.ship_configuration,
+		data_registry.modules,
+		ShipLoadoutRules.SHIELD_REGENERATION_CAPABILITY
 	)
 
 

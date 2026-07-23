@@ -37,19 +37,20 @@ func _ready() -> void:
 			)
 
 
-## Acquires one world-input lock; repeated acquisition by the same source is ignored.
-func begin_modal(modal_id: StringName) -> bool:
+## Acquires one prompt-priority source; callers decide whether world movement also locks.
+func begin_modal(modal_id: StringName, lock_world_input: bool = true) -> bool:
 	if modal_id.is_empty() or _active_modal_ids.has(modal_id) or _player == null:
 		return false
 	var was_modal_active: bool = is_modal_active()
-	_active_modal_ids[modal_id] = true
+	_active_modal_ids[modal_id] = lock_world_input
 	if was_modal_active:
+		_apply_player_input_policy()
 		return true
 
 	_player_input_was_enabled = _player.is_input_enabled()
 	_player_prompt_was_suppressed = _player.is_interaction_prompt_suppressed()
 	_player.set_interaction_prompt_suppressed(true)
-	_player.set_input_enabled(false)
+	_apply_player_input_policy()
 	_managed_requested_visibility.clear()
 	for control: Control in _managed_controls:
 		_managed_requested_visibility[control] = control.visible
@@ -64,6 +65,7 @@ func end_modal(modal_id: StringName) -> bool:
 		return false
 	_active_modal_ids.erase(modal_id)
 	if is_modal_active():
+		_apply_player_input_policy()
 		return true
 
 	_player.set_input_enabled(_player_input_was_enabled)
@@ -88,6 +90,21 @@ func has_modal(modal_id: StringName) -> bool:
 
 func get_active_modal_count() -> int:
 	return _active_modal_ids.size()
+
+
+func has_world_input_lock() -> bool:
+	for modal_id: StringName in _active_modal_ids:
+		if _active_modal_ids.get(modal_id, false):
+			return true
+	return false
+
+
+func _apply_player_input_policy() -> void:
+	if _player == null or not is_modal_active():
+		return
+	_player.set_input_enabled(
+		false if has_world_input_lock() else _player_input_was_enabled
+	)
 
 
 func _on_managed_visibility_changed(control: Control) -> void:

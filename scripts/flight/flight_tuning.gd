@@ -63,6 +63,10 @@ var limited_cargo_boost_cap: float = 0.75
 @export_range(0.0, 1.0, 0.05)
 var emergency_thrust_multiplier: float = 0.3
 
+@export_group("Shield Backup Power")
+@export_range(0.0, 20.0, 0.1, "or_greater")
+var shield_regeneration_per_second: float = 2.5
+
 @export_group("Asteroid Laser Beam")
 @export_range(0.0, 1600.0, 1.0, "or_greater")
 var beam_max_range: float = 560.0

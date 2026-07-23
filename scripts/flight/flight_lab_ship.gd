@@ -96,6 +96,7 @@ var boost_input: float = 0.0
 var effective_throttle_input: float = 0.0
 var effective_boost_input: float = 0.0
 var effective_reverse_input: float = 0.0
+var _shield_backup_power_enabled: bool = false
 
 @onready var _engine_glow: Polygon2D = $EngineGlow
 @onready var _boost_glow: Polygon2D = $BoostGlow
@@ -157,6 +158,7 @@ func _physics_process(delta: float) -> void:
 		0.0
 	)
 	if is_failed or is_landed:
+		resources.shield_regeneration_rate = 0.0
 		_clear_control_inputs()
 		_update_engine_feedback()
 		return
@@ -257,6 +259,7 @@ func integrate_motion(
 			delta,
 			motion_boost
 		)
+		_step_shield_regeneration(delta)
 		return
 
 	var controlled_velocity: Vector2 = FlightMotionModel.step_control_velocity(
@@ -283,6 +286,7 @@ func integrate_motion(
 		_boost_ramp_strength
 	)
 	_refresh_environment_telemetry()
+	_step_shield_regeneration(delta)
 
 
 ## Restores a fixed profile and control baseline for repeatable Flight Lab comparisons.
@@ -403,6 +407,7 @@ func restore_checkpoint() -> bool:
 	gravity_blend = _checkpoint_state.gravity_blend
 	air_density = _checkpoint_state.air_density
 	resources.restore_from(_checkpoint_state.resources)
+	resources.clear_telemetry()
 	_clear_control_inputs()
 	_clear_collision_state()
 	is_failed = false
@@ -572,6 +577,20 @@ func is_reversing() -> bool:
 	return get_forward_speed() < 0.0
 
 
+func set_shield_backup_power_enabled(enabled: bool) -> void:
+	_shield_backup_power_enabled = enabled
+	if not enabled:
+		resources.shield_regeneration_rate = 0.0
+
+
+func is_shield_backup_power_enabled() -> bool:
+	return _shield_backup_power_enabled
+
+
+func get_shield_regeneration_rate() -> float:
+	return resources.shield_regeneration_rate
+
+
 func get_pitch_degrees() -> float:
 	return rad_to_deg(rotation)
 
@@ -610,6 +629,16 @@ func get_laser_cooldown_remaining() -> float:
 
 func get_laser_weapon() -> FlightLaserWeapon:
 	return _laser_weapon
+
+
+func _step_shield_regeneration(delta: float) -> void:
+	resources.step_shield_regeneration(
+		_shield_backup_power_enabled,
+		effective_boost_input > 0.0,
+		effective_reverse_input > 0.0 or is_reversing(),
+		tuning,
+		delta
+	)
 
 
 func get_engine_trail_particles() -> CPUParticles2D:

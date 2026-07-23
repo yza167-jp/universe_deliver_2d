@@ -182,6 +182,14 @@ static func _validate_modules(
 			or module.slot_type > ShipModuleDefinition.SlotType.UTILITY
 		):
 			errors.append("ShipModuleDefinition '%s' slot_type is invalid." % module.id)
+		var configuration_slot_id: StringName = (
+			ShipLoadoutRules.get_configuration_slot_id(module)
+		)
+		if not ShipLoadoutRules.is_valid_slot_id(configuration_slot_id):
+			errors.append(
+				"ShipModuleDefinition '%s' configuration slot '%s' is invalid."
+				% [module.id, configuration_slot_id]
+			)
 		if module.cost < 0:
 			errors.append("ShipModuleDefinition '%s' cost cannot be negative." % module.id)
 		for stat_id: StringName in module.stat_modifiers:

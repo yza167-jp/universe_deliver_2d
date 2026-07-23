@@ -21,7 +21,7 @@ func run() -> Array[String]:
 	expect_true(registry.planets.size() == 1, "M0 registry must contain only Red Sand.", failures)
 	expect_true(registry.orders.size() == 1, "M0 registry must contain one main order.", failures)
 	expect_true(registry.cargo_items.size() == 1, "M0 registry must contain one cargo item.", failures)
-	expect_true(registry.modules.size() == 3, "M0 registry must contain exactly three loadout modules.", failures)
+	expect_true(registry.modules.size() == 4, "M0 registry must contain four loadout modules.", failures)
 
 	var order: OrderDefinition = registry.find_order(&"order_red_sand_m0")
 	expect_true(order != null, "Red Sand M0 order must be registered.", failures)
@@ -47,9 +47,11 @@ func run() -> Array[String]:
 	expect_true(order.cargo != null, "Red Sand order must reference cargo.", failures)
 	expect_true(order.required_modules.size() == 2, "Red Sand order must declare required modules.", failures)
 	expect_true(
-		order.recommended_modules.size() == 1
-		and order.recommended_modules[0].id == ShipLoadoutRules.LASER_MODULE_ID,
-		"Red Sand must recommend the single optional asteroid laser.",
+		order.recommended_modules.size() == 2
+		and order.recommended_modules[0].id == ShipLoadoutRules.LASER_MODULE_ID
+		and order.recommended_modules[1].id
+		== ShipLoadoutRules.SHIELD_BACKUP_POWER_MODULE_ID,
+		"Red Sand must expose the optional laser and shield backup power.",
 		failures
 	)
 	for module: ShipModuleDefinition in order.required_modules:

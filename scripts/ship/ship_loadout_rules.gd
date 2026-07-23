@@ -7,11 +7,14 @@ const SHIP_NAME_KEY: StringName = &"SHIP_PLAYER_COURIER_NAME"
 const SLOT_POWER: StringName = &"power"
 const SLOT_DEFENSE: StringName = &"defense"
 const SLOT_UTILITY: StringName = &"utility"
+const SLOT_SHIELD_BACKUP_POWER: StringName = &"shield_backup_power"
 
 const DEFAULT_POWER_MODULE_ID: StringName = &"module_standard_drive"
 const DEFAULT_DEFENSE_MODULE_ID: StringName = &"module_atmospheric_shield"
 const LASER_MODULE_ID: StringName = &"module_asteroid_laser"
+const SHIELD_BACKUP_POWER_MODULE_ID: StringName = &"module_shield_backup_power"
 const ASTEROID_BREAK_CAPABILITY: StringName = &"capability_break_asteroids"
+const SHIELD_REGENERATION_CAPABILITY: StringName = &"capability_regenerate_shield"
 
 const BASE_HULL: int = 100
 const BASE_SHIELD: int = 100
@@ -23,6 +26,7 @@ const SLOT_ORDER: Array[StringName] = [
 	SLOT_POWER,
 	SLOT_DEFENSE,
 	SLOT_UTILITY,
+	SLOT_SHIELD_BACKUP_POWER,
 ]
 
 
@@ -31,6 +35,7 @@ static func create_default_configuration() -> Dictionary[StringName, StringName]
 	configuration[SLOT_POWER] = DEFAULT_POWER_MODULE_ID
 	configuration[SLOT_DEFENSE] = DEFAULT_DEFENSE_MODULE_ID
 	configuration[SLOT_UTILITY] = &""
+	configuration[SLOT_SHIELD_BACKUP_POWER] = &""
 	return configuration
 
 
@@ -47,6 +52,14 @@ static func get_slot_id(slot_type: ShipModuleDefinition.SlotType) -> StringName:
 
 static func is_valid_slot_id(slot_id: StringName) -> bool:
 	return SLOT_ORDER.has(slot_id)
+
+
+static func get_configuration_slot_id(module: ShipModuleDefinition) -> StringName:
+	if module == null:
+		return &""
+	if not module.configuration_slot_id.is_empty():
+		return module.configuration_slot_id
+	return get_slot_id(module.slot_type)
 
 
 static func is_module_equipped(
@@ -78,8 +91,24 @@ static func get_module_for_slot(
 	order: OrderDefinition,
 	slot_type: ShipModuleDefinition.SlotType
 ) -> ShipModuleDefinition:
+	var default_slot_id: StringName = get_slot_id(slot_type)
 	for module: ShipModuleDefinition in get_order_modules(order):
-		if module.slot_type == slot_type:
+		if (
+			module.slot_type == slot_type
+			and get_configuration_slot_id(module) == default_slot_id
+		):
+			return module
+	return null
+
+
+static func get_module_by_id(
+	order: OrderDefinition,
+	module_id: StringName
+) -> ShipModuleDefinition:
+	if module_id.is_empty():
+		return null
+	for module: ShipModuleDefinition in get_order_modules(order):
+		if module.id == module_id:
 			return module
 	return null
 

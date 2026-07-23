@@ -66,6 +66,7 @@ var _active_dialogue_kind: DialogueKind = DialogueKind.NONE
 var _exploration_is_unlocked: bool = false
 var _status_time_remaining: float = 0.0
 var _status_key: StringName = &""
+var _status_dismissal_armed: bool = false
 var _fallback_dialogue_layer: CanvasLayer
 
 
@@ -91,13 +92,23 @@ func _physics_process(_delta: float) -> void:
 	_update_camera_for_player()
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	if (
+		_status_dismissal_armed
+		and _status_time_remaining > 0.0
+		and event.is_action_pressed(&"ui_accept")
+	):
+		dismiss_status()
+		get_viewport().set_input_as_handled()
+
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready():
 		refresh_landing_feedback()
 		if _exploration_is_unlocked:
 			_objective_label.text = tr("UI_RED_SAND_ARRIVAL_OBJECTIVE_EXPLORE")
 		if not _status_key.is_empty():
-			_status_label.text = tr(String(_status_key))
+			_status_label.text = _format_status_text(_status_key)
 
 
 func refresh_landing_feedback() -> void:
@@ -172,6 +183,13 @@ func get_objective_text() -> String:
 
 func get_status_text() -> String:
 	return "" if _status_label == null else _status_label.text
+
+
+func dismiss_status() -> bool:
+	if _status_time_remaining <= 0.0:
+		return false
+	_hide_status()
+	return true
 
 
 func get_area_rect() -> Rect2:
@@ -322,10 +340,12 @@ func _record_optional_trigger(trigger_id: StringName) -> void:
 
 func _show_status(message_key: StringName) -> void:
 	_status_key = message_key
-	_status_label.text = tr(String(message_key))
+	_status_label.text = _format_status_text(message_key)
 	_status_panel.visible = true
 	_status_time_remaining = STATUS_DURATION_SECONDS
-	_modal_coordinator.begin_modal(MODAL_OBSERVATION)
+	_status_dismissal_armed = false
+	_modal_coordinator.begin_modal(MODAL_OBSERVATION, false)
+	call_deferred("_arm_status_dismissal")
 
 
 func _hide_status() -> void:
@@ -333,7 +353,19 @@ func _hide_status() -> void:
 	_status_label.text = ""
 	_status_key = &""
 	_status_time_remaining = 0.0
+	_status_dismissal_armed = false
 	_modal_coordinator.end_modal(MODAL_OBSERVATION)
+
+
+func _arm_status_dismissal() -> void:
+	_status_dismissal_armed = _status_time_remaining > 0.0
+
+
+func _format_status_text(message_key: StringName) -> String:
+	return "%s\n%s" % [
+		tr(String(message_key)),
+		tr("UI_OBSERVATION_DISMISS_HINT"),
+	]
 
 
 func _resolve_game_state() -> GameStateModel:

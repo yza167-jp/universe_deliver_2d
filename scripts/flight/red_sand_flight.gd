@@ -133,6 +133,9 @@ func _ready() -> void:
 		route_hud.controls_help_close_requested.connect(close_controls_help)
 	_entry_style_tracker.bind_run_state(_resolve_order_run_state())
 	flight_ship.set_laser_enabled(_resolve_laser_enabled_from_loadout())
+	flight_ship.set_shield_backup_power_enabled(
+		_resolve_shield_backup_power_enabled_from_loadout()
+	)
 	var assist_strength: float = _resolve_assist_strength()
 	_active_assist_index = FlightAssistMode.get_nearest_preset_index(assist_strength)
 	_direct_test_mode = (
@@ -1344,6 +1347,19 @@ func _resolve_laser_enabled_from_loadout() -> bool:
 	return FlightWeaponRules.has_asteroid_laser(
 		game_state.ship_configuration,
 		data_registry.modules
+	)
+
+
+func _resolve_shield_backup_power_enabled_from_loadout() -> bool:
+	if data_registry == null:
+		return false
+	var game_state: GameStateModel = _resolve_game_state()
+	if game_state == null:
+		return false
+	return ShipLoadoutRules.has_capability(
+		game_state.ship_configuration,
+		data_registry.modules,
+		ShipLoadoutRules.SHIELD_REGENERATION_CAPABILITY
 	)
 
 

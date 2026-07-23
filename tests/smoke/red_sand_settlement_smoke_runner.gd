@@ -156,19 +156,29 @@ func _run_smoke() -> void:
 				and coordinator.has_modal(
 					StationReturnStateController.MODAL_MEMORABILIA_OBSERVATION
 				)
-				and not player.is_input_enabled()
+				and player.is_input_enabled()
 				and player.is_interaction_prompt_suppressed()
 				and not player.is_interaction_prompt_visible(),
-				"Memorabilia observation left movement or the interaction prompt active."
+				"Memorabilia observation did not preserve movement while hiding interaction."
 			)
-			return_state._process(
-				StationReturnStateController.STATUS_DURATION_SECONDS + 0.1
+			await process_frame
+			Input.action_press(&"move_right")
+			for _frame: int in 3:
+				await physics_frame
+			Input.action_release(&"move_right")
+			_check(
+				player.velocity.x > 0.0,
+				"Station movement did not remain available behind memorabilia text."
 			)
+			var dismiss_event: InputEventAction = InputEventAction.new()
+			dismiss_event.action = &"ui_accept"
+			dismiss_event.pressed = true
+			return_state._unhandled_input(dismiss_event)
 			_check(
 				not return_state.is_status_visible()
 				and player.is_input_enabled()
 				and not player.is_interaction_prompt_suppressed(),
-				"Memorabilia observation did not restore station input after closing."
+				"Space/Enter dismissal did not close the memorabilia observation cleanly."
 			)
 
 	await _finish(original_locale)

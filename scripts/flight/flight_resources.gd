@@ -11,6 +11,7 @@ var cargo_integrity: float = MAX_RESOURCE_VALUE
 var propulsion_fuel_cost_rate: float = 0.0
 var boost_energy_cost_rate: float = 0.0
 var boost_recovery_rate: float = 0.0
+var shield_regeneration_rate: float = 0.0
 
 var _boost_recovery_delay_remaining: float = 0.0
 
@@ -43,6 +44,7 @@ func restore_from(source: FlightResources) -> void:
 	propulsion_fuel_cost_rate = maxf(source.propulsion_fuel_cost_rate, 0.0)
 	boost_energy_cost_rate = maxf(source.boost_energy_cost_rate, 0.0)
 	boost_recovery_rate = maxf(source.boost_recovery_rate, 0.0)
+	shield_regeneration_rate = maxf(source.shield_regeneration_rate, 0.0)
 	_boost_recovery_delay_remaining = maxf(
 		source._boost_recovery_delay_remaining,
 		0.0
@@ -122,6 +124,36 @@ func step_propulsion(
 	return Vector2(effective_throttle, effective_boost)
 
 
+## Regenerates only from the installed backup source outside Boost and reverse states.
+func step_shield_regeneration(
+	module_enabled: bool,
+	boost_active: bool,
+	reverse_active: bool,
+	tuning: FlightTuning,
+	delta: float
+) -> float:
+	shield_regeneration_rate = 0.0
+	if (
+		not module_enabled
+		or boost_active
+		or reverse_active
+		or tuning == null
+		or delta <= 0.0
+		or shield >= MAX_RESOURCE_VALUE
+	):
+		return 0.0
+	var previous_shield: float = shield
+	shield_regeneration_rate = maxf(
+		tuning.shield_regeneration_per_second,
+		0.0
+	)
+	shield = minf(
+		shield + shield_regeneration_rate * delta,
+		MAX_RESOURCE_VALUE
+	)
+	return shield - previous_shield
+
+
 func apply_collision(result: FlightCollisionResult) -> FlightDamageResult:
 	if result == null or not result.is_impact():
 		return FlightDamageResult.new()
@@ -190,6 +222,7 @@ func clear_telemetry() -> void:
 	propulsion_fuel_cost_rate = 0.0
 	boost_energy_cost_rate = 0.0
 	boost_recovery_rate = 0.0
+	shield_regeneration_rate = 0.0
 
 
 static func _get_boost_policy_cap(

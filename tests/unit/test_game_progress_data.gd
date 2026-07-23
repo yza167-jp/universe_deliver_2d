@@ -17,6 +17,9 @@ func _test_round_trip(failures: Array[String]) -> void:
 	source.ship_configuration[ShipLoadoutRules.SLOT_UTILITY] = (
 		ShipLoadoutRules.LASER_MODULE_ID
 	)
+	source.ship_configuration[ShipLoadoutRules.SLOT_SHIELD_BACKUP_POWER] = (
+		ShipLoadoutRules.SHIELD_BACKUP_POWER_MODULE_ID
+	)
 	source.story_flags[&"story_first_delivery"] = true
 	source.read_dialogue_ids[&"dialogue_test/line_02"] = true
 	source.completed_order_ids[&"order_orientation"] = true
@@ -157,7 +160,11 @@ func _test_missing_fields_and_legacy_migration(failures: Array[String]) -> void:
 		and legacy.ship_configuration.get(ShipLoadoutRules.SLOT_UTILITY, &"")
 		== ShipLoadoutRules.LASER_MODULE_ID
 		and legacy.ship_configuration.get(ShipLoadoutRules.SLOT_POWER, &"")
-		== ShipLoadoutRules.DEFAULT_POWER_MODULE_ID,
+		== ShipLoadoutRules.DEFAULT_POWER_MODULE_ID
+		and legacy.ship_configuration.get(
+			ShipLoadoutRules.SLOT_SHIELD_BACKUP_POWER,
+			&"missing"
+		).is_empty(),
 		"Legacy progress must migrate known fields while retaining safe slot defaults.",
 		failures
 	)

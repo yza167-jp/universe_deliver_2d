@@ -37,6 +37,11 @@ signal departure_confirmed(order_id: StringName)
 @onready var _utility_description_label: Label = %UtilityDescriptionLabel
 @onready var _utility_status_label: Label = %UtilityStatusLabel
 @onready var _utility_toggle_button: Button = %UtilityToggleButton
+@onready var _backup_power_heading_label: Label = %BackupPowerHeadingLabel
+@onready var _backup_power_name_label: Label = %BackupPowerNameLabel
+@onready var _backup_power_description_label: Label = %BackupPowerDescriptionLabel
+@onready var _backup_power_status_label: Label = %BackupPowerStatusLabel
+@onready var _backup_power_toggle_button: Button = %BackupPowerToggleButton
 @onready var _requirements_heading_label: Label = %RequirementsHeadingLabel
 @onready var _requirements_label: Label = %RequirementsLabel
 @onready var _standard_issue_label: Label = %StandardIssueLabel
@@ -44,6 +49,7 @@ signal departure_confirmed(order_id: StringName)
 @onready var _confirm_button: Button = %ConfirmButton
 @onready var _close_button: Button = %CloseButton
 @onready var _laser_mount_visual: ColorRect = %LaserMountVisual
+@onready var _shield_backup_power_visual: ColorRect = %ShieldBackupPowerVisual
 
 var game_state_override: GameStateModel
 var _game_state: GameStateModel
@@ -125,6 +131,24 @@ func toggle_module_for_slot(slot_type: ShipModuleDefinition.SlotType) -> bool:
 	return changed
 
 
+func toggle_module_by_id(module_id: StringName) -> bool:
+	if _game_state == null:
+		return false
+	var module: ShipModuleDefinition = ShipLoadoutRules.get_module_by_id(
+		order_definition,
+		module_id
+	)
+	if module == null:
+		return false
+	var changed: bool = false
+	if _game_state.is_ship_module_equipped(module.id):
+		changed = _game_state.unequip_ship_module(module)
+	else:
+		changed = _game_state.equip_ship_module(module)
+	_refresh_content()
+	return changed
+
+
 func confirm_departure() -> bool:
 	if _game_state == null or order_definition == null or _confirm_button.disabled:
 		return false
@@ -183,6 +207,21 @@ func is_laser_mount_visible() -> bool:
 	return _laser_mount_visual != null and _laser_mount_visual.visible
 
 
+func is_shield_backup_power_visual_visible() -> bool:
+	return (
+		_shield_backup_power_visual != null
+		and _shield_backup_power_visual.visible
+	)
+
+
+func get_shield_backup_power_status_text() -> String:
+	return (
+		""
+		if _backup_power_status_label == null
+		else _backup_power_status_label.text
+	)
+
+
 func get_panel_rect() -> Rect2:
 	var panel: PanelContainer = get_node_or_null("LoadoutPanel") as PanelContainer
 	return Rect2() if panel == null else panel.get_global_rect()
@@ -223,6 +262,11 @@ func _initialize_controls() -> bool:
 		_utility_description_label,
 		_utility_status_label,
 		_utility_toggle_button,
+		_backup_power_heading_label,
+		_backup_power_name_label,
+		_backup_power_description_label,
+		_backup_power_status_label,
+		_backup_power_toggle_button,
 		_requirements_heading_label,
 		_requirements_label,
 		_standard_issue_label,
@@ -230,6 +274,7 @@ func _initialize_controls() -> bool:
 		_confirm_button,
 		_close_button,
 		_laser_mount_visual,
+		_shield_backup_power_visual,
 	]
 	for control: Control in required_controls:
 		if control == null:
@@ -242,6 +287,9 @@ func _initialize_controls() -> bool:
 	)
 	_utility_toggle_button.pressed.connect(
 		toggle_module_for_slot.bind(ShipModuleDefinition.SlotType.UTILITY)
+	)
+	_backup_power_toggle_button.pressed.connect(
+		toggle_module_by_id.bind(ShipLoadoutRules.SHIELD_BACKUP_POWER_MODULE_ID)
 	)
 	_confirm_button.pressed.connect(confirm_departure)
 	_close_button.pressed.connect(close_loadout)
@@ -338,11 +386,27 @@ func _refresh_content() -> void:
 		_utility_status_label,
 		_utility_toggle_button
 	)
+	_refresh_module(
+		ShipLoadoutRules.get_module_by_id(
+			order_definition,
+			ShipLoadoutRules.SHIELD_BACKUP_POWER_MODULE_ID
+		),
+		_backup_power_name_label,
+		_backup_power_description_label,
+		_backup_power_status_label,
+		_backup_power_toggle_button
+	)
 	_refresh_requirements()
 	_refresh_departure_state()
 	_laser_mount_visual.visible = (
 		_game_state != null
 		and _game_state.is_ship_module_equipped(ShipLoadoutRules.LASER_MODULE_ID)
+	)
+	_shield_backup_power_visual.visible = (
+		_game_state != null
+		and _game_state.is_ship_module_equipped(
+			ShipLoadoutRules.SHIELD_BACKUP_POWER_MODULE_ID
+		)
 	)
 
 
@@ -358,6 +422,7 @@ func _localize_static_labels() -> void:
 	_power_heading_label.text = tr("UI_LOADOUT_SLOT_POWER")
 	_defense_heading_label.text = tr("UI_LOADOUT_SLOT_DEFENSE")
 	_utility_heading_label.text = tr("UI_LOADOUT_SLOT_UTILITY")
+	_backup_power_heading_label.text = tr("UI_LOADOUT_SLOT_SHIELD_BACKUP_POWER")
 	_requirements_heading_label.text = tr("UI_LOADOUT_REQUIREMENTS_HEADING")
 	_standard_issue_label.text = tr("UI_LOADOUT_STANDARD_ISSUE_NOTE")
 	_close_button.text = tr("UI_LOADOUT_CLOSE")
@@ -388,6 +453,22 @@ func _refresh_slot(
 		order_definition,
 		slot_type
 	)
+	_refresh_module(
+		module,
+		name_label,
+		description_label,
+		status_label,
+		toggle_button
+	)
+
+
+func _refresh_module(
+	module: ShipModuleDefinition,
+	name_label: Label,
+	description_label: Label,
+	status_label: Label,
+	toggle_button: Button
+) -> void:
 	if module == null:
 		name_label.text = tr("UI_LOADOUT_VALUE_UNAVAILABLE")
 		description_label.text = tr("UI_LOADOUT_VALUE_UNAVAILABLE")
@@ -418,28 +499,28 @@ func _refresh_requirements() -> void:
 	if order_definition == null:
 		_requirements_label.text = tr("UI_LOADOUT_VALUE_UNAVAILABLE")
 		return
-	var entries: PackedStringArray = []
+	var installed_required_count: int = 0
 	for module: ShipModuleDefinition in order_definition.required_modules:
-		var installed: bool = (
+		if (
 			_game_state != null
 			and module != null
 			and _game_state.is_ship_module_equipped(module.id)
-		)
-		entries.append(tr("UI_LOADOUT_REQUIREMENT_REQUIRED_FORMAT") % [
-			_translate_module_name(module),
-			tr("UI_LOADOUT_STATE_INSTALLED" if installed else "UI_LOADOUT_STATE_MISSING"),
-		])
+		):
+			installed_required_count += 1
+	var installed_optional_count: int = 0
 	for module: ShipModuleDefinition in order_definition.recommended_modules:
-		var installed: bool = (
+		if (
 			_game_state != null
 			and module != null
 			and _game_state.is_ship_module_equipped(module.id)
-		)
-		entries.append(tr("UI_LOADOUT_REQUIREMENT_RECOMMENDED_FORMAT") % [
-			_translate_module_name(module),
-			tr("UI_LOADOUT_STATE_INSTALLED" if installed else "UI_LOADOUT_STATE_OPTIONAL"),
-		])
-	_requirements_label.text = "\n".join(entries)
+		):
+			installed_optional_count += 1
+	_requirements_label.text = tr("UI_LOADOUT_REQUIREMENTS_SUMMARY_FORMAT") % [
+		installed_required_count,
+		order_definition.required_modules.size(),
+		installed_optional_count,
+		order_definition.recommended_modules.size(),
+	]
 
 
 func _refresh_departure_state() -> void:
@@ -507,6 +588,14 @@ func _has_complete_loadout_data() -> bool:
 	]:
 		if ShipLoadoutRules.get_module_for_slot(order_definition, slot_type) == null:
 			return false
+	if (
+		ShipLoadoutRules.get_module_by_id(
+			order_definition,
+			ShipLoadoutRules.SHIELD_BACKUP_POWER_MODULE_ID
+		)
+		== null
+	):
+		return false
 	return true
 
 

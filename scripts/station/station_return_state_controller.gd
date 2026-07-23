@@ -22,6 +22,7 @@ var game_state_override: GameStateModel
 
 var _status_time_remaining: float = 0.0
 var _status_key: StringName = &""
+var _status_dismissal_armed: bool = false
 
 
 func _ready() -> void:
@@ -37,11 +38,21 @@ func _process(delta: float) -> void:
 		_hide_status()
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	if (
+		_status_dismissal_armed
+		and _status_time_remaining > 0.0
+		and event.is_action_pressed(&"ui_accept")
+	):
+		dismiss_status()
+		get_viewport().set_input_as_handled()
+
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready():
 		refresh_return_state()
 		if not _status_key.is_empty():
-			_status_label.text = tr(String(_status_key))
+			_status_label.text = _format_status_text(_status_key)
 
 
 func refresh_return_state() -> void:
@@ -89,6 +100,13 @@ func is_status_visible() -> bool:
 	return _status_panel != null and _status_panel.visible
 
 
+func dismiss_status() -> bool:
+	if _status_time_remaining <= 0.0:
+		return false
+	_hide_status()
+	return true
+
+
 func _on_memorabilia_interacted(_actor: Node) -> void:
 	var game_state: GameStateModel = _resolve_game_state()
 	var display_is_unlocked: bool = (
@@ -106,10 +124,12 @@ func _on_memorabilia_interacted(_actor: Node) -> void:
 
 func _show_status(message_key: StringName) -> void:
 	_status_key = message_key
-	_status_label.text = tr(String(message_key))
+	_status_label.text = _format_status_text(message_key)
 	_status_panel.visible = true
 	_status_time_remaining = STATUS_DURATION_SECONDS
-	_modal_coordinator.begin_modal(MODAL_MEMORABILIA_OBSERVATION)
+	_status_dismissal_armed = false
+	_modal_coordinator.begin_modal(MODAL_MEMORABILIA_OBSERVATION, false)
+	call_deferred("_arm_status_dismissal")
 	set_process(true)
 
 
@@ -118,8 +138,20 @@ func _hide_status() -> void:
 	_status_label.text = ""
 	_status_key = &""
 	_status_time_remaining = 0.0
+	_status_dismissal_armed = false
 	_modal_coordinator.end_modal(MODAL_MEMORABILIA_OBSERVATION)
 	set_process(false)
+
+
+func _arm_status_dismissal() -> void:
+	_status_dismissal_armed = _status_time_remaining > 0.0
+
+
+func _format_status_text(message_key: StringName) -> String:
+	return "%s\n%s" % [
+		tr(String(message_key)),
+		tr("UI_OBSERVATION_DISMISS_HINT"),
+	]
 
 
 func _resolve_game_state() -> GameStateModel:

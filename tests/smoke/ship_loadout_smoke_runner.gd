@@ -84,11 +84,13 @@ func _run_smoke() -> void:
 		"Accepted cargo is missing from the ship loadout."
 	)
 	_check(
-		loadout_ui.get_requirements_text().contains("标准动力模块")
-		and loadout_ui.get_requirements_text().contains("大气防护模块")
-		and loadout_ui.get_requirements_text().contains("陨石激光炮")
-		and loadout_ui.get_requirements_text().contains("可选未装"),
-		"Required and recommended Red Sand modules are not clearly separated."
+		loadout_ui.get_requirements_text().contains("必需 2/2")
+		and loadout_ui.get_requirements_text().contains("可选 0/2")
+		and loadout_ui.get_slot_status_text(
+			ShipModuleDefinition.SlotType.UTILITY
+		).contains("订单推荐")
+		and loadout_ui.get_shield_backup_power_status_text().contains("订单推荐"),
+		"Required modules and both optional Red Sand modules are not clearly separated."
 	)
 
 	_check(
@@ -129,6 +131,32 @@ func _run_smoke() -> void:
 		),
 		"Installed laser did not expose its later flight capability."
 	)
+	_check(
+		loadout_ui.toggle_module_by_id(
+			ShipLoadoutRules.SHIELD_BACKUP_POWER_MODULE_ID
+		),
+		"Optional shield backup power could not be installed."
+	)
+	_check(
+		loadout_ui.is_shield_backup_power_visual_visible()
+		and loadout_ui.get_shield_backup_power_status_text().contains("已安装")
+		and game_state.is_ship_module_equipped(
+			ShipLoadoutRules.SHIELD_BACKUP_POWER_MODULE_ID
+		)
+		and game_state.has_ship_capability(
+			ShipLoadoutRules.SHIELD_REGENERATION_CAPABILITY,
+			module_catalog
+		),
+		"Shield backup installation did not persist or expose regeneration capability."
+	)
+	_check(
+		loadout_ui.get_requirements_text().contains("可选 2/2"),
+		"Installing both optional modules did not update the compact requirement summary."
+	)
+	_check(
+		game_state.is_ship_module_equipped(ShipLoadoutRules.LASER_MODULE_ID),
+		"Installing shield backup power replaced the independently installed laser."
+	)
 	_check(loadout_ui.confirm_departure(), "Valid loadout could not confirm departure.")
 	_check(
 		game_state.is_departure_confirmed_for_order(order)
@@ -148,6 +176,10 @@ func _run_smoke() -> void:
 	await process_frame
 	_check(loadout_ui.is_laser_mount_visible(), "Reopened loadout lost the installed laser visual.")
 	_check(
+		loadout_ui.is_shield_backup_power_visual_visible(),
+		"Reopened loadout lost the installed shield backup visual."
+	)
+	_check(
 		loadout_ui.toggle_module_for_slot(ShipModuleDefinition.SlotType.UTILITY),
 		"Installed laser could not be removed."
 	)
@@ -155,6 +187,10 @@ func _run_smoke() -> void:
 		not game_state.departure_confirmed
 		and not game_state.has_ship_capability(
 			ShipLoadoutRules.ASTEROID_BREAK_CAPABILITY,
+			module_catalog
+		)
+		and game_state.has_ship_capability(
+			ShipLoadoutRules.SHIELD_REGENERATION_CAPABILITY,
 			module_catalog
 		),
 		"Removing the laser did not invalidate confirmation and later flight capability."

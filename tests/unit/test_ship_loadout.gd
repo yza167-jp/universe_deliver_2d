@@ -20,11 +20,18 @@ func run() -> Array[String]:
 		order,
 		ShipModuleDefinition.SlotType.UTILITY
 	)
+	var shield_backup_module: ShipModuleDefinition = ShipLoadoutRules.get_module_by_id(
+		order,
+		ShipLoadoutRules.SHIELD_BACKUP_POWER_MODULE_ID
+	)
 
 	expect_true(order != null, "Red Sand order must load for loadout tests.", failures)
 	expect_true(
-		power_module != null and defense_module != null and utility_module != null,
-		"The M0 order must expose one module for each loadout slot.",
+		power_module != null
+		and defense_module != null
+		and utility_module != null
+		and shield_backup_module != null,
+		"The M0 order must expose required modules and both optional utility mounts.",
 		failures
 	)
 	expect_true(
@@ -36,6 +43,13 @@ func run() -> Array[String]:
 	expect_true(
 		not game_state.is_ship_module_equipped(ShipLoadoutRules.LASER_MODULE_ID),
 		"The optional laser must begin uninstalled.",
+		failures
+	)
+	expect_true(
+		not game_state.is_ship_module_equipped(
+			ShipLoadoutRules.SHIELD_BACKUP_POWER_MODULE_ID
+		),
+		"The optional shield backup power must begin uninstalled.",
 		failures
 	)
 	expect_true(
@@ -95,12 +109,40 @@ func run() -> Array[String]:
 	)
 	expect_true(game_state.confirm_departure(order), "The updated loadout must be confirmable.", failures)
 	expect_true(
+		game_state.equip_ship_module(shield_backup_module)
+		and game_state.is_ship_module_equipped(
+			ShipLoadoutRules.SHIELD_BACKUP_POWER_MODULE_ID
+		)
+		and game_state.is_ship_module_equipped(ShipLoadoutRules.LASER_MODULE_ID)
+		and game_state.has_ship_capability(
+			ShipLoadoutRules.SHIELD_REGENERATION_CAPABILITY,
+			module_catalog
+		),
+		"Shield backup power must install independently without replacing the laser.",
+		failures
+	)
+	expect_true(
+		game_state.ship_configuration[
+			ShipLoadoutRules.SLOT_SHIELD_BACKUP_POWER
+		] == ShipLoadoutRules.SHIELD_BACKUP_POWER_MODULE_ID,
+		"Shield backup power must persist in its stable secondary utility slot.",
+		failures
+	)
+	expect_true(
 		game_state.unequip_ship_module(utility_module)
 		and not game_state.has_ship_capability(
 			ShipLoadoutRules.ASTEROID_BREAK_CAPABILITY,
 			module_catalog
 		),
-		"Removing the laser must remove the later flight capability.",
+		"Removing the laser must remove asteroid breaking without removing backup power.",
+		failures
+	)
+	expect_true(
+		game_state.is_ship_module_equipped(
+			ShipLoadoutRules.SHIELD_BACKUP_POWER_MODULE_ID
+		)
+		and game_state.unequip_ship_module(shield_backup_module),
+		"Shield backup power must remain independently removable.",
 		failures
 	)
 

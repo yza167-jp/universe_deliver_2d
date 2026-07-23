@@ -170,7 +170,11 @@ func refresh_interaction_target() -> Interactable2D:
 
 
 func try_interact() -> bool:
-	if not _input_enabled or _current_interactable == null:
+	if (
+		not _input_enabled
+		or _interaction_prompt_suppressed
+		or _current_interactable == null
+	):
 		return false
 	if not _current_interactable.interact(self):
 		return false

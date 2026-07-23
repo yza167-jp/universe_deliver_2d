@@ -184,17 +184,25 @@ func _check_optional_dialogue(player: StationPlayer, dialogue_ui: DialogueUI) ->
 		"Optional technician dialogue did not record its stable result."
 	)
 	_check(
-		_arrival.get_status_text() == tr("UI_RED_SAND_ARRIVAL_STATUS_OPTIONAL_TALK")
-		and not player.is_input_enabled()
+		_arrival.get_status_text().contains(
+			tr("UI_RED_SAND_ARRIVAL_STATUS_OPTIONAL_TALK")
+		)
+		and _arrival.get_status_text().contains(tr("UI_OBSERVATION_DISMISS_HINT"))
+		and player.is_input_enabled()
 		and player.is_interaction_prompt_suppressed()
 		and _arrival.get_modal_coordinator().has_modal(
 			RedSandArrival.MODAL_OBSERVATION
 		),
-		"Optional dialogue follow-up did not keep its observation text modal."
+		"Optional dialogue follow-up did not keep movement available behind its observation."
 	)
 	_arrival._process(RedSandArrival.STATUS_DURATION_SECONDS + 0.1)
 	await process_frame
-	_check(player.is_input_enabled(), "Optional observation did not restore exploration input.")
+	_check(
+		player.is_input_enabled()
+		and not player.is_interaction_prompt_suppressed()
+		and _arrival.get_status_text().is_empty(),
+		"Optional observation did not close automatically after its timeout."
+	)
 
 
 func _check_record_terminal(player: StationPlayer) -> void:
@@ -212,19 +220,28 @@ func _check_record_terminal(player: StationPlayer) -> void:
 		"Approaching the record terminal selected the wrong interaction target."
 	)
 	_check(player.try_interact(), "Order record terminal did not respond to interaction.")
+	await process_frame
 	_check(
-		_arrival.get_status_text() == tr("UI_RED_SAND_ARRIVAL_RECORD_DETAIL")
+		_arrival.get_status_text().contains(tr("UI_RED_SAND_ARRIVAL_RECORD_DETAIL"))
 		and _game_state.has_story_flag(RedSandArrival.STORY_RECORD_INSPECTED),
 		"Record terminal did not expose the company-versus-settlement discrepancy."
 	)
 	_check(
-		not player.is_input_enabled()
+		player.is_input_enabled()
 		and player.is_interaction_prompt_suppressed()
 		and not player.is_interaction_prompt_visible()
 		and _arrival.get_modal_coordinator().has_modal(
 			RedSandArrival.MODAL_OBSERVATION
 		),
-		"Record observation left movement or the interaction prompt active behind it."
+		"Record observation did not preserve movement while suppressing repeated interaction."
+	)
+	Input.action_press(&"move_right")
+	for _frame: int in 3:
+		await physics_frame
+	Input.action_release(&"move_right")
+	_check(
+		player.velocity.x > 0.0,
+		"Movement input did not remain available while record text was visible."
 	)
 	var run_state: OrderRunState = _game_state.get_active_order_run_state()
 	_check(
@@ -239,7 +256,10 @@ func _check_record_terminal(player: StationPlayer) -> void:
 		run_state.optional_trigger_ids.count(RedSandArrival.RECORD_INSPECTION_TRIGGER_ID) == 1,
 		"Repeated record inspection duplicated its order-run trigger."
 	)
-	_arrival._process(RedSandArrival.STATUS_DURATION_SECONDS + 0.1)
+	var dismiss_event: InputEventAction = InputEventAction.new()
+	dismiss_event.action = &"ui_accept"
+	dismiss_event.pressed = true
+	_arrival._unhandled_input(dismiss_event)
 	await process_frame
 	_check(
 		player.is_input_enabled()

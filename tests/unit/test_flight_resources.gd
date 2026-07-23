@@ -12,6 +12,7 @@ func run() -> Array[String]:
 	_test_boost_consumption_and_cargo_cap(tuning, failures)
 	_test_reverse_boost_block_prevents_resource_cost(tuning, failures)
 	_test_boost_recovery_and_hover_block(tuning, failures)
+	_test_shield_backup_regeneration_gates(tuning, failures)
 	_test_emergency_thrust_prevents_fuel_deadlock(tuning, failures)
 	_test_shield_absorbs_all_flight_damage(failures)
 	_test_shield_overflow_scales_hull_and_cargo_damage(failures)
@@ -19,6 +20,59 @@ func run() -> Array[String]:
 	_test_delivery_cargo_damage_clamps_and_reports(failures)
 	_test_resource_snapshot_is_independent(failures)
 	return failures
+
+
+func _test_shield_backup_regeneration_gates(
+	tuning: FlightTuning,
+	failures: Array[String]
+) -> void:
+	var resources: FlightResources = FlightResources.new()
+	resources.shield = 40.0
+	expect_true(
+		is_zero_approx(
+			resources.step_shield_regeneration(false, false, false, tuning, 1.0)
+		)
+		and is_equal_approx(resources.shield, 40.0),
+		"Shield must not regenerate without the optional backup module.",
+		failures
+	)
+	var recovered: float = resources.step_shield_regeneration(
+		true,
+		false,
+		false,
+		tuning,
+		2.0
+	)
+	expect_true(
+		is_equal_approx(recovered, tuning.shield_regeneration_per_second * 2.0)
+		and is_equal_approx(resources.shield, 40.0 + recovered)
+		and is_equal_approx(
+			resources.shield_regeneration_rate,
+			tuning.shield_regeneration_per_second
+		),
+		"Installed backup power must slowly restore an incomplete shield.",
+		failures
+	)
+	var shield_before_gate: float = resources.shield
+	expect_true(
+		is_zero_approx(
+			resources.step_shield_regeneration(true, true, false, tuning, 1.0)
+		)
+		and is_zero_approx(
+			resources.step_shield_regeneration(true, false, true, tuning, 1.0)
+		)
+		and is_equal_approx(resources.shield, shield_before_gate)
+		and is_zero_approx(resources.shield_regeneration_rate),
+		"Boost and reverse states must each suspend shield regeneration.",
+		failures
+	)
+	resources.shield = 99.0
+	resources.step_shield_regeneration(true, false, false, tuning, 2.0)
+	expect_true(
+		is_equal_approx(resources.shield, FlightResources.MAX_RESOURCE_VALUE),
+		"Shield regeneration must clamp at the 100-point maximum.",
+		failures
+	)
 
 
 func _test_boost_consumption_and_cargo_cap(

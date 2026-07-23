@@ -106,6 +106,15 @@ func advance(
 		_state_remaining = maxf(_state_remaining - safe_delta, 0.0)
 		_update_warning_pulse()
 		if _state_remaining <= 0.0:
+			# Freeze the current prediction, not the smoothing trail left behind it.
+			_update_tracking_target(
+				ship_global_position,
+				ship_velocity,
+				camera_center,
+				viewport_size,
+				safe_delta,
+				true
+			)
 			_begin_lock()
 	elif _state == State.LOCKED:
 		_state_remaining = maxf(_state_remaining - safe_delta, 0.0)

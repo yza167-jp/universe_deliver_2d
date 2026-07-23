@@ -254,6 +254,12 @@ func _complete_first_departure(station: StationHub) -> bool:
 		loadout_ui.toggle_module_for_slot(ShipModuleDefinition.SlotType.UTILITY),
 		"Asteroid laser could not be selected."
 	)
+	_check(
+		loadout_ui.toggle_module_by_id(
+			ShipLoadoutRules.SHIELD_BACKUP_POWER_MODULE_ID
+		),
+		"Shield backup power could not be selected independently."
+	)
 	_check(loadout_ui.confirm_departure(), "Ship loadout could not confirm departure.")
 	loadout_ui.close_loadout()
 	await _wait_frames(1)
@@ -349,6 +355,29 @@ func _complete_flight_with_retry(route: RedSandFlight) -> bool:
 		or feedback == null
 	):
 		return false
+	_check(
+		flight_ship.is_shield_backup_power_enabled(),
+		"Installed shield backup power did not propagate into the flight ship."
+	)
+	flight_ship.shield = 80.0
+	flight_ship.velocity = Vector2.ZERO
+	flight_ship.integrate_motion(0.0, 0.0, 0.0, 1.0)
+	_check(
+		flight_ship.shield > 80.0
+		and is_equal_approx(
+			flight_ship.get_shield_regeneration_rate(),
+			flight_ship.tuning.shield_regeneration_per_second
+		),
+		"Idle installed backup power did not regenerate the shield."
+	)
+	flight_ship.shield = 80.0
+	flight_ship.integrate_motion(1.0, 0.0, 0.0, 0.25, 1.0)
+	_check(
+		is_equal_approx(flight_ship.shield, 80.0),
+		"Shield backup power regenerated while Boost was active."
+	)
+	flight_ship.shield = 100.0
+	flight_ship.velocity = Vector2.ZERO
 	flight_ship.set_physics_process(false)
 	var final_segment: FlightRouteSegment = definition.segments[-1]
 	flight_ship.position = Vector2(

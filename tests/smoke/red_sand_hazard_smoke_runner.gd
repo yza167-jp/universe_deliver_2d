@@ -386,12 +386,12 @@ func _test_lightning_speed_change_routes(
 	)
 	settings_service.settings.slow_motion_assist = false
 
-	var cruise: LightningRouteResult = _simulate_lightning_route(
+	var full_throttle: LightningRouteResult = _simulate_lightning_route(
 		route,
 		ship,
 		hazards,
 		definition,
-		&"cruise"
+		&"full_throttle"
 	)
 	var boosted: LightningRouteResult = _simulate_lightning_route(
 		route,
@@ -416,11 +416,11 @@ func _test_lightning_speed_change_routes(
 	)
 
 	_check(
-		cruise.hit_ship
-		and is_equal_approx(cruise.shield_loss, strike.damage)
-		and is_zero_approx(cruise.hull_loss)
-		and is_zero_approx(cruise.cargo_loss),
-		"Normal cruise did not remain inside the predicted lightning hit zone."
+		full_throttle.hit_ship
+		and is_equal_approx(full_throttle.shield_loss, strike.damage)
+		and is_zero_approx(full_throttle.hull_loss)
+		and is_zero_approx(full_throttle.cargo_loss),
+		"Full W throttle without Boost did not remain inside the predicted lightning hit zone."
 	)
 	_check(
 		not boosted.hit_ship
@@ -450,10 +450,10 @@ func _test_lightning_speed_change_routes(
 	)
 	print(
 		(
-			"[red-sand-hazards] lightning routes: cruise=HIT %s; "
+			"[red-sand-hazards] lightning routes: full-throttle=HIT %s; "
 			+ "boost=MISS %s; reverse=MISS %s speed=%.2f; gentle=HIT %s"
 		) % [
-			cruise.target_offset,
+			full_throttle.target_offset,
 			boosted.target_offset,
 			reversed.target_offset,
 			reversed.final_forward_speed,
@@ -470,7 +470,6 @@ func _simulate_lightning_route(
 	route_kind: StringName
 ) -> LightningRouteResult:
 	const SIMULATION_DELTA: float = 1.0 / 120.0
-	const CRUISE_SPEED: float = 160.0
 	const GENTLE_VERTICAL_SPEED: float = 22.0
 
 	var result: LightningRouteResult = LightningRouteResult.new()
@@ -488,7 +487,10 @@ func _simulate_lightning_route(
 		route.route_origin_x + strike.trigger_route_distance,
 		180.0
 	)
-	ship.velocity = Vector2(CRUISE_SPEED, 0.0)
+	ship.velocity = Vector2(
+		160.0 if route_kind == &"reverse" else ship.tuning.max_forward_speed,
+		0.0
+	)
 	var flight_camera: Camera2D = route.get_flight_camera()
 	if flight_camera != null:
 		flight_camera.global_position = ship.global_position
@@ -499,7 +501,12 @@ func _simulate_lightning_route(
 		strike.get_state() == FlightLightningStrike.State.TRACKING
 		and safety_steps < 240
 	):
-		ship.integrate_motion(0.0, 0.0, 0.0, SIMULATION_DELTA)
+		ship.integrate_motion(
+			0.0 if route_kind == &"reverse" else 1.0,
+			0.0,
+			0.0,
+			SIMULATION_DELTA
+		)
 		ship.position += ship.velocity * SIMULATION_DELTA
 		if flight_camera != null:
 			flight_camera.global_position = ship.global_position
@@ -520,7 +527,7 @@ func _simulate_lightning_route(
 		strike.get_state() == FlightLightningStrike.State.LOCKED
 		and safety_steps < 180
 	):
-		var throttle: float = 1.0 if route_kind == &"boost" else 0.0
+		var throttle: float = 0.0 if route_kind == &"reverse" else 1.0
 		var brake: float = 1.0 if route_kind == &"reverse" else 0.0
 		var boost: float = 1.0 if route_kind == &"boost" else 0.0
 		ship.integrate_motion(
