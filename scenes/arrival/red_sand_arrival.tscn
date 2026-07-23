@@ -1,10 +1,11 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://scripts/arrival/red_sand_arrival.gd" id="1_arrival"]
 [ext_resource type="PackedScene" path="res://scenes/station/station_player.tscn" id="2_player"]
 [ext_resource type="Script" path="res://scripts/station/interactable_2d.gd" id="3_interactable"]
 [ext_resource type="Resource" path="res://data/dialogue/red_sand_arrival_main.tres" id="4_main"]
 [ext_resource type="Resource" path="res://data/dialogue/red_sand_arrival_optional.tres" id="5_optional"]
+[ext_resource type="Script" path="res://scripts/ui/scene_modal_coordinator.gd" id="6_modal"]
 
 [sub_resource type="SystemFont" id="SystemFontArrival"]
 font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
@@ -122,6 +123,11 @@ shape = SubResource("ShapeTerminal")
 unique_name_in_owner = true
 position = Vector2(150, 292)
 initial_facing_direction = Vector2(1, 0)
+
+[node name="SceneModalCoordinator" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("6_modal")
+managed_control_paths = Array[NodePath]([NodePath("../ArrivalUI/OutcomePanel/Content/ObjectiveLabel")])
 
 [node name="Camera2D" type="Camera2D" parent="."]
 unique_name_in_owner = true

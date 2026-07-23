@@ -328,6 +328,7 @@ func _test_low_altitude_state_timing(
 	course.reset_for_checkpoint()
 	altitude_provider.altitude_meters = 180.0
 	var shield_before: float = ship.shield
+	var hull_before: float = ship.hull
 	var cargo_before: float = ship.cargo_integrity
 	var feedback_pulses_before: int = environment_feedback.get_radar_pulse_count()
 	course.step_physics(course.warning_seconds - 0.01)
@@ -361,11 +362,9 @@ func _test_low_altitude_state_timing(
 		and environment_feedback.get_radar_pulse_audio() != null
 		and environment_feedback.get_radar_pulse_audio().stream != null
 		and is_equal_approx(ship.shield, shield_before - course.lock_damage)
-		and is_equal_approx(
-			ship.cargo_integrity,
-			cargo_before - course.lock_cargo_damage
-		),
-		"PULSE did not emit exactly one 12 shield/ship and 2 cargo consequence."
+		and is_equal_approx(ship.hull, hull_before)
+		and is_equal_approx(ship.cargo_integrity, cargo_before),
+		"Shielded PULSE did not apply exactly one shield-only consequence."
 	)
 	course.step_physics(course.pulse_seconds)
 	_check(
@@ -395,11 +394,24 @@ func _test_low_altitude_state_timing(
 		and environment_feedback.get_radar_pulse_count()
 		== feedback_pulses_before + 2
 		and is_equal_approx(ship.shield, shield_before - course.lock_damage * 2.0)
+		and is_equal_approx(ship.hull, hull_before)
+		and is_equal_approx(ship.cargo_integrity, cargo_before),
+		"Sustained low flight did not retrigger once after a full cooldown."
+	)
+
+	course.reset_for_checkpoint()
+	ship.shield = 0.0
+	var unshielded_hull: float = ship.hull
+	var unshielded_cargo: float = ship.cargo_integrity
+	course.step_physics(course.warning_seconds + course.locked_seconds + 0.01)
+	_check(
+		course.get_pulse_count() == 1
+		and is_equal_approx(ship.hull, unshielded_hull - course.lock_damage)
 		and is_equal_approx(
 			ship.cargo_integrity,
-			cargo_before - course.lock_cargo_damage * 2.0
+			unshielded_cargo - course.lock_cargo_damage
 		),
-		"Sustained low flight did not retrigger once after a full cooldown."
+		"Unshielded radar pulse did not damage hull and cargo exactly once."
 	)
 
 

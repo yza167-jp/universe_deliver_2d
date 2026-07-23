@@ -16,6 +16,9 @@ const WALKABLE_RECT: Rect2 = Rect2(40.0, 205.0, 880.0, 125.0)
 const CAMERA_HALF_WIDTH: float = BASE_VIEWPORT_SIZE.x * 0.5
 const CAMERA_CENTER_Y: float = BASE_VIEWPORT_SIZE.y * 0.5
 const STATUS_DURATION_SECONDS: float = 5.0
+const MODAL_DIALOGUE: StringName = &"arrival_dialogue"
+const MODAL_OBSERVATION: StringName = &"arrival_observation"
+const MODAL_RETURN_TRANSITION: StringName = &"arrival_return_transition"
 const STORY_MAIN_DIALOGUE_COMPLETED: StringName = (
 	&"story_red_sand_arrival_main_dialogue_completed"
 )
@@ -44,6 +47,7 @@ const PIPE_RUST: Color = Color("8b4e38")
 @export var optional_dialogue_sequence: DialogueSequence
 
 @onready var _player: StationPlayer = %StationPlayer
+@onready var _modal_coordinator: SceneModalCoordinator = %SceneModalCoordinator
 @onready var _camera: Camera2D = %Camera2D
 @onready var _technician: Interactable2D = %Technician
 @onready var _record_terminal: Interactable2D = %RecordTerminal
@@ -61,15 +65,15 @@ var _dialogue_ui: DialogueUI
 var _active_dialogue_kind: DialogueKind = DialogueKind.NONE
 var _exploration_is_unlocked: bool = false
 var _status_time_remaining: float = 0.0
+var _status_key: StringName = &""
 var _fallback_dialogue_layer: CanvasLayer
 
 
 func _ready() -> void:
 	_connect_interactions()
-	_player.set_input_enabled(false)
-	_player.set_interaction_prompt_suppressed(true)
 	_objective_label.visible = false
 	_status_panel.visible = false
+	_modal_coordinator.begin_modal(MODAL_DIALOGUE)
 	refresh_landing_feedback()
 	_update_camera_for_player()
 	call_deferred("_begin_arrival_flow")
@@ -80,8 +84,7 @@ func _process(delta: float) -> void:
 		return
 	_status_time_remaining = maxf(_status_time_remaining - delta, 0.0)
 	if is_zero_approx(_status_time_remaining):
-		_status_panel.visible = false
-		_status_label.text = ""
+		_hide_status()
 
 
 func _physics_process(_delta: float) -> void:
@@ -93,6 +96,8 @@ func _notification(what: int) -> void:
 		refresh_landing_feedback()
 		if _exploration_is_unlocked:
 			_objective_label.text = tr("UI_RED_SAND_ARRIVAL_OBJECTIVE_EXPLORE")
+		if not _status_key.is_empty():
+			_status_label.text = tr(String(_status_key))
 
 
 func refresh_landing_feedback() -> void:
@@ -127,6 +132,10 @@ func get_station_player() -> StationPlayer:
 
 func get_dialogue_ui() -> DialogueUI:
 	return _dialogue_ui
+
+
+func get_modal_coordinator() -> SceneModalCoordinator:
+	return _modal_coordinator
 
 
 func get_technician() -> Interactable2D:
@@ -187,12 +196,15 @@ func _begin_arrival_flow() -> void:
 	var game_state: GameStateModel = _resolve_game_state()
 	_dialogue_ui = _resolve_dialogue_ui()
 	if game_state == null or _dialogue_ui == null:
+		_modal_coordinator.end_modal(MODAL_DIALOGUE)
 		push_error("Red Sand arrival could not resolve GameState or DialogueUI.")
 		return
 	if game_state.has_story_flag(STORY_MAIN_DIALOGUE_COMPLETED):
+		_modal_coordinator.end_modal(MODAL_DIALOGUE)
 		_unlock_exploration()
 		return
 	if not _start_dialogue(main_dialogue_sequence, DialogueKind.MAIN):
+		_modal_coordinator.end_modal(MODAL_DIALOGUE)
 		push_error("Red Sand arrival could not start its main delivery dialogue.")
 
 
@@ -217,20 +229,24 @@ func _start_dialogue(sequence: DialogueSequence, kind: DialogueKind) -> bool:
 		return false
 	if not _dialogue_ui.dialogue_finished.is_connected(_on_dialogue_finished):
 		_dialogue_ui.dialogue_finished.connect(_on_dialogue_finished)
+	if (
+		not _modal_coordinator.has_modal(MODAL_DIALOGUE)
+		and not _modal_coordinator.begin_modal(MODAL_DIALOGUE)
+	):
+		return false
 	_active_dialogue_kind = kind
-	_player.set_interaction_prompt_suppressed(true)
-	_player.set_input_enabled(false)
 	_objective_label.visible = false
-	_status_panel.visible = false
 	if _dialogue_ui.start_dialogue(sequence, game_state):
 		return true
 	_active_dialogue_kind = DialogueKind.NONE
+	_modal_coordinator.end_modal(MODAL_DIALOGUE)
 	return false
 
 
 func _on_dialogue_finished() -> void:
 	var finished_kind: DialogueKind = _active_dialogue_kind
 	_active_dialogue_kind = DialogueKind.NONE
+	_modal_coordinator.end_modal(MODAL_DIALOGUE)
 	var game_state: GameStateModel = _resolve_game_state()
 	if finished_kind == DialogueKind.MAIN:
 		if game_state != null:
@@ -251,8 +267,9 @@ func _on_dialogue_finished() -> void:
 func _unlock_exploration() -> void:
 	var was_unlocked: bool = _exploration_is_unlocked
 	_exploration_is_unlocked = true
-	_player.set_input_enabled(true)
-	_player.set_interaction_prompt_suppressed(false)
+	if not _modal_coordinator.is_modal_active():
+		_player.set_input_enabled(true)
+		_player.set_interaction_prompt_suppressed(false)
 	_objective_label.text = tr("UI_RED_SAND_ARRIVAL_OBJECTIVE_EXPLORE")
 	_objective_label.visible = true
 	if not was_unlocked:
@@ -276,19 +293,22 @@ func _on_record_terminal_interacted(_actor: Node) -> void:
 
 
 func _on_return_beacon_interacted(_actor: Node) -> void:
-	if not _exploration_is_unlocked or _active_dialogue_kind != DialogueKind.NONE:
+	if (
+		not _exploration_is_unlocked
+		or _active_dialogue_kind != DialogueKind.NONE
+		or _modal_coordinator.is_modal_active()
+	):
 		return
 	var scene_router: SceneRouterService = _resolve_scene_router()
 	if scene_router == null:
 		_show_status(&"UI_RED_SAND_ARRIVAL_STATUS_RETURN_ERROR")
 		return
-	_player.set_input_enabled(false)
-	_player.set_interaction_prompt_suppressed(true)
+	if not _modal_coordinator.begin_modal(MODAL_RETURN_TRANSITION):
+		return
 	_objective_label.text = tr("UI_RED_SAND_ARRIVAL_OBJECTIVE_RETURNING")
 	if scene_router.request_stage(SceneRouterService.Stage.RESULTS):
 		return
-	_player.set_input_enabled(true)
-	_player.set_interaction_prompt_suppressed(false)
+	_modal_coordinator.end_modal(MODAL_RETURN_TRANSITION)
 	_objective_label.text = tr("UI_RED_SAND_ARRIVAL_OBJECTIVE_EXPLORE")
 	_show_status(&"UI_RED_SAND_ARRIVAL_STATUS_RETURN_ERROR")
 
@@ -301,9 +321,19 @@ func _record_optional_trigger(trigger_id: StringName) -> void:
 
 
 func _show_status(message_key: StringName) -> void:
+	_status_key = message_key
 	_status_label.text = tr(String(message_key))
 	_status_panel.visible = true
 	_status_time_remaining = STATUS_DURATION_SECONDS
+	_modal_coordinator.begin_modal(MODAL_OBSERVATION)
+
+
+func _hide_status() -> void:
+	_status_panel.visible = false
+	_status_label.text = ""
+	_status_key = &""
+	_status_time_remaining = 0.0
+	_modal_coordinator.end_modal(MODAL_OBSERVATION)
 
 
 func _resolve_game_state() -> GameStateModel:

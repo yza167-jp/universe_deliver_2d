@@ -122,16 +122,59 @@ func step_propulsion(
 	return Vector2(effective_throttle, effective_boost)
 
 
-func apply_collision(result: FlightCollisionResult) -> void:
+func apply_collision(result: FlightCollisionResult) -> FlightDamageResult:
 	if result == null or not result.is_impact():
-		return
-	_apply_damage(result.total_damage, result.cargo_damage)
-	if result.should_fail:
+		return FlightDamageResult.new()
+	var damage_result: FlightDamageResult = apply_flight_damage(
+		&"flight_collision",
+		result.total_damage,
+		result.cargo_damage
+	)
+	damage_result.forced_failure = result.should_fail
+	if result.should_fail and hull > 0.0:
+		damage_result.hull_damage += hull
 		hull = 0.0
+	return damage_result
 
 
-func apply_hazard_damage(total_damage: float, hazard_cargo_damage: float = 0.0) -> void:
-	_apply_damage(total_damage, hazard_cargo_damage)
+func apply_hazard_damage(
+	total_damage: float,
+	hazard_cargo_damage: float = 0.0,
+	source: StringName = &"flight_environment"
+) -> FlightDamageResult:
+	return apply_flight_damage(source, total_damage, hazard_cargo_damage)
+
+
+## Settles every ordinary flight hit shield-first; cargo receives only penetrated loss.
+func apply_flight_damage(
+	source: StringName,
+	base_damage: float,
+	full_penetration_cargo_damage: float
+) -> FlightDamageResult:
+	var result: FlightDamageResult = FlightDamageResult.new()
+	result.source = source
+	result.requested_damage = maxf(base_damage, 0.0)
+	result.requested_cargo_damage = maxf(full_penetration_cargo_damage, 0.0)
+	if result.requested_damage <= 0.0:
+		return result
+
+	result.shield_damage = minf(shield, result.requested_damage)
+	shield = maxf(shield - result.shield_damage, 0.0)
+	var overflow_damage: float = maxf(
+		result.requested_damage - result.shield_damage,
+		0.0
+	)
+	result.penetration_ratio = clampf(
+		overflow_damage / result.requested_damage,
+		0.0,
+		1.0
+	)
+	result.hull_damage = minf(hull, overflow_damage)
+	hull = maxf(hull - result.hull_damage, 0.0)
+	result.cargo_damage = apply_cargo_damage(
+		result.requested_cargo_damage * result.penetration_ratio
+	)
+	return result
 
 
 func apply_cargo_damage(applied_cargo_damage: float) -> float:
@@ -141,15 +184,6 @@ func apply_cargo_damage(applied_cargo_damage: float) -> float:
 		0.0
 	)
 	return previous_integrity - cargo_integrity
-
-
-func _apply_damage(total_damage: float, applied_cargo_damage: float) -> void:
-	var remaining_damage: float = maxf(total_damage, 0.0)
-	var shield_damage: float = minf(shield, remaining_damage)
-	shield -= shield_damage
-	remaining_damage -= shield_damage
-	hull = maxf(hull - remaining_damage, 0.0)
-	apply_cargo_damage(applied_cargo_damage)
 
 
 func clear_telemetry() -> void:

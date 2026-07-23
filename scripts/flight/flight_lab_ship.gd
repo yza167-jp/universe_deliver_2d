@@ -14,8 +14,7 @@ signal laser_target_hit(
 signal boost_blocked(reason_key: StringName)
 signal environment_damage_resolved(
 	reason_key: StringName,
-	damage: float,
-	cargo_damage: float
+	result: FlightDamageResult
 )
 
 const THROTTLE_ACTION: StringName = &"flight_throttle"
@@ -126,6 +125,7 @@ var _fire_input_held: bool = false
 var _reverse_boost_warning_latched: bool = false
 var _boost_feedback_active: bool = false
 var _boost_ramp_strength: float = 0.0
+var _last_damage_result: FlightDamageResult = FlightDamageResult.new()
 
 
 func _ready() -> void:
@@ -324,6 +324,7 @@ func reset_to_start(
 	is_failed = false
 	is_landed = false
 	_triggered_cargo_warning_keys.clear()
+	_last_damage_result = FlightDamageResult.new()
 	if _laser_weapon != null:
 		_laser_weapon.reset_weapon()
 	cancel_held_fire()
@@ -407,6 +408,7 @@ func restore_checkpoint() -> bool:
 	is_failed = false
 	is_landed = false
 	_triggered_cargo_warning_keys.clear()
+	_last_damage_result = FlightDamageResult.new()
 	if _laser_weapon != null:
 		_laser_weapon.reset_weapon()
 	if environment_profile == null:
@@ -476,11 +478,15 @@ func apply_environment_damage(
 	if is_failed or (safe_damage <= 0.0 and safe_cargo_damage <= 0.0):
 		return false
 	var previous_cargo_integrity: float = cargo_integrity
-	resources.apply_hazard_damage(safe_damage, safe_cargo_damage)
+	_last_damage_result = resources.apply_hazard_damage(
+		safe_damage,
+		safe_cargo_damage,
+		reason_key
+	)
 	if _impact_sparks != null:
 		_impact_sparks.restart()
 		_impact_sparks.emitting = true
-	environment_damage_resolved.emit(reason_key, safe_damage, safe_cargo_damage)
+	environment_damage_resolved.emit(reason_key, _last_damage_result)
 	_emit_cargo_warning_if_needed(previous_cargo_integrity)
 	if hull <= 0.0:
 		is_failed = true
@@ -489,6 +495,10 @@ func apply_environment_damage(
 		_clear_control_inputs()
 		flight_failed.emit(reason_key)
 	return true
+
+
+func get_last_damage_result() -> FlightDamageResult:
+	return _last_damage_result
 
 
 func apply_delivery_cargo_damage(damage: float) -> float:
@@ -996,7 +1006,7 @@ func _apply_collision_result(result: FlightCollisionResult) -> void:
 	if result == null or not result.is_impact():
 		return
 	var previous_cargo_integrity: float = cargo_integrity
-	resources.apply_collision(result)
+	_last_damage_result = resources.apply_collision(result)
 	collision_state_key = result.state_key
 	last_impact_speed = result.impact_speed
 	_collision_feedback_cooldown_remaining = maxf(

@@ -13,7 +13,8 @@ func run() -> Array[String]:
 	_test_reverse_boost_block_prevents_resource_cost(tuning, failures)
 	_test_boost_recovery_and_hover_block(tuning, failures)
 	_test_emergency_thrust_prevents_fuel_deadlock(tuning, failures)
-	_test_shield_hull_and_cargo_damage_order(failures)
+	_test_shield_absorbs_all_flight_damage(failures)
+	_test_shield_overflow_scales_hull_and_cargo_damage(failures)
 	_test_environment_hazard_uses_the_same_damage_order(failures)
 	_test_delivery_cargo_damage_clamps_and_reports(failures)
 	_test_resource_snapshot_is_independent(failures)
@@ -159,19 +160,22 @@ func _test_emergency_thrust_prevents_fuel_deadlock(
 	)
 
 
-func _test_shield_hull_and_cargo_damage_order(failures: Array[String]) -> void:
+func _test_shield_absorbs_all_flight_damage(failures: Array[String]) -> void:
 	var resources: FlightResources = FlightResources.new()
-	resources.shield = 10.0
+	resources.shield = 30.0
 	var impact: FlightCollisionResult = FlightCollisionResult.new()
 	impact.severity = FlightCollisionResult.Severity.HARD
 	impact.total_damage = 24.0
-	impact.cargo_damage = 5.0
-	resources.apply_collision(impact)
+	impact.cargo_damage = 12.0
+	var damage_result: FlightDamageResult = resources.apply_collision(impact)
 	expect_true(
-		is_zero_approx(resources.shield)
-		and is_equal_approx(resources.hull, 86.0)
-		and is_equal_approx(resources.cargo_integrity, 95.0),
-		"Impact damage must deplete shield before hull and apply explicit cargo damage.",
+		is_equal_approx(resources.shield, 6.0)
+		and is_equal_approx(resources.hull, 100.0)
+		and is_equal_approx(resources.cargo_integrity, 100.0)
+		and is_equal_approx(damage_result.shield_damage, 24.0)
+		and is_zero_approx(damage_result.hull_damage)
+		and is_zero_approx(damage_result.cargo_damage),
+		"Sufficient shield must absorb collision damage without hull or cargo loss.",
 		failures
 	)
 
@@ -179,10 +183,35 @@ func _test_shield_hull_and_cargo_damage_order(failures: Array[String]) -> void:
 	fatal.severity = FlightCollisionResult.Severity.FATAL
 	fatal.should_fail = true
 	fatal.total_damage = 1.0
-	resources.apply_collision(fatal)
+	fatal.cargo_damage = 100.0
+	var fatal_result: FlightDamageResult = resources.apply_collision(fatal)
 	expect_true(
-		is_zero_approx(resources.hull),
-		"Fatal impact must mark the current ship state as failed regardless of shield.",
+		is_zero_approx(resources.hull)
+		and is_equal_approx(resources.cargo_integrity, 100.0)
+		and fatal_result.forced_failure,
+		"Fatal impact may force failure but must not bypass remaining shield into cargo.",
+		failures
+	)
+
+
+func _test_shield_overflow_scales_hull_and_cargo_damage(
+	failures: Array[String]
+) -> void:
+	var resources: FlightResources = FlightResources.new()
+	resources.shield = 10.0
+	var damage_result: FlightDamageResult = resources.apply_flight_damage(
+		&"test_overflow",
+		24.0,
+		12.0
+	)
+	expect_true(
+		is_zero_approx(resources.shield)
+		and is_equal_approx(resources.hull, 86.0)
+		and is_equal_approx(resources.cargo_integrity, 93.0)
+		and is_equal_approx(damage_result.penetration_ratio, 14.0 / 24.0)
+		and is_equal_approx(damage_result.hull_damage, 14.0)
+		and is_equal_approx(damage_result.cargo_damage, 7.0),
+		"Shield break must apply only the penetrated fraction to hull and cargo.",
 		failures
 	)
 
@@ -212,12 +241,33 @@ func _test_environment_hazard_uses_the_same_damage_order(
 ) -> void:
 	var resources: FlightResources = FlightResources.new()
 	resources.shield = 12.0
-	resources.apply_hazard_damage(28.0, 3.0)
+	var penetrated_result: FlightDamageResult = resources.apply_hazard_damage(
+		28.0,
+		3.0,
+		&"test_hazard"
+	)
 	expect_true(
 		is_zero_approx(resources.shield)
 		and is_equal_approx(resources.hull, 84.0)
-		and is_equal_approx(resources.cargo_integrity, 97.0),
-		"Environmental damage must deplete shield before hull and use explicit cargo damage.",
+		and is_equal_approx(resources.cargo_integrity, 100.0 - 3.0 * 16.0 / 28.0)
+		and is_equal_approx(penetrated_result.hull_damage, 16.0),
+		"Environmental damage must use the same shield overflow ratio.",
+		failures
+	)
+
+	resources.shield = 0.0
+	var unshielded_hull: float = resources.hull
+	var unshielded_cargo: float = resources.cargo_integrity
+	var unshielded_result: FlightDamageResult = resources.apply_hazard_damage(
+		10.0,
+		4.0,
+		&"test_unshielded_hazard"
+	)
+	expect_true(
+		is_equal_approx(resources.hull, unshielded_hull - 10.0)
+		and is_equal_approx(resources.cargo_integrity, unshielded_cargo - 4.0)
+		and is_equal_approx(unshielded_result.penetration_ratio, 1.0),
+		"Unshielded environmental damage must affect both hull and cargo once.",
 		failures
 	)
 

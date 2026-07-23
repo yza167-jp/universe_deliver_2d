@@ -722,6 +722,7 @@ func _run_smoke() -> void:
 			"Flight Lab could not restore its deep-space checkpoint before impacts."
 		)
 		flight_ship.cargo_integrity = 91.0
+		var hull_before_impact: float = flight_ship.hull
 		var hard_impact: FlightCollisionResult = flight_ship.resolve_impact(
 			Vector2(250.0, 0.0),
 			Vector2.LEFT
@@ -729,15 +730,28 @@ func _run_smoke() -> void:
 		_check(
 			hard_impact.severity == FlightCollisionResult.Severity.HARD
 			and flight_ship.shield < FlightLabShip.DEFAULT_RESOURCE_VALUE
-			and flight_ship.hull == FlightLabShip.DEFAULT_RESOURCE_VALUE
-			and flight_ship.cargo_integrity < 90.0,
-			"Hard impact did not damage shield and cargo without failing the run."
+			and is_equal_approx(flight_ship.hull, hull_before_impact)
+			and is_equal_approx(flight_ship.cargo_integrity, 91.0)
+			and is_zero_approx(
+				flight_ship.get_last_damage_result().cargo_damage
+			),
+			"Shielded hard impact damaged hull or cargo before shield penetration."
 		)
 		_check(
-			_company_warning_count == 1
+			_company_warning_count == 0,
+			"Shield-only impact incorrectly emitted a cargo warning."
+		)
+		for _frame_index: int in 12:
+			await physics_frame
+		flight_ship.shield = 0.0
+		flight_ship.resolve_impact(Vector2(250.0, 0.0), Vector2.LEFT)
+		_check(
+			flight_ship.hull < hull_before_impact
+			and flight_ship.cargo_integrity < 90.0
+			and _company_warning_count == 1
 			and _last_company_warning_key
 			== &"UI_FLIGHT_COMPANY_WARNING_CARGO_HIGH",
-			"Crossing 90% cargo integrity did not trigger the company warning interface."
+			"Unshielded hard impact did not damage hull/cargo or emit one warning."
 		)
 		for _frame_index: int in 12:
 			await physics_frame

@@ -9,7 +9,7 @@ signal lightning_warning_started(
 signal lightning_resolved(
 	strike_id: StringName,
 	hit_ship: bool,
-	damage: float
+	damage_result: FlightDamageResult
 )
 
 const LIGHTNING_FAILURE_KEY: StringName = &"UI_RED_SAND_HAZARD_LIGHTNING_FAILURE"
@@ -114,6 +114,11 @@ func validate() -> PackedStringArray:
 		if strike.strike_seconds < 0.1 or strike.strike_seconds > 0.25:
 			errors.append(
 				"Lightning '%s' strike must stay within 0.1-0.25 seconds."
+				% strike.strike_id
+			)
+		if absf(strike.get_prediction_seconds() - strike.lock_seconds) > 0.08:
+			errors.append(
+				"Lightning '%s' prediction must match its post-lock reaction window."
 				% strike.strike_id
 			)
 	if not errors.has("Lightning container is missing.") and get_lightning_strikes().is_empty():
@@ -255,13 +260,16 @@ func _on_lightning_strike_started(
 	cargo_damage: float
 ) -> void:
 	cancel_slow_motion()
+	var damage_result: FlightDamageResult = FlightDamageResult.new()
+	damage_result.source = LIGHTNING_FAILURE_KEY
 	if hit_ship and _flight_ship != null:
-		_flight_ship.apply_environment_damage(
+		if _flight_ship.apply_environment_damage(
 			damage,
 			cargo_damage,
 			LIGHTNING_FAILURE_KEY
-		)
-	lightning_resolved.emit(strike_id, hit_ship, damage)
+		):
+			damage_result = _flight_ship.get_last_damage_result()
+	lightning_resolved.emit(strike_id, hit_ship, damage_result)
 
 
 func _activate_slow_motion() -> void:

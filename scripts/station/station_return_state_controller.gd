@@ -2,9 +2,13 @@ class_name StationReturnStateController
 extends Node
 
 const STATUS_DURATION_SECONDS: float = 5.0
+const MODAL_MEMORABILIA_OBSERVATION: StringName = &"station_memorabilia_observation"
 
 @onready var _memorabilia_wall: Interactable2D = (
 	get_node("../Interactables/MemorabiliaWall") as Interactable2D
+)
+@onready var _modal_coordinator: StationModalCoordinator = (
+	get_node("../StationModalCoordinator") as StationModalCoordinator
 )
 @onready var _display_root: Node2D = %FirstDeliveryDisplay
 @onready var _memorabilia_label: Label = %MemorabiliaLabel
@@ -30,10 +34,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_status_time_remaining = maxf(_status_time_remaining - delta, 0.0)
 	if is_zero_approx(_status_time_remaining):
-		_status_panel.visible = false
-		_status_label.text = ""
-		_status_key = &""
-		set_process(false)
+		_hide_status()
 
 
 func _notification(what: int) -> void:
@@ -84,6 +85,10 @@ func get_memorabilia_wall() -> Interactable2D:
 	return _memorabilia_wall
 
 
+func is_status_visible() -> bool:
+	return _status_panel != null and _status_panel.visible
+
+
 func _on_memorabilia_interacted(_actor: Node) -> void:
 	var game_state: GameStateModel = _resolve_game_state()
 	var display_is_unlocked: bool = (
@@ -104,7 +109,17 @@ func _show_status(message_key: StringName) -> void:
 	_status_label.text = tr(String(message_key))
 	_status_panel.visible = true
 	_status_time_remaining = STATUS_DURATION_SECONDS
+	_modal_coordinator.begin_modal(MODAL_MEMORABILIA_OBSERVATION)
 	set_process(true)
+
+
+func _hide_status() -> void:
+	_status_panel.visible = false
+	_status_label.text = ""
+	_status_key = &""
+	_status_time_remaining = 0.0
+	_modal_coordinator.end_modal(MODAL_MEMORABILIA_OBSERVATION)
+	set_process(false)
 
 
 func _resolve_game_state() -> GameStateModel:

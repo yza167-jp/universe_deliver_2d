@@ -29,11 +29,11 @@ var trigger_route_distance: float = 0.0
 var strike_route_distance: float = 0.0
 @export_range(-2000.0, 2000.0, 1.0) var target_y: float = 180.0
 @export_range(0.1, 3.0, 0.05, "or_greater") var tracking_seconds: float = 0.8
-@export_range(0.1, 3.0, 0.05, "or_greater") var lock_seconds: float = 0.55
+@export_range(0.1, 3.0, 0.05, "or_greater") var lock_seconds: float = 0.65
 @export_range(0.05, 1.0, 0.01, "or_greater") var strike_seconds: float = 0.18
 @export_range(0.0, 3.0, 0.05, "or_greater") var cooldown_seconds: float = 0.45
 @export_range(0.1, 30.0, 0.1, "or_greater") var tracking_smoothing: float = 10.0
-@export_range(0.0, 1.0, 0.01) var velocity_lead_seconds: float = 0.18
+@export_range(0.0, 1.0, 0.01) var velocity_lead_seconds: float = 0.65
 @export var viewport_safe_margin: Vector2 = Vector2(72.0, 60.0)
 @export_range(1.0, 500.0, 1.0, "or_greater") var hit_half_width: float = 42.0
 @export_range(1.0, 500.0, 1.0, "or_greater") var hit_half_height: float = 48.0
@@ -165,6 +165,10 @@ func has_resolved() -> bool:
 	return _has_resolved
 
 
+func get_prediction_seconds() -> float:
+	return clampf(velocity_lead_seconds, 0.0, 1.0)
+
+
 func _begin_tracking(
 	ship_global_position: Vector2,
 	ship_velocity: Vector2,
@@ -231,7 +235,7 @@ func _update_tracking_target(
 	snap: bool = false
 ) -> void:
 	var predicted_position: Vector2 = (
-		ship_global_position + ship_velocity * clampf(velocity_lead_seconds, 0.0, 1.0)
+		ship_global_position + ship_velocity * get_prediction_seconds()
 	)
 	var half_safe_size: Vector2 = Vector2(
 		maxf(viewport_size.x * 0.5 - viewport_safe_margin.x, hit_half_width),

@@ -9,6 +9,17 @@ var _original_locale: String = ""
 var _original_time_scale: float = 1.0
 
 
+class LightningRouteResult:
+	extends RefCounted
+
+	var hit_ship: bool = false
+	var shield_loss: float = 0.0
+	var hull_loss: float = 0.0
+	var cargo_loss: float = 0.0
+	var target_offset: Vector2 = Vector2.ZERO
+	var final_forward_speed: float = 0.0
+
+
 func _initialize() -> void:
 	_original_locale = TranslationServer.get_locale()
 	_original_time_scale = Engine.time_scale
@@ -76,6 +87,13 @@ func _run_smoke() -> void:
 		hazards,
 		feedback,
 		hud,
+		settings_service,
+		definition
+	)
+	_test_lightning_speed_change_routes(
+		route,
+		ship,
+		hazards,
 		settings_service,
 		definition
 	)
@@ -349,6 +367,188 @@ func _test_lightning_warning_and_assist(
 		"Checkpoint reset did not clear tracking, lock, and strike visuals."
 	)
 	feedback.flash_lightning(false)
+
+
+func _test_lightning_speed_change_routes(
+	route: RedSandFlight,
+	ship: FlightLabShip,
+	hazards: RedSandHazardDirector,
+	settings_service: SettingsServiceModel,
+	definition: FlightRouteDefinition
+) -> void:
+	var strikes: Array[FlightLightningStrike] = hazards.get_lightning_strikes()
+	if strikes.is_empty():
+		return
+	var strike: FlightLightningStrike = strikes[0]
+	_check(
+		absf(strike.get_prediction_seconds() - strike.lock_seconds) <= 0.08,
+		"Lightning prediction does not target the end of the frozen lock window."
+	)
+	settings_service.settings.slow_motion_assist = false
+
+	var cruise: LightningRouteResult = _simulate_lightning_route(
+		route,
+		ship,
+		hazards,
+		definition,
+		&"cruise"
+	)
+	var boosted: LightningRouteResult = _simulate_lightning_route(
+		route,
+		ship,
+		hazards,
+		definition,
+		&"boost"
+	)
+	var reversed: LightningRouteResult = _simulate_lightning_route(
+		route,
+		ship,
+		hazards,
+		definition,
+		&"reverse"
+	)
+	var gentle_pitch: LightningRouteResult = _simulate_lightning_route(
+		route,
+		ship,
+		hazards,
+		definition,
+		&"gentle_pitch"
+	)
+
+	_check(
+		cruise.hit_ship
+		and is_equal_approx(cruise.shield_loss, strike.damage)
+		and is_zero_approx(cruise.hull_loss)
+		and is_zero_approx(cruise.cargo_loss),
+		"Normal cruise did not remain inside the predicted lightning hit zone."
+	)
+	_check(
+		not boosted.hit_ship
+		and absf(boosted.target_offset.x) > strike.hit_half_width
+		and is_zero_approx(boosted.shield_loss),
+		"Post-lock Boost did not move the ship beyond the frozen hit zone."
+	)
+	_check(
+		not reversed.hit_ship
+		and reversed.final_forward_speed < 0.0
+		and absf(reversed.target_offset.x) > strike.hit_half_width
+		and is_zero_approx(reversed.shield_loss),
+		(
+			"Post-lock braking did not enter reverse and fall behind the frozen hit zone "
+			+ "(hit=%s speed=%.2f offset=%s shield_loss=%.2f)."
+		) % [
+			reversed.hit_ship,
+			reversed.final_forward_speed,
+			reversed.target_offset,
+			reversed.shield_loss,
+		]
+	)
+	_check(
+		gentle_pitch.hit_ship
+		and absf(gentle_pitch.target_offset.y) < strike.hit_half_height,
+		"A gentle vertical correction incorrectly became a reliable lightning dodge."
+	)
+	print(
+		(
+			"[red-sand-hazards] lightning routes: cruise=HIT %s; "
+			+ "boost=MISS %s; reverse=MISS %s speed=%.2f; gentle=HIT %s"
+		) % [
+			cruise.target_offset,
+			boosted.target_offset,
+			reversed.target_offset,
+			reversed.final_forward_speed,
+			gentle_pitch.target_offset,
+		]
+	)
+
+
+func _simulate_lightning_route(
+	route: RedSandFlight,
+	ship: FlightLabShip,
+	hazards: RedSandHazardDirector,
+	definition: FlightRouteDefinition,
+	route_kind: StringName
+) -> LightningRouteResult:
+	const SIMULATION_DELTA: float = 1.0 / 120.0
+	const CRUISE_SPEED: float = 160.0
+	const GENTLE_VERTICAL_SPEED: float = 22.0
+
+	var result: LightningRouteResult = LightningRouteResult.new()
+	var strike: FlightLightningStrike = hazards.get_lightning_strikes()[0]
+	var storm_segment: FlightRouteSegment = definition.segments[STORM_SEGMENT_INDEX]
+	hazards.reset_for_checkpoint(storm_segment.start_distance)
+	hazards.set_active_segment(storm_segment.id)
+	ship.environment_profile = null
+	ship.resources.reset()
+	ship.is_failed = false
+	ship.is_landed = false
+	ship.rotation = 0.0
+	ship.angular_velocity = 0.0
+	ship.position = Vector2(
+		route.route_origin_x + strike.trigger_route_distance,
+		180.0
+	)
+	ship.velocity = Vector2(CRUISE_SPEED, 0.0)
+	var flight_camera: Camera2D = route.get_flight_camera()
+	if flight_camera != null:
+		flight_camera.global_position = ship.global_position
+	hazards.advance_hazards(0.0, strike.trigger_route_distance + 1.0)
+
+	var safety_steps: int = 0
+	while (
+		strike.get_state() == FlightLightningStrike.State.TRACKING
+		and safety_steps < 240
+	):
+		ship.integrate_motion(0.0, 0.0, 0.0, SIMULATION_DELTA)
+		ship.position += ship.velocity * SIMULATION_DELTA
+		if flight_camera != null:
+			flight_camera.global_position = ship.global_position
+		hazards.advance_hazards(
+			SIMULATION_DELTA,
+			strike.trigger_route_distance + 1.0
+		)
+		safety_steps += 1
+	_check(
+		strike.get_state() == FlightLightningStrike.State.LOCKED,
+		"Lightning route '%s' did not reach its frozen lock state." % route_kind
+	)
+	if route_kind == &"gentle_pitch":
+		ship.velocity.y = GENTLE_VERTICAL_SPEED
+
+	safety_steps = 0
+	while (
+		strike.get_state() == FlightLightningStrike.State.LOCKED
+		and safety_steps < 180
+	):
+		var throttle: float = 1.0 if route_kind == &"boost" else 0.0
+		var brake: float = 1.0 if route_kind == &"reverse" else 0.0
+		var boost: float = 1.0 if route_kind == &"boost" else 0.0
+		ship.integrate_motion(
+			throttle,
+			brake,
+			0.0,
+			SIMULATION_DELTA,
+			boost
+		)
+		ship.position += ship.velocity * SIMULATION_DELTA
+		if flight_camera != null:
+			flight_camera.global_position = ship.global_position
+		hazards.advance_hazards(
+			SIMULATION_DELTA,
+			strike.trigger_route_distance + 1.0
+		)
+		safety_steps += 1
+
+	result.hit_ship = strike.did_hit_ship()
+	result.shield_loss = FlightResources.MAX_RESOURCE_VALUE - ship.shield
+	result.hull_loss = FlightResources.MAX_RESOURCE_VALUE - ship.hull
+	result.cargo_loss = FlightResources.MAX_RESOURCE_VALUE - ship.cargo_integrity
+	result.target_offset = ship.global_position - strike.get_target_global_position()
+	result.final_forward_speed = FlightMotionModel.get_forward_speed(
+		ship.velocity,
+		ship.rotation
+	)
+	return result
 
 
 func _check(condition: bool, message: String) -> void:

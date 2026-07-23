@@ -1109,11 +1109,15 @@ func _on_lightning_warning_started(
 func _on_lightning_resolved(
 	_strike_id: StringName,
 	hit_ship: bool,
-	damage: float
+	damage_result: FlightDamageResult
 ) -> void:
 	environment_feedback.flash_lightning(hit_ship)
 	if hit_ship:
-		route_hud.show_lightning_hit(damage)
+		route_hud.show_lightning_hit(
+			damage_result.shield_damage,
+			damage_result.hull_damage,
+			damage_result.cargo_damage
+		)
 		_start_camera_shake(FlightCollisionResult.Severity.HARD)
 	else:
 		route_hud.show_lightning_avoided()
@@ -1131,8 +1135,13 @@ func _on_radar_lock_consequence_requested(
 	if flight_ship == null:
 		return
 	if flight_ship.apply_environment_damage(damage, cargo_damage, reason_key):
+		var damage_result: FlightDamageResult = flight_ship.get_last_damage_result()
 		environment_feedback.trigger_radar_pulse()
-		route_hud.show_radar_consequence(damage, cargo_damage)
+		route_hud.show_radar_consequence(
+			damage_result.shield_damage,
+			damage_result.hull_damage,
+			damage_result.cargo_damage
+		)
 		_start_camera_shake(FlightCollisionResult.Severity.GRAZE)
 
 

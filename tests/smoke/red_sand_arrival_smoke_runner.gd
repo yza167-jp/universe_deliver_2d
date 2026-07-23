@@ -33,9 +33,15 @@ func _run_smoke() -> void:
 
 	var player: StationPlayer = _arrival.get_station_player()
 	var dialogue_ui: DialogueUI = _arrival.get_dialogue_ui()
+	var modal_coordinator: SceneModalCoordinator = _arrival.get_modal_coordinator()
 	_check(player != null, "Arrival did not reuse the station player scene.")
 	_check(dialogue_ui != null, "Arrival did not resolve a dialogue UI.")
+	_check(modal_coordinator != null, "Arrival did not resolve its shared modal coordinator.")
 	_check(_arrival.is_main_dialogue_active(), "Arrival did not open its main dialogue first.")
+	_check(
+		modal_coordinator != null and modal_coordinator.is_modal_active(),
+		"Main arrival dialogue did not acquire the shared modal lock."
+	)
 	_check(
 		player != null and not player.is_input_enabled(),
 		"World input remained active during the main arrival dialogue."
@@ -177,7 +183,18 @@ func _check_optional_dialogue(player: StationPlayer, dialogue_ui: DialogueUI) ->
 		and run_state.optional_trigger_ids.has(RedSandArrival.OPTIONAL_TALK_TRIGGER_ID),
 		"Optional technician dialogue did not record its stable result."
 	)
-	_check(player.is_input_enabled(), "Optional dialogue did not restore exploration input.")
+	_check(
+		_arrival.get_status_text() == tr("UI_RED_SAND_ARRIVAL_STATUS_OPTIONAL_TALK")
+		and not player.is_input_enabled()
+		and player.is_interaction_prompt_suppressed()
+		and _arrival.get_modal_coordinator().has_modal(
+			RedSandArrival.MODAL_OBSERVATION
+		),
+		"Optional dialogue follow-up did not keep its observation text modal."
+	)
+	_arrival._process(RedSandArrival.STATUS_DURATION_SECONDS + 0.1)
+	await process_frame
+	_check(player.is_input_enabled(), "Optional observation did not restore exploration input.")
 
 
 func _check_record_terminal(player: StationPlayer) -> void:
@@ -200,15 +217,35 @@ func _check_record_terminal(player: StationPlayer) -> void:
 		and _game_state.has_story_flag(RedSandArrival.STORY_RECORD_INSPECTED),
 		"Record terminal did not expose the company-versus-settlement discrepancy."
 	)
+	_check(
+		not player.is_input_enabled()
+		and player.is_interaction_prompt_suppressed()
+		and not player.is_interaction_prompt_visible()
+		and _arrival.get_modal_coordinator().has_modal(
+			RedSandArrival.MODAL_OBSERVATION
+		),
+		"Record observation left movement or the interaction prompt active behind it."
+	)
 	var run_state: OrderRunState = _game_state.get_active_order_run_state()
 	_check(
 		run_state.optional_trigger_ids.count(RedSandArrival.RECORD_INSPECTION_TRIGGER_ID) == 1,
 		"Record inspection must be retained exactly once in the order run result."
 	)
-	player.try_interact()
+	_check(
+		not player.try_interact(),
+		"Record observation allowed the same interaction path to trigger again."
+	)
 	_check(
 		run_state.optional_trigger_ids.count(RedSandArrival.RECORD_INSPECTION_TRIGGER_ID) == 1,
 		"Repeated record inspection duplicated its order-run trigger."
+	)
+	_arrival._process(RedSandArrival.STATUS_DURATION_SECONDS + 0.1)
+	await process_frame
+	_check(
+		player.is_input_enabled()
+		and not player.is_interaction_prompt_suppressed()
+		and player.is_interaction_prompt_visible(),
+		"Closing the record observation did not restore its in-range prompt."
 	)
 
 

@@ -166,7 +166,7 @@ func _check_route_guidance_and_company_alert() -> void:
 			and hud.get_route_panel_rect() == Rect2(),
 			"Company alert does not reuse the reserved route-card footprint."
 		)
-		hud.show_lightning_hit(8.0)
+		hud.show_lightning_hit(8.0, 0.0, 0.0)
 		_check(
 			hud.get_status_text().contains("雷击命中")
 			and hud.is_company_alert_visible()

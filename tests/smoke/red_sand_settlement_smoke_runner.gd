@@ -141,13 +141,34 @@ func _run_smoke() -> void:
 			"Returned station incorrectly asked the player to accept the completed order again."
 		)
 		if return_state != null:
+			var player: StationPlayer = station.get_station_player()
+			var coordinator: StationModalCoordinator = station.get_modal_coordinator()
 			_check(
-				return_state.get_memorabilia_wall().interact(station.get_station_player()),
+				return_state.get_memorabilia_wall().interact(player),
 				"The upgraded memorabilia wall did not respond to interaction."
 			)
 			_check(
 				return_state.get_status_text().contains("旧中继铭牌"),
 				"The upgraded wall did not expose its localized relay-plaque detail."
+			)
+			_check(
+				coordinator != null
+				and coordinator.has_modal(
+					StationReturnStateController.MODAL_MEMORABILIA_OBSERVATION
+				)
+				and not player.is_input_enabled()
+				and player.is_interaction_prompt_suppressed()
+				and not player.is_interaction_prompt_visible(),
+				"Memorabilia observation left movement or the interaction prompt active."
+			)
+			return_state._process(
+				StationReturnStateController.STATUS_DURATION_SECONDS + 0.1
+			)
+			_check(
+				not return_state.is_status_visible()
+				and player.is_input_enabled()
+				and not player.is_interaction_prompt_suppressed(),
+				"Memorabilia observation did not restore station input after closing."
 			)
 
 	await _finish(original_locale)

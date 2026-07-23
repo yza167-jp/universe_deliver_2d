@@ -280,8 +280,19 @@ func show_lightning_warning(
 	)
 
 
-func show_lightning_hit(damage: float) -> void:
-	_show_status(tr("UI_RED_SAND_HAZARD_LIGHTNING_HIT") % roundi(damage), 2.8)
+func show_lightning_hit(
+	shield_damage: float,
+	hull_damage: float,
+	cargo_damage: float
+) -> void:
+	_show_status(
+		tr("UI_RED_SAND_HAZARD_LIGHTNING_HIT") % [
+			roundi(maxf(shield_damage, 0.0)),
+			roundi(maxf(hull_damage, 0.0)),
+			roundi(maxf(cargo_damage, 0.0)),
+		],
+		2.8
+	)
 
 
 func show_lightning_avoided() -> void:
@@ -310,10 +321,15 @@ func show_radar_notice(message_key: StringName) -> void:
 	_show_status(tr(message_key), 3.6)
 
 
-func show_radar_consequence(damage: float, cargo_damage: float) -> void:
+func show_radar_consequence(
+	shield_damage: float,
+	hull_damage: float,
+	cargo_damage: float
+) -> void:
 	_show_status(
 		tr("UI_RED_SAND_RADAR_LOCK_CONSEQUENCE") % [
-			roundi(maxf(damage, 0.0)),
+			roundi(maxf(shield_damage, 0.0)),
+			roundi(maxf(hull_damage, 0.0)),
 			roundi(maxf(cargo_damage, 0.0)),
 		],
 		4.2
