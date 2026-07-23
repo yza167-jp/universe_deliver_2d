@@ -70,6 +70,10 @@ func _ready() -> void:
 			_music_audio.play()
 
 
+func _exit_tree() -> void:
+	stop_all_feedback()
+
+
 func _process(delta: float) -> void:
 	var safe_delta: float = maxf(delta, 0.0)
 	_update_environment_tint(safe_delta)
@@ -162,6 +166,20 @@ func stop_travel_feedback() -> void:
 	_clear_radar_pulse()
 
 
+## Stage teardown must not leave generated ambience or visual pressure alive.
+func stop_all_feedback() -> void:
+	stop_travel_feedback()
+	_apply_wind_visibility(false)
+	_apply_radar_visibility(false)
+	for audio_player: AudioStreamPlayer in [
+		_ambience_audio,
+		_music_audio,
+		_radar_pulse_audio,
+	]:
+		if audio_player != null:
+			audio_player.stop()
+
+
 func set_radar_pressure(lock_risk: float, locked: bool) -> void:
 	_radar_pressure = clampf(lock_risk, 0.0, 1.0)
 	_radar_locked = locked and _radar_pressure > 0.0
@@ -234,6 +252,10 @@ func get_radar_pulse_count() -> int:
 
 func get_radar_pulse_audio() -> AudioStreamPlayer:
 	return _radar_pulse_audio
+
+
+func get_ambience_audio() -> AudioStreamPlayer:
+	return _ambience_audio
 
 
 func is_radar_pulse_visible() -> bool:
