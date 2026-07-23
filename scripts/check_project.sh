@@ -154,6 +154,10 @@ run_step \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/save_continue_smoke_runner.gd
 
 run_step \
+  "M0 cockpit, flight guidance, company alert, and results UI integration smoke test" \
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/m0_ui_integration_smoke_runner.gd
+
+run_step \
   "Red Sand parallax, particles, audio, and dynamic music smoke test" \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/red_sand_atmosphere_smoke_runner.gd
 

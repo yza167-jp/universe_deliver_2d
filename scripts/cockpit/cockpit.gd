@@ -637,20 +637,27 @@ func _build_navigation_panel_text() -> String:
 
 func _build_company_panel_text() -> String:
 	var order_status: String = tr("UI_COCKPIT_COMPANY_NO_ACTIVE_ORDER")
+	var active_order: OrderDefinition
 	if _game_state != null and data_registry != null and not _game_state.current_order_id.is_empty():
-		var order: OrderDefinition = data_registry.find_order(_game_state.current_order_id)
-		if order != null:
+		active_order = data_registry.find_order(_game_state.current_order_id)
+		if active_order != null:
 			order_status = tr("UI_COCKPIT_COMPANY_ACTIVE_ORDER_FORMAT") % tr(
-				String(order.display_name_key)
+				String(active_order.display_name_key)
 			)
 	var travel_status: String = tr("UI_COCKPIT_COMPANY_TRAVEL_NOTICE")
 	if _game_state != null:
 		travel_status = tr(String(_get_company_travel_status_key(_game_state.travel_state)))
-	return "\n".join([
+	var lines: PackedStringArray = PackedStringArray([
 		tr("UI_COCKPIT_COMPANY_LINK_STATUS"),
 		order_status,
-		travel_status,
 	])
+	if active_order != null:
+		lines.append(
+			tr("UI_COCKPIT_COMPANY_RISK_BRIEFING_FORMAT") % active_order.risk_level
+		)
+		lines.append(tr("UI_COCKPIT_COMPANY_RISK_NOTE"))
+	lines.append(travel_status)
+	return "\n".join(lines)
 
 
 func _build_cargo_panel_text() -> String:

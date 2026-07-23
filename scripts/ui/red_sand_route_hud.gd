@@ -4,10 +4,14 @@ extends CanvasLayer
 signal controls_help_close_requested
 
 const STATUS_DURATION_SECONDS: float = 2.4
+const COMPANY_ALERT_DURATION_SECONDS: float = 5.2
 
 @onready var _flight_panel: PanelContainer = %FlightPanel
 @onready var _diagnostics_panel: PanelContainer = %DiagnosticsPanel
 @onready var _route_panel: PanelContainer = %RoutePanel
+@onready var _company_alert_panel: PanelContainer = %CompanyAlertPanel
+@onready var _company_alert_heading_label: Label = %CompanyAlertHeadingLabel
+@onready var _company_alert_body_label: Label = %CompanyAlertBodyLabel
 @onready var _motion_label: Label = %MotionLabel
 @onready var _safety_label: Label = %SafetyLabel
 @onready var _resources_label: Label = %ResourcesLabel
@@ -33,6 +37,9 @@ var _route_distance: float = 0.0
 var _elapsed_seconds: float = 0.0
 var _checkpoint_id: StringName = &""
 var _status_remaining: float = 0.0
+var _company_alert_remaining: float = 0.0
+var _company_warning_key: StringName = &""
+var _company_warning_cargo_integrity: float = 0.0
 var _radar_state_key: StringName = &""
 var _radar_risk: float = 0.0
 var _radar_altitude: float = 0.0
@@ -59,15 +66,23 @@ func _ready() -> void:
 	if _diagnostics_panel != null:
 		_diagnostics_panel.visible = _full_diagnostics_visible
 	_hide_status()
+	_hide_company_alert()
 	refresh()
 
 
 func _process(delta: float) -> void:
-	if _status_remaining <= 0.0:
-		return
-	_status_remaining = maxf(_status_remaining - maxf(delta, 0.0), 0.0)
-	if _status_remaining <= 0.0:
-		_hide_status()
+	var safe_delta: float = maxf(delta, 0.0)
+	if _status_remaining > 0.0:
+		_status_remaining = maxf(_status_remaining - safe_delta, 0.0)
+		if _status_remaining <= 0.0:
+			_hide_status()
+	if _company_alert_remaining > 0.0:
+		_company_alert_remaining = maxf(
+			_company_alert_remaining - safe_delta,
+			0.0
+		)
+		if _company_alert_remaining <= 0.0:
+			_hide_company_alert()
 
 
 func _notification(what: int) -> void:
@@ -86,6 +101,11 @@ func bind(
 	_altitude_reference_provider = altitude_reference_provider
 	_landing_target_route_distance = landing_target_route_distance
 	refresh()
+
+
+func bind_settings_service(settings_service: SettingsServiceModel) -> void:
+	if _controls_help != null:
+		_controls_help.bind_settings_service(settings_service)
 
 
 func set_route_state(
@@ -157,6 +177,7 @@ func refresh() -> void:
 	_instruction_label.visible = _route_details_visible
 	_refresh_radar()
 	_refresh_landing()
+	_refresh_company_alert()
 	_refresh_diagnostics(segment, distance_remaining, altitude_text)
 
 
@@ -201,7 +222,12 @@ func show_boost_blocked(reason_key: StringName) -> void:
 
 
 func show_company_warning(warning_key: StringName, cargo_integrity: float) -> void:
-	_show_status(tr(warning_key) % roundi(cargo_integrity))
+	if warning_key.is_empty():
+		return
+	_company_warning_key = warning_key
+	_company_warning_cargo_integrity = clampf(cargo_integrity, 0.0, 100.0)
+	_company_alert_remaining = COMPANY_ALERT_DURATION_SECONDS
+	_refresh_company_alert()
 
 
 func show_laser_rejected(reason_key: StringName, cooldown_remaining: float) -> void:
@@ -321,6 +347,22 @@ func get_status_text() -> String:
 	return "" if _status_label == null else _status_label.text
 
 
+func get_company_alert_heading_text() -> String:
+	return (
+		""
+		if _company_alert_heading_label == null
+		else _company_alert_heading_label.text
+	)
+
+
+func get_company_alert_body_text() -> String:
+	return "" if _company_alert_body_label == null else _company_alert_body_label.text
+
+
+func is_company_alert_visible() -> bool:
+	return _company_alert_panel != null and _company_alert_panel.visible
+
+
 func get_radar_text() -> String:
 	return "" if _radar_label == null else _radar_label.text
 
@@ -393,6 +435,10 @@ func get_route_panel_rect() -> Rect2:
 	return _get_visible_rect(_route_panel)
 
 
+func get_company_alert_rect() -> Rect2:
+	return _get_visible_rect(_company_alert_panel)
+
+
 func get_status_rect() -> Rect2:
 	return _get_visible_rect(_status_panel)
 
@@ -421,6 +467,39 @@ func _hide_status() -> void:
 	_status_remaining = 0.0
 	if _status_panel != null:
 		_status_panel.visible = false
+
+
+func _refresh_company_alert() -> void:
+	if (
+		_company_alert_panel == null
+		or _company_alert_heading_label == null
+		or _company_alert_body_label == null
+	):
+		return
+	if _company_warning_key.is_empty() or _company_alert_remaining <= 0.0:
+		_hide_company_alert()
+		return
+	var heading_key: StringName = &"UI_FLIGHT_COMPANY_ALERT_ATTENTION"
+	if _company_warning_key == &"UI_FLIGHT_COMPANY_WARNING_CARGO_MEDIUM":
+		heading_key = &"UI_FLIGHT_COMPANY_ALERT_WARNING"
+	elif _company_warning_key == &"UI_FLIGHT_COMPANY_WARNING_CARGO_LOW":
+		heading_key = &"UI_FLIGHT_COMPANY_ALERT_CRITICAL"
+	_company_alert_heading_label.text = tr(heading_key)
+	_company_alert_body_label.text = tr(_company_warning_key) % roundi(
+		_company_warning_cargo_integrity
+	)
+	_company_alert_panel.visible = true
+	if _route_panel != null:
+		_route_panel.visible = false
+
+
+func _hide_company_alert() -> void:
+	_company_alert_remaining = 0.0
+	_company_warning_key = &""
+	if _company_alert_panel != null:
+		_company_alert_panel.visible = false
+	if _route_panel != null:
+		_route_panel.visible = true
 
 
 func _refresh_radar() -> void:

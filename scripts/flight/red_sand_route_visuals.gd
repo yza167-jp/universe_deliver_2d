@@ -44,6 +44,10 @@ var _horizon_alpha: float = 0.0
 var _surface_frame_offset_y: float = 0.0
 var _surface_frame_nodes: Array[Node2D] = []
 var _surface_frame_controls: Array[Control] = []
+var _route_hint_nodes: Array[CanvasItem] = []
+var _floor_edges: Array[Line2D] = []
+var _route_hints_enabled: bool = LocalSettingsData.DEFAULT_ROUTE_HINTS_ENABLED
+var _high_contrast_enabled: bool = LocalSettingsData.DEFAULT_HIGH_CONTRAST_TERRAIN
 
 
 func _notification(what: int) -> void:
@@ -181,6 +185,35 @@ func get_terrain_surface_stage_indices() -> PackedInt32Array:
 	return stage_indices
 
 
+func set_accessibility(
+	route_hints_enabled: bool,
+	high_contrast_enabled: bool
+) -> void:
+	_route_hints_enabled = route_hints_enabled
+	_high_contrast_enabled = high_contrast_enabled
+	_apply_accessibility()
+
+
+func are_route_hints_visible() -> bool:
+	if _route_hint_nodes.is_empty():
+		return false
+	for hint_node: CanvasItem in _route_hint_nodes:
+		if is_instance_valid(hint_node) and hint_node.visible != _route_hints_enabled:
+			return false
+	return _route_hints_enabled
+
+
+func is_high_contrast_enabled() -> bool:
+	return _high_contrast_enabled
+
+
+func get_floor_edge_width() -> float:
+	for floor_edge: Line2D in _floor_edges:
+		if is_instance_valid(floor_edge):
+			return floor_edge.width
+	return 0.0
+
+
 func set_surface_frame_offset_y(offset_y: float) -> void:
 	if not is_finite(offset_y) or is_equal_approx(offset_y, _surface_frame_offset_y):
 		return
@@ -290,6 +323,8 @@ func _get_planet_position(segment_index: int, segment_progress: float) -> Vector
 func _build_graybox_route() -> void:
 	_surface_frame_nodes.clear()
 	_surface_frame_controls.clear()
+	_route_hint_nodes.clear()
+	_floor_edges.clear()
 	for child: Node in get_children():
 		child.queue_free()
 	for index: int in _route_definition.segments.size():
@@ -297,6 +332,7 @@ func _build_graybox_route() -> void:
 		_build_segment_graybox(segment, index)
 		_build_segment_landmarks(segment, index)
 	_build_finish_beacon()
+	_apply_accessibility()
 
 
 func _build_segment_graybox(segment: FlightRouteSegment, index: int) -> void:
@@ -394,7 +430,9 @@ func _build_terrain_surface(
 	])
 	floor_edge.width = 3.0
 	floor_edge.default_color = _resolve_floor_edge_color(index)
+	floor_edge.set_meta(&"route_segment_index", index)
 	add_child(floor_edge)
+	_floor_edges.append(floor_edge)
 	_register_surface_frame_node(floor_edge)
 
 	var floor_body: StaticBody2D = StaticBody2D.new()
@@ -429,6 +467,7 @@ func _build_finish_beacon() -> void:
 	beacon.width = 6.0
 	beacon.default_color = Color(0.462745, 0.945098, 1.0, 0.9)
 	add_child(beacon)
+	_route_hint_nodes.append(beacon)
 	_register_surface_frame_node(beacon)
 
 
@@ -501,6 +540,7 @@ func _build_guide_lines(
 		guide.default_color = color
 		container.add_child(guide)
 	add_child(container)
+	_route_hint_nodes.append(container)
 
 
 func _build_cloud_silhouettes(segment: FlightRouteSegment, index: int) -> void:
@@ -597,7 +637,24 @@ func _build_landing_guides(
 		marker.default_color = Color(0.462745, 0.945098, 1.0, 0.76)
 		container.add_child(marker)
 	add_child(container)
+	_route_hint_nodes.append(container)
 	_register_surface_frame_node(container)
+
+
+func _apply_accessibility() -> void:
+	for hint_node: CanvasItem in _route_hint_nodes:
+		if is_instance_valid(hint_node):
+			hint_node.visible = _route_hints_enabled
+	for floor_edge: Line2D in _floor_edges:
+		if not is_instance_valid(floor_edge):
+			continue
+		var segment_index: int = int(floor_edge.get_meta(&"route_segment_index", 0))
+		var edge_color: Color = _resolve_floor_edge_color(segment_index)
+		floor_edge.width = 5.0 if _high_contrast_enabled else 3.0
+		if _high_contrast_enabled:
+			edge_color = edge_color.lightened(0.24)
+			edge_color.a = 1.0
+		floor_edge.default_color = edge_color
 
 
 func _register_surface_frame_node(surface_node: Node2D) -> void:

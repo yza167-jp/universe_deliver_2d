@@ -219,8 +219,11 @@ func _check_specific_behavior(hotspot_id: StringName) -> void:
 		&"company_terminal":
 			_check(
 				_cockpit.get_open_panel_id() == hotspot_id
-				and _cockpit.get_device_panel_body().contains(tr("UI_COCKPIT_COMPANY_LINK_STATUS")),
-				"Company terminal did not open its own status panel."
+				and _cockpit.get_device_panel_body().contains(tr("UI_COCKPIT_COMPANY_LINK_STATUS"))
+				and _cockpit.get_device_panel_body().contains("2/5")
+				and _cockpit.get_device_panel_body().contains("优先保护护盾与货物")
+				and _cockpit.get_device_panel_body().contains("自愿职业成长"),
+				"Company terminal did not expose actionable route risk and management tone."
 			)
 		&"cargo_indicator":
 			_check(

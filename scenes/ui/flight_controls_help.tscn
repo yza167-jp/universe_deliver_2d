@@ -40,21 +40,21 @@ color = Color(0.00784314, 0.0156863, 0.0313726, 0.78)
 [node name="Panel" type="PanelContainer" parent="."]
 layout_mode = 0
 offset_left = 72.0
-offset_top = 24.0
+offset_top = 8.0
 offset_right = 568.0
-offset_bottom = 336.0
+offset_bottom = 352.0
 theme_override_styles/panel = SubResource("StyleHelpPanel")
 
 [node name="Margin" type="MarginContainer" parent="Panel"]
 layout_mode = 2
 theme_override_constants/margin_left = 20
-theme_override_constants/margin_top = 14
+theme_override_constants/margin_top = 12
 theme_override_constants/margin_right = 20
-theme_override_constants/margin_bottom = 14
+theme_override_constants/margin_bottom = 12
 
 [node name="Content" type="VBoxContainer" parent="Panel/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 7
+theme_override_constants/separation = 4
 
 [node name="TitleLabel" type="Label" parent="Panel/Margin/Content"]
 unique_name_in_owner = true
@@ -88,6 +88,47 @@ theme_override_font_sizes/font_size = 10
 text = "UI_FLIGHT_CONTROLS_LASER_UNINSTALLED"
 horizontal_alignment = 1
 
+[node name="AssistHeadingLabel" type="Label" parent="Panel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.670588, 1, 0.941176, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_FLIGHT_CONTROLS_ASSIST_HEADING"
+horizontal_alignment = 1
+
+[node name="AssistOptions" type="HBoxContainer" parent="Panel/Margin/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="RouteHintsButton" type="CheckButton" parent="Panel/Margin/Content/AssistOptions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 25)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_neighbor_right = NodePath("../HighContrastButton")
+focus_neighbor_bottom = NodePath("../../StartButton")
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_CONTROLS_ROUTE_HINTS"
+
+[node name="HighContrastButton" type="CheckButton" parent="Panel/Margin/Content/AssistOptions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 25)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_neighbor_left = NodePath("../RouteHintsButton")
+focus_neighbor_bottom = NodePath("../../StartButton")
+theme_override_font_sizes/font_size = 9
+text = "UI_FLIGHT_CONTROLS_HIGH_CONTRAST"
+
+[node name="SettingsFeedbackLabel" type="Label" parent="Panel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.741176, 0.823529, 0.85098, 1)
+theme_override_font_sizes/font_size = 8
+text = "UI_FLIGHT_CONTROLS_SETTINGS_READY"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+
 [node name="TestSection" type="VBoxContainer" parent="Panel/Margin/Content"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -114,7 +155,7 @@ autowrap_mode = 2
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 30)
 layout_mode = 2
-focus_neighbor_top = NodePath(".")
+focus_neighbor_top = NodePath("../AssistOptions/HighContrastButton")
 focus_neighbor_bottom = NodePath(".")
 theme_override_colors/font_color = Color(0.905882, 0.945098, 0.972549, 1)
 theme_override_font_sizes/font_size = 11

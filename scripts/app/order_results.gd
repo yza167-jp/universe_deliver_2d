@@ -13,6 +13,7 @@ signal settlement_committed(result: OrderSettlementResult)
 @onready var _credit_balance_value: Label = %CreditBalanceValue
 @onready var _narrative_label: Label = %NarrativeLabel
 @onready var _station_change_label: Label = %StationChangeLabel
+@onready var _next_step_label: Label = %NextStepLabel
 @onready var _return_button: Button = %ReturnButton
 
 var game_state_override: GameStateModel
@@ -96,6 +97,10 @@ func get_station_change_text() -> String:
 	return "" if _station_change_label == null else _station_change_label.text
 
 
+func get_next_step_text() -> String:
+	return "" if _next_step_label == null else _next_step_label.text
+
+
 func get_return_button() -> Button:
 	return _return_button
 
@@ -125,6 +130,7 @@ func _render_settlement() -> void:
 		_get_landing_result_text(),
 	])
 	_station_change_label.text = tr("UI_RESULTS_STATION_CHANGE_DETAIL")
+	_next_step_label.text = tr("UI_RESULTS_NEXT_STEP")
 	_return_button.disabled = false
 
 
@@ -139,6 +145,7 @@ func _render_unavailable() -> void:
 	_credit_balance_value.text = tr("UI_RESULTS_VALUE_UNAVAILABLE")
 	_narrative_label.text = tr("UI_RESULTS_UNAVAILABLE")
 	_station_change_label.text = tr("UI_RESULTS_UNAVAILABLE_DETAIL")
+	_next_step_label.text = tr("UI_RESULTS_NEXT_STEP_UNAVAILABLE")
 	_return_button.disabled = true
 
 

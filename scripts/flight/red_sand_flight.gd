@@ -67,6 +67,7 @@ var _altitude_reference_provider: FlightAltitudeReferenceProvider = (
 var _surface_frame: FlightSurfaceFrame = FlightSurfaceFrame.new()
 var _applied_surface_frame_offset_y: float = 0.0
 var _surface_frame_raycast_deferred_frames: int = 0
+var _settings_service: SettingsServiceModel
 
 
 func _ready() -> void:
@@ -85,13 +86,22 @@ func _ready() -> void:
 	):
 		push_error("Red Sand route could not configure its surface frame.")
 		return
+	_settings_service = _resolve_settings_service()
 	if not route_visuals.configure(route_definition, route_origin_x):
 		push_error("Red Sand route could not build its graybox visuals.")
 		return
+	_sync_accessibility_visuals()
+	if (
+		_settings_service != null
+		and not _settings_service.assist_option_changed.is_connected(
+			_on_assist_option_changed
+		)
+	):
+		_settings_service.assist_option_changed.connect(_on_assist_option_changed)
 	if not hazard_director.bind(
 		flight_ship,
 		route_origin_x,
-		_resolve_settings_service(),
+		_settings_service,
 		flight_camera
 	):
 		push_error("Red Sand route could not configure its fixed hazards.")
@@ -99,7 +109,7 @@ func _ready() -> void:
 	if not low_flight_course.bind(
 		flight_ship,
 		route_origin_x,
-		_resolve_settings_service(),
+		_settings_service,
 		_altitude_reference_provider
 	):
 		push_error("Red Sand route could not configure its low-flight course.")
@@ -107,7 +117,7 @@ func _ready() -> void:
 	if not landing_zone.bind(
 		flight_ship,
 		route_origin_x,
-		_resolve_settings_service()
+		_settings_service
 	):
 		push_error("Red Sand route could not configure its landing zone.")
 		return
@@ -152,6 +162,7 @@ func _ready() -> void:
 	landing_zone.set_active_segment(first_segment.id)
 	_reset_altitude_reference()
 	_sync_order_run_checkpoint(first_segment.checkpoint_id)
+	route_hud.bind_settings_service(_settings_service)
 	route_hud.bind(
 		flight_ship,
 		route_definition,
@@ -176,6 +187,13 @@ func _exit_tree() -> void:
 		hazard_director.cancel_slow_motion()
 	if landing_zone != null:
 		landing_zone.clear_touchdown_effects()
+	if (
+		_settings_service != null
+		and _settings_service.assist_option_changed.is_connected(
+			_on_assist_option_changed
+		)
+	):
+		_settings_service.assist_option_changed.disconnect(_on_assist_option_changed)
 
 
 func _physics_process(delta: float) -> void:
@@ -266,6 +284,10 @@ func get_flight_camera() -> Camera2D:
 
 func get_route_hud() -> RedSandRouteHUD:
 	return route_hud
+
+
+func get_route_visuals() -> RedSandRouteVisuals:
+	return route_visuals
 
 
 func get_route_definition() -> FlightRouteDefinition:
@@ -1051,6 +1073,15 @@ func _on_company_warning_requested(
 	route_hud.show_company_warning(warning_key, cargo_integrity)
 
 
+func _on_assist_option_changed(option_id: StringName, _enabled: bool) -> void:
+	if option_id not in [
+		SettingsServiceModel.ROUTE_HINTS_ENABLED,
+		SettingsServiceModel.HIGH_CONTRAST_TERRAIN,
+	]:
+		return
+	_sync_accessibility_visuals()
+
+
 func _on_laser_fire_rejected(reason_key: StringName) -> void:
 	route_hud.show_laser_rejected(
 		reason_key,
@@ -1238,14 +1269,18 @@ func _clear_camera_shake() -> void:
 
 
 func _resolve_assist_strength() -> float:
-	var settings_service: SettingsServiceModel = _resolve_settings_service()
+	var settings_service: SettingsServiceModel = _settings_service
+	if settings_service == null:
+		settings_service = _resolve_settings_service()
 	if settings_service == null:
 		return FlightLabShip.DEFAULT_ASSIST_STRENGTH
 	return settings_service.settings.flight_assist_strength
 
 
 func _resolve_screen_shake_strength() -> float:
-	var settings_service: SettingsServiceModel = _resolve_settings_service()
+	var settings_service: SettingsServiceModel = _settings_service
+	if settings_service == null:
+		settings_service = _resolve_settings_service()
 	if settings_service == null:
 		return LocalSettingsData.DEFAULT_SCREEN_SHAKE_STRENGTH
 	return clampf(settings_service.settings.screen_shake_strength, 0.0, 1.0)
@@ -1255,6 +1290,17 @@ func _resolve_settings_service() -> SettingsServiceModel:
 	if settings_service_override != null:
 		return settings_service_override
 	return get_node_or_null("/root/SettingsService") as SettingsServiceModel
+
+
+func _sync_accessibility_visuals() -> void:
+	if route_visuals == null:
+		return
+	var route_hints_enabled: bool = LocalSettingsData.DEFAULT_ROUTE_HINTS_ENABLED
+	var high_contrast_enabled: bool = LocalSettingsData.DEFAULT_HIGH_CONTRAST_TERRAIN
+	if _settings_service != null:
+		route_hints_enabled = _settings_service.settings.route_hints_enabled
+		high_contrast_enabled = _settings_service.settings.high_contrast_terrain
+	route_visuals.set_accessibility(route_hints_enabled, high_contrast_enabled)
 
 
 func _resolve_game_state() -> GameStateModel:

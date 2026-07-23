@@ -598,6 +598,17 @@ T-043 使用局部 `RedSandLandingZone` 组合大型可读 `StaticBody2D` 着陆
 测试工具刷新激光“已安装/未安装”状态。`L` 只在 Debug 的
 `--red-sand-route` 入口切换模块，正式流程继续读取出发前配置。
 
+T-053 起，`FlightControlsHelp` 还绑定场景传入的 `SettingsService`，提供键盘可
+聚焦的路线提示与高对比度地形开关，并在按钮文本中明确显示“已开启/已关闭”。
+设置继续保存到 `user://settings.cfg`；`assist_option_changed` 只通知既有路线
+视觉、低空管制和着陆区局部消费方，不增加全局 UI Manager。路线提示开关控制
+灰盒引导线/信标，高对比开关同时提高可碰撞地表上缘的宽度与明度。
+
+公司货损警告由 `RedSandRouteHUD` 的独立计时槽显示：警告面板与 `RoutePanel`
+使用同一右上矩形，显示期间隐藏路线卡，结束后恢复；底部 `StatusPanel` 保持
+独立，因此雷击、碰撞、雷达和重试反馈不会覆盖公司警告。标题的文字等级和符号
+保证严重度不依赖边框颜色。
+
 ## 9. 大厅与目的地区域
 
 - 玩家使用 `CharacterBody2D`。

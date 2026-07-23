@@ -236,6 +236,16 @@ text = "UI_RESULTS_UNAVAILABLE_DETAIL"
 autowrap_mode = 2
 max_lines_visible = 2
 
+[node name="NextStepLabel" type="Label" parent="ContentPanel/Margin/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.670588, 1, 0.941176, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_RESULTS_NEXT_STEP"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+
 [node name="ReturnButton" type="Button" parent="ContentPanel/Margin/Content"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 29)

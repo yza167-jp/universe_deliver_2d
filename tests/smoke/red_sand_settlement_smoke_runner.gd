@@ -85,8 +85,10 @@ func _run_smoke() -> void:
 	)
 	_check(
 		results.get_credit_balance_text().contains("97")
-		and results.get_station_change_text().contains("中继铭牌"),
-		"Results UI did not expose the credit balance and deterministic station change."
+		and results.get_station_change_text().contains("中继铭牌")
+		and results.get_next_step_text().contains("返回快递站")
+		and results.get_next_step_text().contains("老皮"),
+		"Results UI did not expose credits, station change, and the next player step."
 	)
 	_check(results.return_to_station(), "Results could not return to the station.")
 	await process_frame
