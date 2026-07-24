@@ -1,6 +1,8 @@
-# Codex 主 Agent 启动提示
+# Codex 主 Agent 启动提示 — M0 Archive
 
-将下面内容作为新仓库首次开发会话的 Goal/Prompt 使用。
+> **Deprecated / Historical:** M0 Playable Spine 已于 2026-07-24 完成。本文件只保留历史用途，不得用于当前开发。进入 M1 请使用 [`CODEX_M1_START.md`](CODEX_M1_START.md)。
+
+以下为旧 M0 首次开发提示原文：
 
 ---
 
@@ -19,13 +21,13 @@
 1. 从 `DEVELOPMENT_TASKS.md` 中选择依赖已满足的最早 `Ready` 任务；一次只做一个任务。
 2. 开始时把该任务状态改为 `In Progress`，完成后按真实结果改为 `Done` 或 `Human Check`。
 3. 严格遵守任务的“明确不做”，不要顺手实现 M1 或未来系统。
-4. 使用 Godot 4.7.1、静态类型 GDScript、Compatibility renderer、640×360 整数缩放像素画基线。
+4. 使用 Godot 4.7.1、静态类型 GDScript、Compatibility renderer、640×360 显示基线。
 5. 新依赖必须先写入 `Docs/09_DEPENDENCY_LOG.md`，说明理由、许可证、替代方案和移除成本。没有充分理由时不引入依赖。
 6. 占位美术可以简单，但必须保证当前可玩增量有清晰反馈；不要用“等最终美术”阻塞玩法。
 7. 玩家可见文本使用本地化 Key；代码和资源命名使用英文。
 8. 核心飞行用 `CharacterBody2D` 和显式速度积分，关键参数可调，不依赖不可控的刚体涌现。
-9. 修改后运行 `./scripts/check_project.sh`（若当前任务负责创建它，则先完成脚本），并执行相关烟雾测试。
-10. 仅你作为主 Agent 在测试通过后提交；提交信息优先使用中文。子任务或子 Agent 不提交。
+9. 修改后运行 `./scripts/check_project.sh`，并执行相关烟雾测试。
+10. 仅主 Agent 在测试通过后提交；提交信息优先使用中文。子任务或子 Agent 不提交。
 11. 不覆盖用户未提交的工作，不使用破坏性 Git 命令。
 12. 到达 `AGENTS.md` 指定的人工试玩节点时停止继续开发，提供试玩路径和关注问题。
 
