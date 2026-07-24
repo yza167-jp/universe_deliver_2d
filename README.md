@@ -82,11 +82,14 @@ M1 仍不加入完整敌人战斗、多飞船购买、程序生成路线、多�
 | [`Docs/M1/README.md`](Docs/M1/README.md) | M1 文档索引与阅读顺序 |
 | [`Docs/M1/00_M1_ROADMAP.md`](Docs/M1/00_M1_ROADMAP.md) | 阶段、内容预算、交付顺序和成功标准 |
 | [`Docs/M1/01_M1_STORY_BEATS.md`](Docs/M1/01_M1_STORY_BEATS.md) | M1 暂定主线节拍、角色与中继网揭示边界 |
+| [`Docs/M1/02_M1_DECISIONS.md`](Docs/M1/02_M1_DECISIONS.md) | M1 已锁定工作决定与开放问题 |
 | [`Docs/11_M1_TECHNICAL_DELTA.md`](Docs/11_M1_TECHNICAL_DELTA.md) | 相对 M0 的存档、路线、订单、升级和测试增量 |
 | [`Docs/12_M1_ITERATION_GATES.md`](Docs/12_M1_ITERATION_GATES.md) | M1 的 Gate E–I 人工试玩节点 |
 | [`Docs/M1/PLANET_WHITE_NOISE.md`](Docs/M1/PLANET_WHITE_NOISE.md) | 白噪星 Planet Packet |
+| [`Docs/M1/PLANET_RED_SAND_REVISIT.md`](Docs/M1/PLANET_RED_SAND_REVISIT.md) | 赤砂星回访、成长中场与投放候选 |
 | [`Docs/M1/PLANET_CANOPY_WORLD.md`](Docs/M1/PLANET_CANOPY_WORLD.md) | 穹林星 Planet Packet |
 | [`Docs/M1/PLANET_TIDAL_ARCHIPELAGO.md`](Docs/M1/PLANET_TIDAL_ARCHIPELAGO.md) | 群潮星 Planet Packet |
+| [`Prompts/CODEX_M1_START.md`](Prompts/CODEX_M1_START.md) | M1 首次 Codex 开发会话启动 Goal |
 
 长期基础文档继续有效：
 
