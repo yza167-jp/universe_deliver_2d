@@ -10,7 +10,7 @@
 4. `00_M1_ROADMAP.md`
 5. `01_M1_STORY_BEATS.md`
 6. `02_M1_DECISIONS.md`
-7. 当前星球 Planet Packet
+7. 当前章节或星球 Packet
 8. `../11_M1_TECHNICAL_DELTA.md`
 9. `../12_M1_ITERATION_GATES.md`
 10. 与任务有关的长期基础文档
@@ -23,9 +23,10 @@
 - `../11_M1_TECHNICAL_DELTA.md`：schema v2、多星球、支线、投放、成长和测试增量。
 - `../12_M1_ITERATION_GATES.md`：Gate E–I 的试玩路径和通过条件。
 
-## 当前 Planet Packets
+## 当前内容 Packets
 
 - `PLANET_WHITE_NOISE.md`：第一颗新增星球，M1 首个垂直切片。
+- `PLANET_RED_SAND_REVISIT.md`：赤砂星回访、成长中场与投放候选。
 - `PLANET_CANOPY_WORLD.md`：生态文明、树冠飞行和武装态度。
 - `PLANET_TIDAL_ARCHIPELAGO.md`：岛屿城邦、天气塔和 Demo 高潮。
 
