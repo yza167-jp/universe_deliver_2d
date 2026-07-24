@@ -185,12 +185,13 @@ App
 
 将可序列化的数据与场景节点分开。
 
-### 5.1 `GameProgress`（M0 schema v1）
+### 5.1 `GameProgress`（M1 schema v2）
 
 当前版本化进度：
 
 ```text
 schema_version
+# M0 保留字段
 current_order_id
 destination_id
 cargo_id
@@ -205,10 +206,25 @@ travel_state
 travel_destination_id
 order_run_state
 settings_reference  # 只引用独立本机设置，不嵌入其内容
+
+# M1 v2 字段
+main_story_chapter
+unlocked_planet_ids
+planet_relation_values
+planet_permission_ids
+codex_entry_ids
+souvenir_ids
+completed_side_order_ids
+failed_side_order_ids
+station_state_level
+ship_upgrade_ids
+revisit_state
+demo_ending_flags
+last_stable_station_state
 ```
 
-玩家名、关系值、百科与更多星球解锁属于后续 schema；不要在 M0 为尚未出现的数据
-搭建空框架。
+集合字段在解析和写回时去重；关系、回访与结尾字典验证键和值类型。设置内容、场景
+节点、`NodePath` 和运行时节点引用不进入剧情存档。
 
 ### 5.2 `OrderRunState`
 
@@ -665,11 +681,11 @@ T-053 起，`FlightControlsHelp` 还绑定场景传入的 `SettingsService`，�
 
 ### 11.1 格式
 
-M0 使用可检查、可迁移的 JSON。当前文件为 `user://savegame.json`，格式为：
+M1 继续使用可检查、可迁移的 JSON。当前文件为 `user://savegame.json`，格式为：
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "game_progress": {},
   "last_saved_at_unix": 0,
   "build_version": "...",
@@ -707,9 +723,14 @@ M0 使用可检查、可迁移的 JSON。当前文件为 `user://savegame.json`�
 - 缺字段使用明确默认值。
 - 无法迁移时保留坏档并提示，不静默清空。
 
-schema `0`（没有版本字段）的已知 M0 字段会迁移到 v1；v1 缺字段使用明确默认值；
+schema `0`（没有版本字段）的已知 M0 字段先迁移到 v1，并通过完整 v1 一致性验证，
+再执行 v1→v2；不得跳过中间版本。v1 完成赤砂首单的档案在内存中补齐赤砂回访
+章节、赤砂星解锁、已有图鉴/纪念品和首单站点状态，但不解锁白噪星或发放屏蔽罩。
+未完成档继续由既有 M0 字段决定进度，新增字段使用空集合、空 ID、空字典和等级 0。
+
 高于当前版本、类型错误、负数资源或不一致订单状态会被拒绝，不把部分数据写进
-`GameState`。成功继续旧版存档并进入稳定节点后，下一次安全写入会生成 v1 主档。
+`GameState`。读取旧档只执行内存迁移；成功继续并进入下一稳定节点后，安全写入才
+生成 v2 主档，同时由现有轮换流程保留原有效 v1 备份。
 
 ### 11.4 自动保存与继续入口
 
@@ -718,8 +739,8 @@ schema `0`（没有版本字段）的已知 M0 字段会迁移到 v1；v1 缺字
 在 `_ready()` 中提交奖励后仍能落盘。测试、headless、导入和直接调试路线默认关闭
 正常自动保存，避免污染玩家档案。
 
-“新游戏”重置 `GameState` 并立即创建有效主档；“继续游戏”只在主档或备份有效时
-启用，加载完成后从主菜单进入 `STATION`。M0 不做多槽位、云同步、跨平台同步或
+“新游戏”重置 `GameState` 并立即创建有效 v2 主档；“继续游戏”只在主档或备份有效时
+启用，加载完成后从主菜单进入 `STATION`。M1 不做多槽位、云同步、跨平台同步或
 飞行中场景恢复。
 
 ## 12. 设置存储

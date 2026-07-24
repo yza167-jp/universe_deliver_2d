@@ -1,8 +1,20 @@
 class_name GameProgressData
 extends RefCounted
 
-const CURRENT_SCHEMA_VERSION: int = 1
+const CURRENT_SCHEMA_VERSION: int = 2
 const DEFAULT_SETTINGS_REFERENCE: StringName = &"local_settings"
+const LEGACY_RED_SAND_ORDER_ID: StringName = &"order_red_sand_m0"
+const CANONICAL_RED_SAND_ORDER_ID: StringName = &"order_red_sand_cooling_core"
+const RED_SAND_PLANET_ID: StringName = &"planet_red_sand"
+const RED_SAND_REVISIT_CHAPTER_ID: StringName = &"chapter_m1_red_sand_revisit"
+const FIRST_DELIVERY_STATION_STATE_ID: StringName = &"station_after_first_delivery"
+const RED_SAND_CODEX_ENTRY_ID: StringName = &"codex_planet_red_sand"
+const IYA_CODEX_ENTRY_ID: StringName = &"codex_character_iya"
+const RELAY_PLAQUE_CODEX_ENTRY_ID: StringName = &"codex_souvenir_old_relay_plaque"
+const RELAY_PLAQUE_SOUVENIR_ID: StringName = &"souvenir_old_relay_plaque"
+const RED_SAND_ARRIVAL_COMPLETED_FLAG: StringName = (
+	&"story_red_sand_arrival_main_dialogue_completed"
+)
 
 var schema_version: int = CURRENT_SCHEMA_VERSION
 var migrated_from_version: int = CURRENT_SCHEMA_VERSION
@@ -23,6 +35,19 @@ var departure_confirmed: bool = false
 var travel_state: GameStateModel.TravelState = GameStateModel.TravelState.IDLE
 var travel_destination_id: StringName = &""
 var order_run_state: OrderRunState = OrderRunState.new()
+var main_story_chapter: StringName = &""
+var unlocked_planet_ids: Array[StringName] = []
+var planet_relation_values: Dictionary[StringName, int] = {}
+var planet_permission_ids: Array[StringName] = []
+var codex_entry_ids: Array[StringName] = []
+var souvenir_ids: Array[StringName] = []
+var completed_side_order_ids: Array[StringName] = []
+var failed_side_order_ids: Array[StringName] = []
+var station_state_level: int = 0
+var ship_upgrade_ids: Array[StringName] = []
+var revisit_state: Dictionary[StringName, StringName] = {}
+var demo_ending_flags: Dictionary[StringName, Variant] = {}
+var last_stable_station_state: StringName = &""
 
 var validation_error: String = ""
 
@@ -54,6 +79,26 @@ static func capture(game_state: GameStateModel) -> GameProgressData:
 	progress.travel_state = game_state.travel_state
 	progress.travel_destination_id = game_state.travel_destination_id
 	progress.order_run_state = _copy_order_run_state(game_state.order_run_state)
+	progress.main_story_chapter = game_state.main_story_chapter
+	progress.unlocked_planet_ids = _copy_unique_id_array(game_state.unlocked_planet_ids)
+	progress.planet_relation_values = _copy_integer_map(game_state.planet_relation_values)
+	progress.planet_permission_ids = _copy_unique_id_array(
+		game_state.planet_permission_ids
+	)
+	progress.codex_entry_ids = _copy_unique_id_array(game_state.codex_entry_ids)
+	progress.souvenir_ids = _copy_unique_id_array(game_state.souvenir_ids)
+	progress.completed_side_order_ids = _copy_unique_id_array(
+		game_state.completed_side_order_ids
+	)
+	progress.failed_side_order_ids = _copy_unique_id_array(
+		game_state.failed_side_order_ids
+	)
+	progress.station_state_level = game_state.station_state_level
+	progress.ship_upgrade_ids = _copy_unique_id_array(game_state.ship_upgrade_ids)
+	progress.revisit_state = _copy_string_name_map(game_state.revisit_state)
+	progress.demo_ending_flags = _copy_variant_map(game_state.demo_ending_flags)
+	progress.last_stable_station_state = game_state.last_stable_station_state
+	progress._apply_completed_m0_compatibility()
 	progress._validate_consistency()
 	return progress
 
@@ -87,6 +132,19 @@ func to_dictionary() -> Dictionary[String, Variant]:
 		"travel_state": _travel_state_to_name(travel_state),
 		"travel_destination_id": String(travel_destination_id),
 		"order_run_state": _serialize_order_run_state(order_run_state),
+		"main_story_chapter": String(main_story_chapter),
+		"unlocked_planet_ids": _serialize_id_array(unlocked_planet_ids),
+		"planet_relation_values": _serialize_integer_map(planet_relation_values),
+		"planet_permission_ids": _serialize_id_array(planet_permission_ids),
+		"codex_entry_ids": _serialize_id_array(codex_entry_ids),
+		"souvenir_ids": _serialize_id_array(souvenir_ids),
+		"completed_side_order_ids": _serialize_id_array(completed_side_order_ids),
+		"failed_side_order_ids": _serialize_id_array(failed_side_order_ids),
+		"station_state_level": station_state_level,
+		"ship_upgrade_ids": _serialize_id_array(ship_upgrade_ids),
+		"revisit_state": _serialize_string_name_map(revisit_state),
+		"demo_ending_flags": _serialize_variant_map(demo_ending_flags),
+		"last_stable_station_state": String(last_stable_station_state),
 	}
 	return {
 		"schema_version": CURRENT_SCHEMA_VERSION,
@@ -114,6 +172,21 @@ func apply_to(game_state: GameStateModel) -> bool:
 	game_state.travel_state = travel_state
 	game_state.travel_destination_id = travel_destination_id
 	game_state.order_run_state = _copy_order_run_state(order_run_state)
+	game_state.main_story_chapter = main_story_chapter
+	game_state.unlocked_planet_ids = _copy_unique_id_array(unlocked_planet_ids)
+	game_state.planet_relation_values = _copy_integer_map(planet_relation_values)
+	game_state.planet_permission_ids = _copy_unique_id_array(planet_permission_ids)
+	game_state.codex_entry_ids = _copy_unique_id_array(codex_entry_ids)
+	game_state.souvenir_ids = _copy_unique_id_array(souvenir_ids)
+	game_state.completed_side_order_ids = _copy_unique_id_array(
+		completed_side_order_ids
+	)
+	game_state.failed_side_order_ids = _copy_unique_id_array(failed_side_order_ids)
+	game_state.station_state_level = station_state_level
+	game_state.ship_upgrade_ids = _copy_unique_id_array(ship_upgrade_ids)
+	game_state.revisit_state = _copy_string_name_map(revisit_state)
+	game_state.demo_ending_flags = _copy_variant_map(demo_ending_flags)
+	game_state.last_stable_station_state = last_stable_station_state
 	game_state.last_order_error = &""
 	game_state.last_loadout_error = &""
 	game_state.last_travel_error = &""
@@ -143,40 +216,58 @@ func _read_dictionary(source: Dictionary) -> void:
 	migrated_from_version = stored_version
 	schema_version = CURRENT_SCHEMA_VERSION
 
-	var payload: Dictionary = {}
-	if source.has("game_progress"):
-		var raw_payload: Variant = source.get("game_progress")
-		if not raw_payload is Dictionary:
-			validation_error = "game_progress must be an object."
-			return
-		payload = raw_payload as Dictionary
-	elif stored_version == 0:
-		payload = source
-	else:
-		validation_error = "game_progress is missing."
-		return
+	var versioned_source: Dictionary = source
+	if stored_version == 0:
+		versioned_source = _migrate_schema_0_to_1(source)
+		stored_version = 1
 
 	settings_reference = _read_string_name(
-		source.get("settings_reference", DEFAULT_SETTINGS_REFERENCE),
+		versioned_source.get("settings_reference", DEFAULT_SETTINGS_REFERENCE),
 		"settings_reference",
 		false
 	)
 	if not validation_error.is_empty():
 		return
-	if source.has("last_saved_at_unix"):
+	if versioned_source.has("last_saved_at_unix"):
 		last_saved_at_unix = _read_integer(
-			source.get("last_saved_at_unix"),
+			versioned_source.get("last_saved_at_unix"),
 			"last_saved_at_unix",
 			0,
 			9223372036854775807
 		)
-	if source.has("build_version"):
+	if versioned_source.has("build_version"):
 		build_version = String(
-			_read_string_name(source.get("build_version"), "build_version", true)
+			_read_string_name(
+				versioned_source.get("build_version"),
+				"build_version",
+				true
+			)
 		)
 	if not validation_error.is_empty():
 		return
 
+	var raw_payload: Variant = versioned_source.get("game_progress")
+	if not raw_payload is Dictionary:
+		validation_error = "game_progress must be an object."
+		return
+	var payload: Dictionary = raw_payload as Dictionary
+	_read_schema_v1_fields(payload)
+	if not validation_error.is_empty():
+		return
+	_validate_consistency()
+	if not validation_error.is_empty():
+		return
+
+	if stored_version == 1:
+		_migrate_schema_1_to_2()
+	else:
+		_read_schema_v2_fields(payload)
+	if not validation_error.is_empty():
+		return
+	_validate_consistency()
+
+
+func _read_schema_v1_fields(payload: Dictionary) -> void:
 	current_order_id = _read_optional_id(payload, "current_order_id")
 	destination_id = _read_optional_id(payload, "destination_id")
 	cargo_id = _read_optional_id(payload, "cargo_id")
@@ -201,9 +292,100 @@ func _read_dictionary(source: Dictionary) -> void:
 			validation_error = "order_run_state must be an object."
 			return
 		order_run_state = _read_order_run_state(raw_run_state as Dictionary)
-	if not validation_error.is_empty():
+
+
+func _read_schema_v2_fields(payload: Dictionary) -> void:
+	main_story_chapter = _read_optional_id(payload, "main_story_chapter")
+	unlocked_planet_ids = _read_progress_id_array(payload, "unlocked_planet_ids")
+	planet_relation_values = _read_integer_map(payload, "planet_relation_values")
+	planet_permission_ids = _read_progress_id_array(payload, "planet_permission_ids")
+	codex_entry_ids = _read_progress_id_array(payload, "codex_entry_ids")
+	souvenir_ids = _read_progress_id_array(payload, "souvenir_ids")
+	completed_side_order_ids = _read_progress_id_array(
+		payload,
+		"completed_side_order_ids"
+	)
+	failed_side_order_ids = _read_progress_id_array(payload, "failed_side_order_ids")
+	if payload.has("station_state_level"):
+		station_state_level = _read_integer(
+			payload.get("station_state_level"),
+			"station_state_level",
+			0,
+			2147483647
+		)
+	ship_upgrade_ids = _read_progress_id_array(payload, "ship_upgrade_ids")
+	revisit_state = _read_string_name_dictionary(payload, "revisit_state")
+	demo_ending_flags = _read_demo_ending_flags(payload)
+	last_stable_station_state = _read_optional_id(
+		payload,
+		"last_stable_station_state"
+	)
+
+
+## Schema-less M0 data used the progress payload as the root object.
+static func _migrate_schema_0_to_1(source: Dictionary) -> Dictionary:
+	var migrated: Dictionary = source.duplicate(true)
+	if source.has("game_progress"):
+		migrated["schema_version"] = 1
+		return migrated
+	var payload: Dictionary = source.duplicate(true)
+	for metadata_key: String in [
+		"schema_version",
+		"last_saved_at_unix",
+		"build_version",
+		"settings_reference",
+	]:
+		payload.erase(metadata_key)
+	migrated = {
+		"schema_version": 1,
+		"game_progress": payload,
+		"last_saved_at_unix": source.get("last_saved_at_unix", 0),
+		"build_version": source.get("build_version", ""),
+		"settings_reference": source.get(
+			"settings_reference",
+			String(DEFAULT_SETTINGS_REFERENCE)
+		),
+	}
+	return migrated
+
+
+func _migrate_schema_1_to_2() -> void:
+	_apply_completed_m0_compatibility()
+
+
+func _apply_completed_m0_compatibility() -> void:
+	var first_delivery_completed: bool = (
+		completed_order_ids.get(LEGACY_RED_SAND_ORDER_ID, false)
+		or completed_order_ids.get(CANONICAL_RED_SAND_ORDER_ID, false)
+	)
+	var red_sand_known: bool = (
+		first_delivery_completed
+		or story_flags.get(RED_SAND_ARRIVAL_COMPLETED_FLAG, false)
+	)
+	if red_sand_known:
+		_append_unique_id(unlocked_planet_ids, RED_SAND_PLANET_ID)
+		_append_unique_id(codex_entry_ids, RED_SAND_CODEX_ENTRY_ID)
+	if (
+		story_flags.get(RED_SAND_ARRIVAL_COMPLETED_FLAG, false)
+		or first_delivery_completed
+	):
+		_append_unique_id(codex_entry_ids, IYA_CODEX_ENTRY_ID)
+	if station_upgrade_ids.get(
+		M0ProgressIds.STATION_UPGRADE_FIRST_DELIVERY_DISPLAY,
+		false
+	):
+		_append_unique_id(souvenir_ids, RELAY_PLAQUE_SOUVENIR_ID)
+		_append_unique_id(codex_entry_ids, RELAY_PLAQUE_CODEX_ENTRY_ID)
+	if not first_delivery_completed:
 		return
-	_validate_consistency()
+	completed_order_ids[LEGACY_RED_SAND_ORDER_ID] = true
+	completed_order_ids[CANONICAL_RED_SAND_ORDER_ID] = true
+	if main_story_chapter.is_empty():
+		main_story_chapter = RED_SAND_REVISIT_CHAPTER_ID
+	_append_unique_id(unlocked_planet_ids, RED_SAND_PLANET_ID)
+	station_state_level = maxi(station_state_level, 1)
+	if last_stable_station_state.is_empty():
+		last_stable_station_state = FIRST_DELIVERY_STATION_STATE_ID
 
 
 func _validate_consistency() -> void:
@@ -253,8 +435,88 @@ func _validate_consistency() -> void:
 			return
 		if travel_destination_id != destination_id:
 			validation_error = "Travel destination does not match the active order destination."
+			return
 	elif not travel_destination_id.is_empty():
 		validation_error = "Idle travel cannot retain a destination ID."
+		return
+	_validate_schema_v2_consistency()
+
+
+func _validate_schema_v2_consistency() -> void:
+	if station_state_level < 0:
+		validation_error = "station_state_level cannot be negative."
+		return
+	if not _validate_id_array(unlocked_planet_ids, "unlocked_planet_ids"):
+		return
+	if not _validate_id_array(planet_permission_ids, "planet_permission_ids"):
+		return
+	if not _validate_id_array(codex_entry_ids, "codex_entry_ids"):
+		return
+	if not _validate_id_array(souvenir_ids, "souvenir_ids"):
+		return
+	if not _validate_id_array(
+		completed_side_order_ids,
+		"completed_side_order_ids"
+	):
+		return
+	if not _validate_id_array(failed_side_order_ids, "failed_side_order_ids"):
+		return
+	if not _validate_id_array(ship_upgrade_ids, "ship_upgrade_ids"):
+		return
+	for relation_id: StringName in planet_relation_values:
+		if relation_id.is_empty():
+			validation_error = "planet_relation_values cannot contain an empty key."
+			return
+	for revisit_id: StringName in revisit_state:
+		if revisit_id.is_empty() or revisit_state.get(revisit_id, &"").is_empty():
+			validation_error = "revisit_state keys and values must be non-empty stable IDs."
+			return
+	for flag_id: StringName in demo_ending_flags:
+		if flag_id.is_empty() or not _is_supported_demo_ending_flag_value(
+			demo_ending_flags.get(flag_id)
+		):
+			validation_error = (
+				"demo_ending_flags keys and values must use supported scalar data."
+			)
+			return
+	for completed_id: StringName in completed_side_order_ids:
+		if failed_side_order_ids.has(completed_id):
+			validation_error = (
+				"A side order cannot be both completed and failed: %s." % completed_id
+			)
+			return
+	if (
+		not current_order_id.is_empty()
+		and (
+			completed_side_order_ids.has(current_order_id)
+			or failed_side_order_ids.has(current_order_id)
+		)
+	):
+		validation_error = "An active order cannot already have a terminal side-order state."
+
+
+func _validate_id_array(values: Array[StringName], field_name: String) -> bool:
+	var seen_ids: Dictionary[StringName, bool] = {}
+	for entry_id: StringName in values:
+		if entry_id.is_empty():
+			validation_error = "%s cannot contain an empty ID." % field_name
+			return false
+		if seen_ids.get(entry_id, false):
+			validation_error = "%s cannot contain duplicate IDs." % field_name
+			return false
+		seen_ids[entry_id] = true
+	return true
+
+
+static func _is_supported_demo_ending_flag_value(value: Variant) -> bool:
+	match typeof(value):
+		TYPE_BOOL, TYPE_INT:
+			return true
+		TYPE_FLOAT:
+			return is_finite(float(value))
+		TYPE_STRING, TYPE_STRING_NAME:
+			return not String(value).is_empty()
+	return false
 
 
 func _read_configuration(payload: Dictionary) -> Dictionary[StringName, StringName]:
@@ -303,6 +565,123 @@ func _read_enabled_id_set(
 			return enabled_ids
 		enabled_ids[entry_id] = true
 	return enabled_ids
+
+
+func _read_progress_id_array(
+	payload: Dictionary,
+	field_name: String
+) -> Array[StringName]:
+	var ids: Array[StringName] = []
+	if not payload.has(field_name):
+		return ids
+	var raw_value: Variant = payload.get(field_name)
+	if not raw_value is Array:
+		validation_error = "%s must be an array." % field_name
+		return ids
+	for raw_id: Variant in raw_value as Array:
+		var entry_id: StringName = _read_string_name(raw_id, field_name, false)
+		if not validation_error.is_empty():
+			return ids
+		_append_unique_id(ids, entry_id)
+	return ids
+
+
+func _read_integer_map(
+	payload: Dictionary,
+	field_name: String
+) -> Dictionary[StringName, int]:
+	var values: Dictionary[StringName, int] = {}
+	if not payload.has(field_name):
+		return values
+	var raw_value: Variant = payload.get(field_name)
+	if not raw_value is Dictionary:
+		validation_error = "%s must be an object." % field_name
+		return values
+	var raw_values: Dictionary = raw_value as Dictionary
+	for raw_key: Variant in raw_values:
+		var key: StringName = _read_string_name(raw_key, "%s key" % field_name, false)
+		if not validation_error.is_empty():
+			return values
+		values[key] = _read_integer(
+			raw_values.get(raw_key),
+			"%s.%s" % [field_name, key],
+			-2147483648,
+			2147483647
+		)
+		if not validation_error.is_empty():
+			return values
+	return values
+
+
+func _read_string_name_dictionary(
+	payload: Dictionary,
+	field_name: String
+) -> Dictionary[StringName, StringName]:
+	var values: Dictionary[StringName, StringName] = {}
+	if not payload.has(field_name):
+		return values
+	var raw_value: Variant = payload.get(field_name)
+	if not raw_value is Dictionary:
+		validation_error = "%s must be an object." % field_name
+		return values
+	var raw_values: Dictionary = raw_value as Dictionary
+	for raw_key: Variant in raw_values:
+		var key: StringName = _read_string_name(raw_key, "%s key" % field_name, false)
+		if not validation_error.is_empty():
+			return values
+		values[key] = _read_string_name(
+			raw_values.get(raw_key),
+			"%s.%s" % [field_name, key],
+			false
+		)
+		if not validation_error.is_empty():
+			return values
+	return values
+
+
+func _read_demo_ending_flags(
+	payload: Dictionary
+) -> Dictionary[StringName, Variant]:
+	var flags: Dictionary[StringName, Variant] = {}
+	if not payload.has("demo_ending_flags"):
+		return flags
+	var raw_value: Variant = payload.get("demo_ending_flags")
+	if not raw_value is Dictionary:
+		validation_error = "demo_ending_flags must be an object."
+		return flags
+	var raw_flags: Dictionary = raw_value as Dictionary
+	for raw_key: Variant in raw_flags:
+		var key: StringName = _read_string_name(
+			raw_key,
+			"demo_ending_flags key",
+			false
+		)
+		if not validation_error.is_empty():
+			return flags
+		var flag_value: Variant = _read_demo_ending_flag_value(
+			raw_flags.get(raw_key),
+			"demo_ending_flags.%s" % key
+		)
+		if not validation_error.is_empty():
+			return flags
+		flags[key] = flag_value
+	return flags
+
+
+func _read_demo_ending_flag_value(value: Variant, field_name: String) -> Variant:
+	match typeof(value):
+		TYPE_BOOL, TYPE_INT:
+			return value
+		TYPE_FLOAT:
+			if is_finite(float(value)):
+				return value
+		TYPE_STRING, TYPE_STRING_NAME:
+			return _read_string_name(value, field_name, false)
+	validation_error = (
+		"%s must be a boolean, integer, finite number, or non-empty stable ID."
+		% field_name
+	)
+	return false
 
 
 func _read_order_run_state(raw: Dictionary) -> OrderRunState:
@@ -527,6 +906,38 @@ static func _serialize_configuration(
 	return serialized
 
 
+static func _serialize_integer_map(
+	values: Dictionary[StringName, int]
+) -> Dictionary[String, Variant]:
+	var serialized: Dictionary[String, Variant] = {}
+	for key: StringName in values:
+		serialized[String(key)] = values[key]
+	return serialized
+
+
+static func _serialize_string_name_map(
+	values: Dictionary[StringName, StringName]
+) -> Dictionary[String, Variant]:
+	var serialized: Dictionary[String, Variant] = {}
+	for key: StringName in values:
+		serialized[String(key)] = String(values[key])
+	return serialized
+
+
+static func _serialize_variant_map(
+	values: Dictionary[StringName, Variant]
+) -> Dictionary[String, Variant]:
+	var serialized: Dictionary[String, Variant] = {}
+	for key: StringName in values:
+		var value: Variant = values[key]
+		serialized[String(key)] = (
+			String(value)
+			if typeof(value) == TYPE_STRING_NAME
+			else value
+		)
+	return serialized
+
+
 static func _serialize_enabled_ids(enabled_ids: Dictionary[StringName, bool]) -> Array[String]:
 	var serialized: Array[String] = []
 	for entry_id: StringName in enabled_ids:
@@ -581,6 +992,36 @@ static func _copy_string_name_map(
 	for key: StringName in source:
 		copy[key] = source[key]
 	return copy
+
+
+static func _copy_unique_id_array(source: Array[StringName]) -> Array[StringName]:
+	var copy: Array[StringName] = []
+	for entry_id: StringName in source:
+		_append_unique_id(copy, entry_id)
+	return copy
+
+
+static func _copy_integer_map(
+	source: Dictionary[StringName, int]
+) -> Dictionary[StringName, int]:
+	var copy: Dictionary[StringName, int] = {}
+	for key: StringName in source:
+		copy[key] = source[key]
+	return copy
+
+
+static func _copy_variant_map(
+	source: Dictionary[StringName, Variant]
+) -> Dictionary[StringName, Variant]:
+	var copy: Dictionary[StringName, Variant] = {}
+	for key: StringName in source:
+		copy[key] = source[key]
+	return copy
+
+
+static func _append_unique_id(values: Array[StringName], entry_id: StringName) -> void:
+	if not values.has(entry_id):
+		values.append(entry_id)
 
 
 static func _copy_enabled_ids(

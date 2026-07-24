@@ -64,6 +64,19 @@ var travel_state: TravelState = TravelState.IDLE
 var travel_destination_id: StringName = &""
 var last_travel_error: StringName = &""
 var order_run_state: OrderRunState = OrderRunState.new()
+var main_story_chapter: StringName = &""
+var unlocked_planet_ids: Array[StringName] = []
+var planet_relation_values: Dictionary[StringName, int] = {}
+var planet_permission_ids: Array[StringName] = []
+var codex_entry_ids: Array[StringName] = []
+var souvenir_ids: Array[StringName] = []
+var completed_side_order_ids: Array[StringName] = []
+var failed_side_order_ids: Array[StringName] = []
+var station_state_level: int = 0
+var ship_upgrade_ids: Array[StringName] = []
+var revisit_state: Dictionary[StringName, StringName] = {}
+var demo_ending_flags: Dictionary[StringName, Variant] = {}
+var last_stable_station_state: StringName = &""
 
 
 func _init() -> void:
@@ -87,6 +100,19 @@ func reset_runtime_state() -> void:
 	travel_state = TravelState.IDLE
 	travel_destination_id = &""
 	last_travel_error = &""
+	main_story_chapter = &""
+	unlocked_planet_ids.clear()
+	planet_relation_values.clear()
+	planet_permission_ids.clear()
+	codex_entry_ids.clear()
+	souvenir_ids.clear()
+	completed_side_order_ids.clear()
+	failed_side_order_ids.clear()
+	station_state_level = 0
+	ship_upgrade_ids.clear()
+	revisit_state.clear()
+	demo_ending_flags.clear()
+	last_stable_station_state = &""
 	if order_run_state == null:
 		order_run_state = OrderRunState.new()
 	else:

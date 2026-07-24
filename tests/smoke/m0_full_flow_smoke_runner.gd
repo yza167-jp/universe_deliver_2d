@@ -56,6 +56,22 @@ func _run_smoke() -> void:
 	_check(main_menu.start_new_game(), "New Game could not enter the station.")
 	await _wait_frames(3)
 	_check_stage(SceneRouterService.Stage.STATION, "New Game")
+	_check(
+		_game_state.main_story_chapter.is_empty()
+		and _game_state.unlocked_planet_ids.is_empty()
+		and _game_state.planet_relation_values.is_empty()
+		and _game_state.planet_permission_ids.is_empty()
+		and _game_state.codex_entry_ids.is_empty()
+		and _game_state.souvenir_ids.is_empty()
+		and _game_state.completed_side_order_ids.is_empty()
+		and _game_state.failed_side_order_ids.is_empty()
+		and _game_state.station_state_level == 0
+		and _game_state.ship_upgrade_ids.is_empty()
+		and _game_state.revisit_state.is_empty()
+		and _game_state.demo_ending_flags.is_empty()
+		and _game_state.last_stable_station_state.is_empty(),
+		"M0 New Game accidentally received M1 progress."
+	)
 
 	var station: StationHub = _get_active_scene() as StationHub
 	if not await _complete_first_departure(station):
@@ -128,8 +144,16 @@ func _run_smoke() -> void:
 		and _game_state.has_completed_order(&"order_red_sand_m0")
 		and _game_state.has_station_upgrade(
 			M0ProgressIds.STATION_UPGRADE_FIRST_DELIVERY_DISPLAY
-		),
-		"Continue lost credits, completed order, or the first-delivery station upgrade."
+		)
+		and _game_state.main_story_chapter
+		== GameProgressData.RED_SAND_REVISIT_CHAPTER_ID
+		and _game_state.unlocked_planet_ids
+		== [GameProgressData.RED_SAND_PLANET_ID]
+		and _game_state.souvenir_ids
+		== [GameProgressData.RELAY_PLAQUE_SOUVENIR_ID]
+		and not _game_state.unlocked_planet_ids.has(&"planet_white_noise")
+		and not _game_state.ship_upgrade_ids.has(&"module_high_voltage_shielding"),
+		"Continue lost M0 results or created invalid M1 unlocks."
 	)
 	if station != null:
 		var departure: StationDepartureController = station.get_departure_controller()

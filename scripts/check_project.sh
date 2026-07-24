@@ -154,6 +154,10 @@ run_step \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/save_continue_smoke_runner.gd
 
 run_step \
+  "M1 schema v2 completed and unfinished v1 migration smoke test" \
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/save_schema_v2_migration_smoke_runner.gd
+
+run_step \
   "M0 full New Game, retry, settlement, and Continue flow smoke test" \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/m0_full_flow_smoke_runner.gd
 

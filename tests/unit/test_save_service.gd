@@ -12,6 +12,10 @@ func run() -> Array[String]:
 	_remove_test_files()
 	_test_safe_write_and_backup_recovery(failures)
 	_remove_test_files()
+	_test_v1_migration_waits_for_safe_save(failures)
+	_remove_test_files()
+	_test_invalid_v1_uses_valid_backup_without_pollution(failures)
+	_remove_test_files()
 	_test_invalid_files_are_preserved(failures)
 	_remove_test_files()
 	_test_legacy_availability_and_new_game_settings_boundary(failures)
@@ -81,6 +85,128 @@ func _test_safe_write_and_backup_recovery(failures: Array[String]) -> void:
 	game_state.free()
 
 
+func _test_v1_migration_waits_for_safe_save(failures: Array[String]) -> void:
+	var game_state: GameStateModel = GameStateModel.new()
+	var service: SaveServiceModel = _create_service(game_state)
+	var v1_text: String = JSON.stringify(_make_completed_v1_save(), "\t", true)
+	_write_text(TEST_SAVE_PATH, v1_text)
+	_write_text(SETTINGS_SENTINEL_PATH, "settings-remain-independent")
+
+	expect_true(
+		service.refresh_save_availability() == SaveServiceModel.SaveAvailability.PRIMARY
+		and service.last_warning_code == SaveServiceModel.WARNING_SCHEMA_MIGRATED,
+		"A valid v1 primary must offer Continue with a migration notice.",
+		failures
+	)
+	expect_true(
+		_read_text(TEST_SAVE_PATH) == v1_text,
+		"Inspecting v1 availability must not rewrite the source file.",
+		failures
+	)
+	expect_true(service.load_progress(), service.last_error, failures)
+	expect_true(
+		game_state.credits == 137
+		and game_state.completed_order_ids.get(
+			GameProgressData.LEGACY_RED_SAND_ORDER_ID,
+			false
+		)
+		and game_state.completed_order_ids.get(
+			GameProgressData.CANONICAL_RED_SAND_ORDER_ID,
+			false
+		)
+		and game_state.main_story_chapter
+		== GameProgressData.RED_SAND_REVISIT_CHAPTER_ID
+		and game_state.souvenir_ids
+		== [GameProgressData.RELAY_PLAQUE_SOUVENIR_ID],
+		"Loading v1 must apply a fully validated v2 state in memory.",
+		failures
+	)
+	expect_true(
+		_read_text(TEST_SAVE_PATH) == v1_text
+		and _read_text(SETTINGS_SENTINEL_PATH) == "settings-remain-independent",
+		"Loading v1 must preserve the original bytes and independent settings.",
+		failures
+	)
+
+	expect_true(service.save_progress(), service.last_error, failures)
+	var primary_progress: GameProgressData = _read_progress(TEST_SAVE_PATH)
+	expect_true(
+		primary_progress != null
+		and not primary_progress.was_migrated()
+		and primary_progress.schema_version == 2,
+		"The next explicit stable save must commit a validated v2 primary.",
+		failures
+	)
+	expect_true(
+		_read_text(TEST_BACKUP_PATH) == v1_text,
+		"Committing v2 must rotate the original valid v1 bytes into backup.",
+		failures
+	)
+	expect_true(
+		_read_text(SETTINGS_SENTINEL_PATH) == "settings-remain-independent",
+		"Story migration and safe save must not overwrite local settings.",
+		failures
+	)
+
+	game_state.reset_runtime_state()
+	expect_true(service.load_progress(), service.last_error, failures)
+	expect_true(
+		game_state.credits == 137
+		and game_state.unlocked_planet_ids.count(
+			GameProgressData.RED_SAND_PLANET_ID
+		) == 1
+		and game_state.souvenir_ids.count(
+			GameProgressData.RELAY_PLAQUE_SOUVENIR_ID
+		) == 1
+		and not game_state.unlocked_planet_ids.has(&"planet_white_noise")
+		and not game_state.ship_upgrade_ids.has(&"module_high_voltage_shielding"),
+		"Reloading committed v2 must not duplicate rewards or unlock White Noise.",
+		failures
+	)
+	service.free()
+	game_state.free()
+
+
+func _test_invalid_v1_uses_valid_backup_without_pollution(
+	failures: Array[String]
+) -> void:
+	var game_state: GameStateModel = GameStateModel.new()
+	var service: SaveServiceModel = _create_service(game_state)
+	var invalid_v1_text: String = JSON.stringify({
+		"schema_version": 1,
+		"game_progress": {"credits": -1},
+	})
+	var backup_v1: Dictionary = _make_incomplete_v1_save()
+	_write_text(TEST_SAVE_PATH, invalid_v1_text)
+	_write_text(TEST_BACKUP_PATH, JSON.stringify(backup_v1))
+	game_state.credits = 77
+	game_state.story_flags[&"runtime_sentinel"] = true
+
+	expect_true(
+		service.refresh_save_availability() == SaveServiceModel.SaveAvailability.BACKUP,
+		"An invalid v1 primary with a valid v1 backup must recover from backup.",
+		failures
+	)
+	expect_true(service.load_progress(), service.last_error, failures)
+	expect_true(
+		service.last_load_source == SaveServiceModel.LoadSource.BACKUP
+		and game_state.credits == 33
+		and game_state.story_flags.get(&"unfinished_v1", false)
+		and not game_state.story_flags.get(&"runtime_sentinel", false)
+		and game_state.main_story_chapter.is_empty()
+		and game_state.unlocked_planet_ids.is_empty(),
+		"Backup recovery must apply only the fully validated backup state.",
+		failures
+	)
+	expect_true(
+		_read_text(TEST_SAVE_PATH) == invalid_v1_text,
+		"Migration failure must preserve the invalid primary for diagnosis.",
+		failures
+	)
+	service.free()
+	game_state.free()
+
+
 func _test_invalid_files_are_preserved(failures: Array[String]) -> void:
 	var game_state: GameStateModel = GameStateModel.new()
 	var service: SaveServiceModel = _create_service(game_state)
@@ -128,8 +254,11 @@ func _test_legacy_availability_and_new_game_settings_boundary(
 	)
 	expect_true(service.load_progress(), service.last_error, failures)
 	expect_true(
-		game_state.credits == 45 and game_state.has_story_flag(&"legacy_loaded"),
-		"Legacy progress must load through the migration path.",
+		game_state.credits == 45
+		and game_state.has_story_flag(&"legacy_loaded")
+		and game_state.main_story_chapter.is_empty()
+		and game_state.unlocked_planet_ids.is_empty(),
+		"Schema-less unfinished progress must chain to v2 without M1 rewards.",
 		failures
 	)
 
@@ -212,6 +341,49 @@ func _read_progress(path: String) -> GameProgressData:
 		return null
 	var progress: GameProgressData = GameProgressData.from_dictionary(parsed as Dictionary)
 	return progress if progress.is_valid() else null
+
+
+func _make_completed_v1_save() -> Dictionary:
+	return {
+		"schema_version": 1,
+		"last_saved_at_unix": 123,
+		"build_version": "m0",
+		"settings_reference": "local_settings",
+		"game_progress": {
+			"ship_configuration": {
+				"utility": "module_asteroid_laser",
+				"shield_backup_power": "module_shield_backup_power",
+			},
+			"story_flags": [
+				"story_red_sand_arrival_main_dialogue_completed",
+				String(M0ProgressIds.STORY_FIRST_DELIVERY_SETTLED),
+			],
+			"read_dialogue_ids": ["legacy_return/line_01"],
+			"completed_order_ids": ["order_red_sand_m0"],
+			"credits": 137,
+			"station_upgrade_ids": [
+				String(M0ProgressIds.STATION_UPGRADE_FIRST_DELIVERY_DISPLAY),
+			],
+			"order_run_state": {
+				"order_id": "order_red_sand_m0",
+				"cargo_integrity": 91.0,
+			},
+		},
+	}
+
+
+func _make_incomplete_v1_save() -> Dictionary:
+	return {
+		"schema_version": 1,
+		"settings_reference": "local_settings",
+		"game_progress": {
+			"credits": 33,
+			"story_flags": ["unfinished_v1"],
+			"ship_configuration": {
+				"utility": "module_asteroid_laser",
+			},
+		},
+	}
 
 
 func _write_text(path: String, text: String) -> void:

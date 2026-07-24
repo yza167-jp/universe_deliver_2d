@@ -24,6 +24,19 @@ func run() -> Array[String]:
 		OrderRunState.LANDING_RESULT_ROUGH,
 		6.0
 	)
+	game_state.main_story_chapter = &"chapter_m1_red_sand_revisit"
+	game_state.unlocked_planet_ids = [&"planet_red_sand"]
+	game_state.planet_relation_values[&"planet_red_sand"] = 1
+	game_state.planet_permission_ids = [&"permission_test"]
+	game_state.codex_entry_ids = [&"codex_test"]
+	game_state.souvenir_ids = [&"souvenir_test"]
+	game_state.completed_side_order_ids = [&"side_completed"]
+	game_state.failed_side_order_ids = [&"side_failed"]
+	game_state.station_state_level = 1
+	game_state.ship_upgrade_ids = [&"module_test"]
+	game_state.revisit_state[&"planet_red_sand"] = &"revisit_available"
+	game_state.demo_ending_flags[&"ending_test"] = true
+	game_state.last_stable_station_state = &"station_after_first_delivery"
 	expect_true(game_state.has_story_flag(&"story_test"), "Story flag must be readable.", failures)
 	expect_true(
 		game_state.has_read_dialogue_line(&"dialogue_test", &"line_test"),
@@ -73,6 +86,23 @@ func run() -> Array[String]:
 		and game_state.order_run_state.landing_result.is_empty()
 		and is_zero_approx(game_state.order_run_state.landing_cargo_damage),
 		"Order-run entry and landing results must clear on runtime reset.",
+		failures
+	)
+	expect_true(
+		game_state.main_story_chapter.is_empty()
+		and game_state.unlocked_planet_ids.is_empty()
+		and game_state.planet_relation_values.is_empty()
+		and game_state.planet_permission_ids.is_empty()
+		and game_state.codex_entry_ids.is_empty()
+		and game_state.souvenir_ids.is_empty()
+		and game_state.completed_side_order_ids.is_empty()
+		and game_state.failed_side_order_ids.is_empty()
+		and game_state.station_state_level == 0
+		and game_state.ship_upgrade_ids.is_empty()
+		and game_state.revisit_state.is_empty()
+		and game_state.demo_ending_flags.is_empty()
+		and game_state.last_stable_station_state.is_empty(),
+		"M1 progress fields must return to safe New Game defaults.",
 		failures
 	)
 	game_state.free()

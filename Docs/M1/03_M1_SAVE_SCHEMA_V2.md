@@ -64,6 +64,14 @@ demo_ending_flags: Dictionary[StringName, Variant]
 last_stable_station_state: StringName
 ```
 
+默认值：
+
+- StringName 字段为空 ID。
+- Array 与 Dictionary 字段为空集合。
+- `station_state_level = 0`。
+- `demo_ending_flags` 只接受布尔、整数、有限浮点数或非空稳定 ID。
+- 集合读取和写回均去重；字典键和值必须通过类型验证。
+
 ## 3. 稳定 ID
 
 ### 章节
@@ -105,6 +113,22 @@ station_state_ecology_corner
 station_state_relay_observatory
 ```
 
+### M0 兼容与既有图鉴
+
+```text
+order_red_sand_m0                    # M0 运行时历史 ID，必须保留
+order_red_sand_cooling_core          # M1 Packet canonical 完成别名
+codex_planet_red_sand
+codex_character_iya
+codex_souvenir_old_relay_plaque
+souvenir_old_relay_plaque
+station_after_first_delivery         # 首单后的稳定返站恢复 ID
+```
+
+v1 完成档迁移时保留 `order_red_sand_m0`，同时补入
+`order_red_sand_cooling_core`，避免旧 M0 场景重新开放订单，并让后续 M1 Packet
+读取 canonical ID。不得以迁移为由重命名或删除已经进入玩家存档的 M0 ID。
+
 ## 4. v1 → v2 迁移
 
 ### 已完成赤砂首单的 v1 存档
@@ -126,7 +150,8 @@ last_stable_station_state = station_after_first_delivery
 ### 未完成赤砂首单的 v1 存档
 
 - 保留原 M0 进度。
-- `main_story_chapter` 映射到相应 M0 稳定阶段。
+- 当前 M0 没有已锁定的“首单前”章节 ID，因此 `main_story_chapter` 保持空 ID，
+  继续由既有订单、剧情和站点字段决定进度。
 - 新集合字段使用空集合或明确默认值。
 - 不发放 M1 模块、关系或奖励。
 
@@ -142,7 +167,8 @@ last_stable_station_state = station_after_first_delivery
 - 旧中继铭牌和站点变化不丢失。
 - 设置文件不被迁移覆盖。
 - 迁移成功后下一次稳定保存才写入 v2 主档。
-- 原 v1 主档在写入过程中由现有备份机制保护。
+- 读取和“继续游戏”本身不改写 v1；下一次稳定保存时，原有效 v1 由现有备份
+  轮换机制保留。
 - 迁移失败时保留原文件并提示，不写入部分状态。
 
 ## 6. 支线状态
