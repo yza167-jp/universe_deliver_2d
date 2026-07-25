@@ -413,6 +413,14 @@ func _test_automatic_save_gating(failures: Array[String]) -> void:
 		failures
 	)
 	expect_true(
+		not SaveServiceModel.should_enable_automatic_saves(
+			PackedStringArray(),
+			PackedStringArray(["--delivery-lab"])
+		),
+		"Delivery Lab must not overwrite campaign progress.",
+		failures
+	)
+	expect_true(
 		SaveServiceModel.should_enable_automatic_saves(
 			PackedStringArray(),
 			PackedStringArray()

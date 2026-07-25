@@ -87,6 +87,23 @@ func run() -> Array[String]:
 				"FlightLab",
 				failures
 			)
+		var delivery_lab_switch_succeeded: bool = router.debug_switch_to_stage_scene(
+			SceneRouterService.Stage.FLIGHT,
+			UniverseDeliverApp.DELIVERY_LAB_SCENE_PATH
+		)
+		expect_true(
+			delivery_lab_switch_succeeded,
+			"Debug scene override must preserve the isolated Delivery Lab.",
+			failures
+		)
+		if delivery_lab_switch_succeeded:
+			_expect_stage(
+				router,
+				scene_container,
+				SceneRouterService.Stage.FLIGHT,
+				"DeliveryLab",
+				failures
+			)
 		var debug_switch_succeeded: bool = router.debug_switch_to_stage(
 			SceneRouterService.Stage.MAIN_MENU
 		)

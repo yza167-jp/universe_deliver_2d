@@ -82,6 +82,10 @@ flight_fire={
 "deadzone": 0.5,
 "events": []
 }
+delivery_drop={
+"deadzone": 0.5,
+"events": []
+}
 flight_restart={
 "deadzone": 0.5,
 "events": []

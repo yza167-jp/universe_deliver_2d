@@ -114,6 +114,14 @@ run_step \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/flight_lab_smoke_runner.gd
 
 run_step \
+  "Delivery Lab direct debug boot smoke test" \
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --quit-after 4 -- --delivery-lab
+
+run_step \
+  "Low-altitude delivery windows, single cargo, and retry smoke test" \
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/delivery_lab_smoke_runner.gd
+
+run_step \
   "Red Sand route direct debug boot smoke test" \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --quit-after 4 -- --red-sand-route
 

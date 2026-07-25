@@ -26,6 +26,7 @@ const SUPPORTED_ACTIONS: Array[StringName] = [
 	&"flight_pitch_down",
 	&"flight_boost",
 	&"flight_fire",
+	&"delivery_drop",
 	&"flight_restart",
 	&"flight_controls_help",
 	&"flight_route_hint",
@@ -343,6 +344,9 @@ static func _build_default_events(action: StringName) -> Array[InputEvent]:
 		&"flight_fire":
 			events.append(_create_key_event(KEY_F, true))
 			events.append(_create_mouse_button_event(MOUSE_BUTTON_LEFT))
+		&"delivery_drop":
+			events.append(_create_key_event(KEY_E, true))
+			events.append(_create_mouse_button_event(MOUSE_BUTTON_RIGHT))
 		&"flight_restart":
 			events.append(_create_key_event(KEY_R, true))
 		&"flight_controls_help":

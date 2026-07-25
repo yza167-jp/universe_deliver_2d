@@ -127,6 +127,15 @@ func _expect_default_input_map(failures: Array[String]) -> void:
 		failures
 	)
 	expect_true(
+		_has_physical_key(InputMap.action_get_events(&"delivery_drop"), KEY_E)
+		and _has_mouse_button(
+			InputMap.action_get_events(&"delivery_drop"),
+			MOUSE_BUTTON_RIGHT
+		),
+		"Delivery drop must share one action across physical E and the right mouse button.",
+		failures
+	)
+	expect_true(
 		_has_key(InputMap.action_get_events(&"toggle_fullscreen"), KEY_F11),
 		"Actual fullscreen must default to F11.",
 		failures

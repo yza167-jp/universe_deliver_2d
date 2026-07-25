@@ -41,6 +41,7 @@ const AUTOSAVE_STAGES: PackedInt32Array = [
 ]
 const DEBUG_ROUTE_ARGUMENTS: PackedStringArray = [
 	"--flight-lab",
+	"--delivery-lab",
 	"--red-sand-route",
 	"--red-sand-arrival",
 	"--red-sand-results",

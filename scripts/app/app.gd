@@ -3,10 +3,12 @@ extends Control
 
 const DEBUG_UI_ARGUMENT: String = "--show-debug-ui"
 const DEBUG_FLIGHT_LAB_ARGUMENT: String = "--flight-lab"
+const DEBUG_DELIVERY_LAB_ARGUMENT: String = "--delivery-lab"
 const DEBUG_RED_SAND_ROUTE_ARGUMENT: String = "--red-sand-route"
 const DEBUG_RED_SAND_ARRIVAL_ARGUMENT: String = "--red-sand-arrival"
 const DEBUG_RED_SAND_RESULTS_ARGUMENT: String = "--red-sand-results"
 const FLIGHT_LAB_SCENE_PATH: String = "res://scenes/flight/flight_lab.tscn"
+const DELIVERY_LAB_SCENE_PATH: String = "res://scenes/flight/delivery_lab.tscn"
 const RED_SAND_ORDER_PATH: String = "res://data/orders/red_sand_m0.tres"
 const ASTEROID_LASER_PATH: String = "res://data/modules/asteroid_laser.tres"
 const FULLSCREEN_ACTION: StringName = &"toggle_fullscreen"
@@ -40,6 +42,8 @@ func _ready() -> void:
 		return
 	if should_start_in_flight_lab(OS.is_debug_build(), user_arguments):
 		call_deferred("_open_direct_flight_lab")
+	elif should_start_in_delivery_lab(OS.is_debug_build(), user_arguments):
+		call_deferred("_open_direct_delivery_lab")
 	elif should_start_in_red_sand_route(OS.is_debug_build(), user_arguments):
 		call_deferred("_open_direct_red_sand_route")
 	elif should_start_in_red_sand_arrival(OS.is_debug_build(), user_arguments):
@@ -86,6 +90,14 @@ func _open_direct_flight_lab() -> void:
 		FLIGHT_LAB_SCENE_PATH
 	):
 		push_error("App could not open Flight Lab: %s" % scene_router.last_error)
+
+
+func _open_direct_delivery_lab() -> void:
+	if not scene_router.debug_switch_to_stage_scene(
+		SceneRouterService.Stage.FLIGHT,
+		DELIVERY_LAB_SCENE_PATH
+	):
+		push_error("App could not open Delivery Lab: %s" % scene_router.last_error)
 
 
 func _open_direct_red_sand_route() -> void:
@@ -159,6 +171,13 @@ static func should_start_in_flight_lab(
 	user_arguments: PackedStringArray
 ) -> bool:
 	return is_debug_build and user_arguments.has(DEBUG_FLIGHT_LAB_ARGUMENT)
+
+
+static func should_start_in_delivery_lab(
+	is_debug_build: bool,
+	user_arguments: PackedStringArray
+) -> bool:
+	return is_debug_build and user_arguments.has(DEBUG_DELIVERY_LAB_ARGUMENT)
 
 
 static func should_start_in_red_sand_route(

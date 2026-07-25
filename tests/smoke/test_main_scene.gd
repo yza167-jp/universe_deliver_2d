@@ -81,6 +81,22 @@ func run() -> Array[String]:
 		failures
 	)
 	expect_true(
+		UniverseDeliverApp.should_start_in_delivery_lab(
+			true,
+			PackedStringArray([UniverseDeliverApp.DEBUG_DELIVERY_LAB_ARGUMENT])
+		),
+		"The explicit Delivery Lab argument must enable the direct debug route.",
+		failures
+	)
+	expect_true(
+		not UniverseDeliverApp.should_start_in_delivery_lab(
+			false,
+			PackedStringArray([UniverseDeliverApp.DEBUG_DELIVERY_LAB_ARGUMENT])
+		),
+		"Release builds must ignore the direct Delivery Lab argument.",
+		failures
+	)
+	expect_true(
 		UniverseDeliverApp.should_start_in_red_sand_arrival(
 			true,
 			PackedStringArray([UniverseDeliverApp.DEBUG_RED_SAND_ARRIVAL_ARGUMENT])

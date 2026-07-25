@@ -617,6 +617,37 @@ Full Diagnostics 至少显示：
 - 开关无敌（只供调试）。
 - 记录当前关键参数到日志。
 
+### 17.1 M1 低空投放原型
+
+T-107 使用 `LowAltitudeDropProfile` 集中保存释放高度/速度窗口、核心/外圈范围、
+下降速度、水平速度继承和部分成功比例。`LowAltitudeDropModel` 不读取场景树、
+帧率或随机数，预计落点为：
+
+```text
+fall_time = release_altitude / cargo_descent_speed
+landing_x = release_x
+          + horizontal_speed
+          * horizontal_velocity_inheritance
+          * fall_time
+```
+
+当前 Delivery Lab 基线为：
+
+- 高度 `90–220 m`。
+- 水平速度 `90–240 m/s`。
+- 核心 `±110 m`，外圈 `±220 m`。
+- 下降速度 `120 m/s`，水平速度继承 `0.65`。
+- 外圈质量/报酬比例 `0.75 / 0.65`。
+
+窗口边界与接收区边界均包含端点。高度/速度非法返回 `INVALID_RELEASE` 且不消耗
+货物；首次合法释放后，无论最终为 `CORE_SUCCESS`、`OUTER_PARTIAL` 或 `MISSED`，
+本次货物都已唯一释放。重复输入只返回 `already released` 原因，不能替换已保存
+结果。检查点重试重置模型为 `PENDING`，并和 `FlightLabShip` 的稳定快照一起恢复。
+
+独立 `--delivery-lab` 复用 M0 `CharacterBody2D` 显式积分和穹林占位环境，只用
+线性灰盒标记播放上述确定性轨迹；不创建 `RigidBody2D` 投射物、风场弹道、移动
+目标或正式穹林星路线。`delivery_drop` 默认由 `E` 和鼠标右键共用。
+
 ## 18. 自动测试边界
 
 适合自动测试：
@@ -636,6 +667,8 @@ Full Diagnostics 至少显示：
   轨迹在 `30/60/120 FPS` 下的高度矩阵，以及至少 `20` 次重复稳定性。
 - `0 m`/`1 m` 合法值、负 AGL 与来源不一致的显式失败、`0.20 s` 无效宽限，
   以及 HUD/雷达逐帧读取完全相同 Final AGL 的约束。
+- 低空投放高度/速度与核心/外圈精确边界、确定性预计落点、非法释放不消耗货物、
+  合法释放只产生一次结果，以及检查点恢复 `PENDING` 状态。
 
 必须人工试玩：
 
