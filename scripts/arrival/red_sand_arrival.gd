@@ -26,6 +26,15 @@ const STORY_OPTIONAL_DIALOGUE_COMPLETED: StringName = (
 	&"story_red_sand_arrival_optional_dialogue_completed"
 )
 const STORY_RECORD_INSPECTED: StringName = &"story_red_sand_order_record_inspected"
+const REVISIT_OPTIONAL_TALK_TRIGGER_ID: StringName = (
+	&"red_sand_revisit_optional_technician_talk"
+)
+const REVISIT_RECORD_INSPECTION_TRIGGER_ID: StringName = (
+	&"red_sand_revisit_record_inspected"
+)
+const REVISIT_COOLING_INSPECTION_TRIGGER_ID: StringName = (
+	&"red_sand_revisit_cooling_equipment_inspected"
+)
 const OPTIONAL_TALK_TRIGGER_ID: StringName = &"red_sand_optional_technician_talk"
 const RECORD_INSPECTION_TRIGGER_ID: StringName = &"red_sand_order_record_inspected"
 const DIALOGUE_UI_SCENE: PackedScene = preload("res://scenes/narrative/dialogue_ui.tscn")
@@ -45,6 +54,7 @@ const PIPE_RUST: Color = Color("8b4e38")
 
 @export var main_dialogue_sequence: DialogueSequence
 @export var optional_dialogue_sequence: DialogueSequence
+@export var revisit_contract: RedSandRevisitContract
 
 @onready var _player: StationPlayer = %StationPlayer
 @onready var _modal_coordinator: SceneModalCoordinator = %SceneModalCoordinator
@@ -52,10 +62,15 @@ const PIPE_RUST: Color = Color("8b4e38")
 @onready var _technician: Interactable2D = %Technician
 @onready var _record_terminal: Interactable2D = %RecordTerminal
 @onready var _return_beacon: Interactable2D = %ReturnBeacon
+@onready var _cooling_equipment: Interactable2D = %CoolingEquipment
 @onready var _landing_feedback_label: Label = %LandingFeedbackLabel
 @onready var _objective_label: Label = %ObjectiveLabel
 @onready var _status_panel: PanelContainer = %StatusPanel
 @onready var _status_label: Label = %StatusLabel
+@onready var _location_label: Label = %LocationLabel
+@onready var _scope_label: Label = %ScopeLabel
+@onready var _record_label: Label = %RecordLabel
+@onready var _cooling_equipment_label: Label = %CoolingEquipmentLabel
 
 var game_state_override: GameStateModel
 var dialogue_ui_override: DialogueUI
@@ -68,9 +83,13 @@ var _status_time_remaining: float = 0.0
 var _status_key: StringName = &""
 var _status_dismissal_armed: bool = false
 var _fallback_dialogue_layer: CanvasLayer
+var _is_revisit: bool = false
+var _steam_phase: float = 0.0
 
 
 func _ready() -> void:
+	_is_revisit = _resolve_is_revisit()
+	_configure_variant_presentation()
 	_connect_interactions()
 	_objective_label.visible = false
 	_status_panel.visible = false
@@ -81,11 +100,16 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if _status_time_remaining <= 0.0:
-		return
-	_status_time_remaining = maxf(_status_time_remaining - delta, 0.0)
-	if is_zero_approx(_status_time_remaining):
-		_hide_status()
+	if _is_revisit:
+		_steam_phase = fmod(
+			_steam_phase + maxf(delta, 0.0) * 0.48,
+			1.0
+		)
+		queue_redraw()
+	if _status_time_remaining > 0.0:
+		_status_time_remaining = maxf(_status_time_remaining - delta, 0.0)
+		if is_zero_approx(_status_time_remaining):
+			_hide_status()
 
 
 func _physics_process(_delta: float) -> void:
@@ -106,7 +130,8 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready():
 		refresh_landing_feedback()
 		if _exploration_is_unlocked:
-			_objective_label.text = tr("UI_RED_SAND_ARRIVAL_OBJECTIVE_EXPLORE")
+			_objective_label.text = tr(_get_exploration_objective_key())
+		_refresh_variant_labels()
 		if not _status_key.is_empty():
 			_status_label.text = _format_status_text(_status_key)
 
@@ -161,8 +186,19 @@ func get_return_beacon() -> Interactable2D:
 	return _return_beacon
 
 
+func get_cooling_equipment() -> Interactable2D:
+	return _cooling_equipment
+
+
 func get_interactables() -> Array[Interactable2D]:
-	return [_technician, _record_terminal, _return_beacon]
+	var interactables: Array[Interactable2D] = [
+		_technician,
+		_record_terminal,
+		_return_beacon,
+	]
+	if _is_revisit:
+		interactables.append(_cooling_equipment)
+	return interactables
 
 
 func is_exploration_unlocked() -> bool:
@@ -175,6 +211,10 @@ func is_main_dialogue_active() -> bool:
 
 func is_optional_dialogue_active() -> bool:
 	return _active_dialogue_kind == DialogueKind.OPTIONAL
+
+
+func is_revisit() -> bool:
+	return _is_revisit
 
 
 func get_objective_text() -> String:
@@ -217,7 +257,7 @@ func _begin_arrival_flow() -> void:
 		_modal_coordinator.end_modal(MODAL_DIALOGUE)
 		push_error("Red Sand arrival could not resolve GameState or DialogueUI.")
 		return
-	if game_state.has_story_flag(STORY_MAIN_DIALOGUE_COMPLETED):
+	if game_state.has_story_flag(_get_main_completion_flag()):
 		_modal_coordinator.end_modal(MODAL_DIALOGUE)
 		_unlock_exploration()
 		return
@@ -233,6 +273,15 @@ func _connect_interactions() -> void:
 		_record_terminal.interaction_triggered.connect(_on_record_terminal_interacted)
 	if not _return_beacon.interaction_triggered.is_connected(_on_return_beacon_interacted):
 		_return_beacon.interaction_triggered.connect(_on_return_beacon_interacted)
+	if (
+		_cooling_equipment != null
+		and not _cooling_equipment.interaction_triggered.is_connected(
+			_on_cooling_equipment_interacted
+		)
+	):
+		_cooling_equipment.interaction_triggered.connect(
+			_on_cooling_equipment_interacted
+		)
 
 
 func _start_dialogue(sequence: DialogueSequence, kind: DialogueKind) -> bool:
@@ -267,19 +316,41 @@ func _on_dialogue_finished() -> void:
 	_modal_coordinator.end_modal(MODAL_DIALOGUE)
 	var game_state: GameStateModel = _resolve_game_state()
 	if finished_kind == DialogueKind.MAIN:
-		if game_state != null:
+		if game_state != null and not _is_revisit:
 			# A canceled first presentation must not leave the destination permanently locked.
 			game_state.set_story_flag(STORY_MAIN_DIALOGUE_COMPLETED)
+		if _is_revisit and not _is_revisit_delivery_ready(game_state):
+			_unlock_exploration()
+			_show_status(&"UI_M1_RED_SAND_REVISIT_STATUS_DELIVERY_PENDING")
+			return
+		queue_redraw()
 		_unlock_exploration()
 		return
 	if finished_kind == DialogueKind.OPTIONAL:
 		if (
 			game_state != null
-			and game_state.has_story_flag(STORY_OPTIONAL_DIALOGUE_COMPLETED)
+			and (
+				(
+					_is_revisit
+					and revisit_contract != null
+					and game_state.has_story_flag(
+						revisit_contract.optional_dialogue_completion_flag
+					)
+				)
+				or game_state.has_story_flag(STORY_OPTIONAL_DIALOGUE_COMPLETED)
+			)
 		):
-			_record_optional_trigger(OPTIONAL_TALK_TRIGGER_ID)
-			_show_status(&"UI_RED_SAND_ARRIVAL_STATUS_OPTIONAL_TALK")
-		_unlock_exploration()
+			_record_optional_trigger(
+				REVISIT_OPTIONAL_TALK_TRIGGER_ID
+				if _is_revisit
+				else OPTIONAL_TALK_TRIGGER_ID
+			)
+			_show_status(
+				&"UI_M1_RED_SAND_REVISIT_STATUS_OPTIONAL_TALK"
+				if _is_revisit
+				else &"UI_RED_SAND_ARRIVAL_STATUS_OPTIONAL_TALK"
+			)
+			_unlock_exploration()
 
 
 func _unlock_exploration() -> void:
@@ -288,7 +359,7 @@ func _unlock_exploration() -> void:
 	if not _modal_coordinator.is_modal_active():
 		_player.set_input_enabled(true)
 		_player.set_interaction_prompt_suppressed(false)
-	_objective_label.text = tr("UI_RED_SAND_ARRIVAL_OBJECTIVE_EXPLORE")
+	_objective_label.text = tr(_get_exploration_objective_key())
 	_objective_label.visible = true
 	if not was_unlocked:
 		exploration_unlocked.emit()
@@ -297,6 +368,9 @@ func _unlock_exploration() -> void:
 func _on_technician_interacted(_actor: Node) -> void:
 	if not _exploration_is_unlocked:
 		return
+	if _is_revisit and not _is_revisit_delivery_ready(_resolve_game_state()):
+		_start_dialogue(main_dialogue_sequence, DialogueKind.MAIN)
+		return
 	_start_dialogue(optional_dialogue_sequence, DialogueKind.OPTIONAL)
 
 
@@ -304,6 +378,17 @@ func _on_record_terminal_interacted(_actor: Node) -> void:
 	if not _exploration_is_unlocked or _active_dialogue_kind != DialogueKind.NONE:
 		return
 	var game_state: GameStateModel = _resolve_game_state()
+	if _is_revisit:
+		_record_optional_trigger(REVISIT_RECORD_INSPECTION_TRIGGER_ID)
+		if game_state == null or not revisit_contract.has_valid_record_choice(
+			game_state
+		):
+			_show_status(&"UI_M1_RED_SAND_REVISIT_RECORD_PENDING")
+		elif game_state.has_story_flag(revisit_contract.upload_full_record_flag):
+			_show_status(&"UI_M1_RED_SAND_REVISIT_RECORD_UPLOADED")
+		else:
+			_show_status(&"UI_M1_RED_SAND_REVISIT_RECORD_LOCAL")
+		return
 	if game_state != null:
 		game_state.set_story_flag(STORY_RECORD_INSPECTED)
 	_record_optional_trigger(RECORD_INSPECTION_TRIGGER_ID)
@@ -317,18 +402,32 @@ func _on_return_beacon_interacted(_actor: Node) -> void:
 		or _modal_coordinator.is_modal_active()
 	):
 		return
+	if _is_revisit and not _is_revisit_delivery_ready(_resolve_game_state()):
+		_show_status(&"UI_M1_RED_SAND_REVISIT_STATUS_RETURN_BLOCKED")
+		return
 	var scene_router: SceneRouterService = _resolve_scene_router()
 	if scene_router == null:
 		_show_status(&"UI_RED_SAND_ARRIVAL_STATUS_RETURN_ERROR")
 		return
 	if not _modal_coordinator.begin_modal(MODAL_RETURN_TRANSITION):
 		return
-	_objective_label.text = tr("UI_RED_SAND_ARRIVAL_OBJECTIVE_RETURNING")
+	_objective_label.text = tr(
+		"UI_M1_RED_SAND_REVISIT_OBJECTIVE_RETURNING"
+		if _is_revisit
+		else "UI_RED_SAND_ARRIVAL_OBJECTIVE_RETURNING"
+	)
 	if scene_router.request_stage(SceneRouterService.Stage.RESULTS):
 		return
 	_modal_coordinator.end_modal(MODAL_RETURN_TRANSITION)
-	_objective_label.text = tr("UI_RED_SAND_ARRIVAL_OBJECTIVE_EXPLORE")
+	_objective_label.text = tr(_get_exploration_objective_key())
 	_show_status(&"UI_RED_SAND_ARRIVAL_STATUS_RETURN_ERROR")
+
+
+func _on_cooling_equipment_interacted(_actor: Node) -> void:
+	if not _is_revisit or not _exploration_is_unlocked:
+		return
+	_record_optional_trigger(REVISIT_COOLING_INSPECTION_TRIGGER_ID)
+	_show_status(&"UI_M1_RED_SAND_REVISIT_COOLING_DETAIL")
 
 
 func _record_optional_trigger(trigger_id: StringName) -> void:
@@ -372,6 +471,75 @@ func _resolve_game_state() -> GameStateModel:
 	if game_state_override != null:
 		return game_state_override
 	return get_node_or_null("/root/GameState") as GameStateModel
+
+
+func _resolve_is_revisit() -> bool:
+	var game_state: GameStateModel = _resolve_game_state()
+	return (
+		revisit_contract != null
+		and game_state != null
+		and revisit_contract.is_revisit_order(game_state.current_order_id)
+	)
+
+
+func _configure_variant_presentation() -> void:
+	if _is_revisit and revisit_contract != null:
+		main_dialogue_sequence = revisit_contract.arrival_dialogue
+		optional_dialogue_sequence = revisit_contract.optional_dialogue
+	if _cooling_equipment != null:
+		_cooling_equipment.visible = _is_revisit
+		_cooling_equipment.interaction_enabled = _is_revisit
+	if _cooling_equipment_label != null:
+		_cooling_equipment_label.visible = _is_revisit
+	_refresh_variant_labels()
+	queue_redraw()
+
+
+func _refresh_variant_labels() -> void:
+	if _location_label != null:
+		_location_label.text = tr(
+			"UI_M1_RED_SAND_REVISIT_LOCATION"
+			if _is_revisit
+			else "UI_RED_SAND_ARRIVAL_LOCATION"
+		)
+	if _scope_label != null:
+		_scope_label.text = tr(
+			"UI_M1_RED_SAND_REVISIT_SCOPE"
+			if _is_revisit
+			else "UI_RED_SAND_ARRIVAL_SCOPE"
+		)
+	if _record_label != null:
+		_record_label.text = tr(
+			"UI_M1_RED_SAND_REVISIT_RECORD_LABEL"
+			if _is_revisit
+			else "UI_RED_SAND_ARRIVAL_RECORD_LABEL"
+		)
+	if _cooling_equipment_label != null:
+		_cooling_equipment_label.text = tr(
+			"UI_M1_RED_SAND_REVISIT_COOLING_LABEL"
+		)
+
+
+func _get_main_completion_flag() -> StringName:
+	if _is_revisit and revisit_contract != null:
+		return revisit_contract.completion_dialogue_flag
+	return STORY_MAIN_DIALOGUE_COMPLETED
+
+
+func _get_exploration_objective_key() -> StringName:
+	return (
+		&"UI_M1_RED_SAND_REVISIT_OBJECTIVE_EXPLORE"
+		if _is_revisit
+		else &"UI_RED_SAND_ARRIVAL_OBJECTIVE_EXPLORE"
+	)
+
+
+func _is_revisit_delivery_ready(game_state: GameStateModel) -> bool:
+	return (
+		_is_revisit
+		and revisit_contract != null
+		and revisit_contract.is_delivery_ready(game_state)
+	)
 
 
 func _resolve_scene_router() -> SceneRouterService:
@@ -441,6 +609,8 @@ func _draw() -> void:
 	_draw_landing_pad()
 	_draw_repair_building()
 	_draw_cooling_lines()
+	if _is_revisit:
+		_draw_revisit_changes()
 
 
 func _draw_landing_pad() -> void:
@@ -468,3 +638,49 @@ func _draw_cooling_lines() -> void:
 		draw_line(Vector2(x, 302.0), Vector2(x, 250.0), PIPE_RUST, 8.0)
 		draw_circle(Vector2(x, 250.0), 9.0, FACILITY_MID)
 		draw_circle(Vector2(x, 250.0), 4.0, SIGNAL_CYAN)
+
+
+func _draw_revisit_changes() -> void:
+	draw_rect(Rect2(650.0, 188.0, 104.0, 66.0), FACILITY_DARK, true)
+	draw_rect(Rect2(650.0, 188.0, 104.0, 66.0), SIGNAL_CYAN, false, 2.0)
+	draw_circle(Vector2(678.0, 214.0), 18.0, FACILITY_MID)
+	draw_circle(Vector2(678.0, 214.0), 11.0, SIGNAL_CYAN.darkened(0.4))
+	draw_rect(Rect2(706.0, 198.0, 34.0, 34.0), FACILITY_MID, true)
+	draw_line(Vector2(620.0, 202.0), Vector2(650.0, 202.0), PIPE_RUST, 7.0)
+	draw_line(Vector2(754.0, 226.0), Vector2(864.0, 226.0), PIPE_RUST, 7.0)
+	for resident_x: float in [744.0, 772.0, 826.0]:
+		draw_circle(Vector2(resident_x, 278.0), 4.0, WARM_AMBER)
+		draw_line(
+			Vector2(resident_x, 282.0),
+			Vector2(resident_x, 296.0),
+			FACILITY_LIGHT,
+			3.0
+		)
+	for steam_index: int in 5:
+		var steam_progress: float = fmod(
+			_steam_phase + float(steam_index) * 0.19,
+			1.0
+		)
+		var steam_x: float = 690.0 + float(steam_index % 2) * 14.0
+		draw_circle(
+			Vector2(
+				steam_x + sin(steam_progress * TAU) * 4.0,
+				188.0 - steam_progress * 52.0
+			),
+			3.0 + steam_progress * 2.0,
+			Color(0.82, 0.88, 0.84, 0.5 * (1.0 - steam_progress))
+		)
+	var game_state: GameStateModel = _resolve_game_state()
+	if not _is_revisit_delivery_ready(game_state):
+		return
+	draw_arc(
+		Vector2(174.0, 275.0),
+		72.0,
+		PI + 0.18,
+		TAU - 0.18,
+		18,
+		SIGNAL_CYAN,
+		2.0
+	)
+	draw_circle(Vector2(112.0, 260.0), 3.0, WARM_AMBER)
+	draw_circle(Vector2(236.0, 260.0), 3.0, WARM_AMBER)

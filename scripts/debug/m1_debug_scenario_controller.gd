@@ -121,14 +121,28 @@ func _apply_definition(definition: M1DebugScenarioDefinition) -> bool:
 		return _fail("M1 debug progress snapshot could not be applied.")
 	_express_fixture = null
 	if not definition.active_order_id.is_empty():
-		_express_fixture = _build_express_fixture(definition)
-		if _express_fixture == null:
-			return false
-		if not _game_state.accept_order(_express_fixture):
+		var active_order: OrderDefinition
+		if definition.fixture_source_order_id.is_empty():
+			active_order = _registry.find_order(definition.active_order_id)
+		else:
+			_express_fixture = _build_express_fixture(definition)
+			active_order = _express_fixture
+		if active_order == null:
+			return _fail("Debug active order is unavailable.")
+		if not _game_state.accept_order(active_order):
 			return _fail(
-				"Debug express fixture was rejected: %s."
+				"Debug active order was rejected: %s."
 				% _game_state.last_order_error
 			)
+		if (
+			definition.active_order_id
+			== M1DebugScenarioCatalog.ORDER_RED_SAND_REVISIT
+			and not _game_state.set_revisit_state(
+				M1ProgressRules.PLANET_RED_SAND,
+				M1ProgressRules.REVISIT_RED_SAND_MATERIALS_PENDING
+			).success
+		):
+			return _fail("Red Sand revisit debug state could not be accepted.")
 	return true
 
 

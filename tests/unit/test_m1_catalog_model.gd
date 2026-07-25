@@ -98,10 +98,10 @@ func _test_completed_history_and_current_revisit(
 	)
 	expect_true(
 		revisit_entry != null
-		and revisit_entry.lock_reason
-		== GameStateModel.ORDER_ERROR_REGISTERED_ONLY
-		and not revisit_entry.accept_enabled,
-		"Registered-only revisit data must be inspectable but not acceptable.",
+		and revisit_entry.content_playable
+		and revisit_entry.lock_reason.is_empty()
+		and revisit_entry.accept_enabled,
+		"The completed M0 state must expose the playable revisit.",
 		failures
 	)
 	game_state.order_states[WHITE_SIDE_ORDER_ID] = GameStateModel.OrderStatus.ARCHIVED
@@ -201,6 +201,11 @@ func _test_registered_only_debug_query(
 	failures: Array[String]
 ) -> void:
 	var game_state: GameStateModel = GameStateModel.new()
+	game_state.main_story_chapter = M1ProgressRules.CHAPTER_M1_RED_SAND_REVISIT
+	game_state.unlocked_planet_ids.append(M1ProgressRules.PLANET_RED_SAND)
+	game_state.completed_order_ids[M0_ORDER_ID] = true
+	game_state.order_states[M0_ORDER_ID] = GameStateModel.OrderStatus.COMPLETED
+	game_state.set_story_flag(&"story_red_sand_order_completed")
 	var before: String = JSON.stringify(
 		GameProgressData.capture(game_state).to_dictionary()
 	)
@@ -213,18 +218,16 @@ func _test_registered_only_debug_query(
 	)
 	expect_true(
 		revisit_entry != null
-		and not revisit_entry.content_playable
-		and revisit_entry.lock_reason
-		== GameStateModel.ORDER_ERROR_REGISTERED_ONLY
+		and revisit_entry.content_playable
+		and revisit_entry.lock_reason.is_empty()
+		and revisit_entry.accept_enabled
 		and before == after,
-		"Debug catalog queries must identify registered-only content without mutating progress.",
+		"Debug catalog queries must expose playable revisit content without mutating progress.",
 		failures
 	)
 	expect_true(
-		not game_state.accept_order(registry.find_order(REVISIT_ORDER_ID))
-		and game_state.last_order_error
-		== GameStateModel.ORDER_ERROR_REGISTERED_ONLY,
-		"Registered-only orders must be rejected by the authoritative accept path.",
+		game_state.accept_order(registry.find_order(REVISIT_ORDER_ID)),
+		"The authoritative accept path must accept the completed playable revisit gate.",
 		failures
 	)
 	game_state.free()

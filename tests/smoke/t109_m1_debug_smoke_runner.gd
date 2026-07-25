@@ -235,6 +235,21 @@ func _check_target_scene(
 			and express_hud.is_timing_visible(),
 			"Express scenario did not open Flight Lab with one isolated timed fixture."
 		)
+	elif scenario_id == M1DebugScenarioCatalog.SCENARIO_RED_SAND_REVISIT:
+		var revisit_route: RedSandFlight = active_scene as RedSandFlight
+		_check(
+			revisit_route != null
+			and revisit_route.is_revisit_route()
+			and _game_state.current_order_id
+			== M1DebugScenarioCatalog.ORDER_RED_SAND_REVISIT
+			and _game_state.get_order_status(
+				M1DebugScenarioCatalog.ORDER_RED_SAND_REVISIT
+			) == GameStateModel.OrderStatus.ACCEPTED
+			and _game_state.get_revisit_state(
+				M1ProgressRules.PLANET_RED_SAND
+			) == M1ProgressRules.REVISIT_RED_SAND_MATERIALS_PENDING,
+			"Red Sand revisit scenario did not open its formal accepted short route."
+		)
 
 
 func _runtime_signature() -> String:

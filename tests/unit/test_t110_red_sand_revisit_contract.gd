@@ -72,7 +72,7 @@ func _test_contract_and_registered_data(
 		order != null
 		and order.id == REVISIT_ORDER_ID
 		and order.content_readiness
-		== OrderDefinition.ContentReadiness.REGISTERED_ONLY
+		== OrderDefinition.ContentReadiness.PLAYABLE
 		and order.order_type == OrderDefinition.OrderType.REVISIT
 		and order.repeat_policy == OrderDefinition.RepeatPolicy.UNIQUE
 		and order.required_completed_order_ids == [M0_ORDER_ID]
@@ -81,7 +81,7 @@ func _test_contract_and_registered_data(
 		and order.cargo.id == &"cargo_relay_pattern_shielding_materials"
 		and order.cargo.boost_policy == CargoDefinition.BoostPolicy.LIMITED
 		and is_equal_approx(order.cargo.collision_tolerance, 0.65),
-		"The revisit must remain registered-only with exact M0 and cargo gates.",
+		"The implemented revisit must be playable with exact M0 and cargo gates.",
 		failures
 	)
 	expect_true(
@@ -200,8 +200,8 @@ func _test_m0_completion_gate_and_atomic_rewards(
 	)
 	expect_true(
 		registry.find_order(REVISIT_ORDER_ID).content_readiness
-		== OrderDefinition.ContentReadiness.REGISTERED_ONLY,
-		"The playable fixture must not mutate formal T-110 readiness.",
+		== OrderDefinition.ContentReadiness.PLAYABLE,
+		"The fixture must not mutate formal T-112 readiness.",
 		failures
 	)
 	state.free()

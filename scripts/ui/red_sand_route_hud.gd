@@ -50,6 +50,7 @@ var _landing_metrics: Vector3 = Vector3.ZERO
 var _landing_tuning: FlightTuning
 var _full_diagnostics_visible: bool = false
 var _route_details_visible: bool = true
+var _revisit_contract: RedSandRevisitContract
 
 
 func _ready() -> void:
@@ -108,6 +109,11 @@ func bind_settings_service(settings_service: SettingsServiceModel) -> void:
 		_controls_help.bind_settings_service(settings_service)
 
 
+func configure_revisit_window(contract: RedSandRevisitContract) -> void:
+	_revisit_contract = contract
+	refresh()
+
+
 func set_route_state(
 	segment_index: int,
 	route_distance: float,
@@ -161,17 +167,42 @@ func refresh() -> void:
 		roundi(_flight_ship.shield),
 		roundi(_flight_ship.cargo_integrity),
 	]
+	var display_segment_index: int = _segment_index
+	var display_segment_count: int = _route_definition.segments.size()
+	var display_name_key: StringName = segment.display_name_key
+	var instruction_key: StringName = segment.instruction_key
+	var progress: float = _route_definition.get_overall_progress(_route_distance)
+	var expected_seconds: float = _route_definition.expected_duration_seconds
+	if _revisit_contract != null:
+		display_segment_index = _revisit_contract.get_local_stage_index(
+			_segment_index
+		)
+		display_segment_count = _revisit_contract.get_route_segment_count()
+		display_name_key = _revisit_contract.get_stage_display_name_key(
+			_segment_index
+		)
+		instruction_key = _revisit_contract.get_stage_instruction_key(
+			_segment_index
+		)
+		progress = clampf(
+			(
+				_route_distance - _revisit_contract.route_entry_distance
+			) / maxf(_revisit_contract.get_route_distance(), 0.001),
+			0.0,
+			1.0
+		)
+		expected_seconds = _revisit_contract.nominal_route_seconds
 	_stage_label.text = tr("UI_RED_SAND_ROUTE_HUD_STAGE") % [
-		_segment_index + 1,
-		_route_definition.segments.size(),
-		tr(segment.display_name_key),
+		display_segment_index + 1,
+		display_segment_count,
+		tr(display_name_key),
 	]
 	_progress_label.text = tr("UI_RED_SAND_ROUTE_HUD_PROGRESS") % [
-		roundi(_route_definition.get_overall_progress(_route_distance) * 100.0),
+		roundi(progress * 100.0),
 		_elapsed_seconds / 60.0,
-		_route_definition.expected_duration_seconds,
+		expected_seconds,
 	]
-	_instruction_label.text = tr(segment.instruction_key)
+	_instruction_label.text = tr(instruction_key)
 	_controls_hint_label.text = tr("UI_FLIGHT_CONTROLS_HINT")
 	_progress_label.visible = _route_details_visible
 	_instruction_label.visible = _route_details_visible
@@ -181,10 +212,18 @@ func refresh() -> void:
 	_refresh_diagnostics(segment, distance_remaining, altitude_text)
 
 
-func show_stage_transition(segment: FlightRouteSegment) -> void:
+func show_stage_transition(
+	segment: FlightRouteSegment,
+	source_segment_index: int = -1
+) -> void:
 	if segment == null:
 		return
-	_show_status(tr("UI_RED_SAND_ROUTE_STATUS_STAGE") % tr(segment.display_name_key))
+	var display_name_key: StringName = segment.display_name_key
+	if _revisit_contract != null:
+		display_name_key = _revisit_contract.get_stage_display_name_key(
+			_segment_index if source_segment_index < 0 else source_segment_index
+		)
+	_show_status(tr("UI_RED_SAND_ROUTE_STATUS_STAGE") % tr(display_name_key))
 
 
 func show_checkpoint_restored(checkpoint_id: StringName) -> void:
@@ -701,8 +740,16 @@ func _refresh_diagnostics(
 			_flight_ship.last_impact_speed,
 		],
 		tr("UI_RED_SAND_ROUTE_DIAGNOSTICS_ROUTE") % [
-			_segment_index + 1,
-			_route_definition.segments.size(),
+			(
+				_revisit_contract.get_local_stage_index(_segment_index) + 1
+				if _revisit_contract != null
+				else _segment_index + 1
+			),
+			(
+				_revisit_contract.get_route_segment_count()
+				if _revisit_contract != null
+				else _route_definition.segments.size()
+			),
 			_route_distance,
 			_format_distance(distance_remaining),
 			altitude_text,

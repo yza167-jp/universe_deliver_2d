@@ -141,14 +141,19 @@ func reset_to_canonical_frame(
 	profile_segment_id: StringName,
 	reference_point: Node2D,
 	excluded_body: CollisionObject2D,
-	route_space: Node2D
+	route_space: Node2D,
+	validate_world_sample: bool = true
 ) -> void:
 	_reset_history()
 	_apply_route_samples(
 		segment_index,
 		segment_progress,
 		route_distance,
-		_sample_world(reference_point, excluded_body, route_space),
+		(
+			_sample_world(reference_point, excluded_body, route_space)
+			if validate_world_sample
+			else TerrainSample.new()
+		),
 		_sample_profile(
 			ship_route_y,
 			profile_ground_y,

@@ -6,6 +6,8 @@ signal settlement_committed(result: OrderSettlementResult)
 const M0_ORDER_ID: StringName = &"order_red_sand_m0"
 
 @export var order: OrderDefinition
+@export var data_registry: GameDataRegistry
+@export var revisit_contract: RedSandRevisitContract
 
 @onready var _eyebrow_label: Label = %EyebrowLabel
 @onready var _title_label: Label = %TitleLabel
@@ -48,7 +50,14 @@ func present_settlement() -> bool:
 		_render_settlement()
 		return true
 	var game_state: GameStateModel = _resolve_game_state()
+	_resolve_active_order(game_state)
 	if game_state == null or order == null:
+		_render_unavailable()
+		return false
+	if _is_red_sand_revisit() and (
+		revisit_contract == null
+		or not revisit_contract.is_delivery_ready(game_state)
+	):
 		_render_unavailable()
 		return false
 	var run_state: OrderRunState = game_state.get_active_order_run_state()
@@ -64,11 +73,26 @@ func present_settlement() -> bool:
 			M0ProgressIds.STORY_RETURN_DIALOGUE_PENDING,
 		]
 		station_upgrade_id = M0ProgressIds.STATION_UPGRADE_FIRST_DELIVERY_DISPLAY
+	var additional_relation_rewards: Dictionary[StringName, int] = {}
+	var reward_modules_to_equip: Array[ShipModuleDefinition] = []
+	if _is_red_sand_revisit():
+		additional_relation_rewards = (
+			revisit_contract.get_choice_relation_rewards(game_state)
+		)
+		var reward_module: ShipModuleDefinition = data_registry.find_module(
+			revisit_contract.auto_equip_module_id
+		)
+		if reward_module == null:
+			_render_unavailable()
+			return false
+		reward_modules_to_equip.append(reward_module)
 	_settlement_is_committed = game_state.settle_current_order(
 		order,
 		_settlement_result,
 		station_upgrade_id,
-		settlement_flags
+		settlement_flags,
+		additional_relation_rewards,
+		reward_modules_to_equip
 	)
 	if not _settlement_is_committed:
 		_render_unavailable()
@@ -145,11 +169,12 @@ func _render_settlement() -> void:
 		_render_unavailable()
 		return
 	var game_state: GameStateModel = _resolve_game_state()
-	_eyebrow_label.text = tr(
-		"UI_RESULTS_EYEBROW"
-		if _is_m0_order()
-		else "UI_RESULTS_EYEBROW_EXPRESS"
-	)
+	var eyebrow_key: StringName = &"UI_RESULTS_EYEBROW_EXPRESS"
+	if _is_m0_order():
+		eyebrow_key = &"UI_RESULTS_EYEBROW"
+	elif _is_red_sand_revisit():
+		eyebrow_key = &"UI_M1_RED_SAND_REVISIT_RESULTS_EYEBROW"
+	_eyebrow_label.text = tr(eyebrow_key)
 	_title_label.text = tr("UI_RESULTS_TITLE_FORMAT") % tr(String(order.display_name_key))
 	_base_reward_value.text = tr("UI_RESULTS_CREDITS_FORMAT") % _settlement_result.base_reward
 	_cargo_integrity_value.text = tr("UI_RESULTS_PERCENT_FORMAT") % roundi(
@@ -172,6 +197,24 @@ func _render_settlement() -> void:
 		_station_change_panel.visible = true
 		_station_change_label.text = tr("UI_RESULTS_STATION_CHANGE_DETAIL")
 		_next_step_label.text = tr("UI_RESULTS_NEXT_STEP")
+	elif _is_red_sand_revisit():
+		_narrative_label.text = tr(
+			"UI_M1_RED_SAND_REVISIT_RESULTS_NARRATIVE_LOCAL"
+			if (
+				game_state != null
+				and game_state.has_story_flag(
+					revisit_contract.keep_local_record_flag
+				)
+			)
+			else "UI_M1_RED_SAND_REVISIT_RESULTS_NARRATIVE_UPLOADED"
+		)
+		_station_change_panel.visible = true
+		_station_change_label.text = tr(
+			"UI_M1_RED_SAND_REVISIT_RESULTS_STATION_CHANGE"
+		)
+		_next_step_label.text = tr(
+			"UI_M1_RED_SAND_REVISIT_RESULTS_NEXT_STEP"
+		)
 	else:
 		_narrative_label.text = tr("UI_RESULTS_NARRATIVE_GENERIC")
 		_station_change_panel.visible = false
@@ -238,6 +281,28 @@ func _get_timing_status_key(status: StringName) -> StringName:
 
 func _is_m0_order() -> bool:
 	return order != null and order.id == M0_ORDER_ID
+
+
+func _is_red_sand_revisit() -> bool:
+	return (
+		order != null
+		and revisit_contract != null
+		and revisit_contract.is_revisit_order(order.id)
+	)
+
+
+func _resolve_active_order(game_state: GameStateModel) -> void:
+	if (
+		game_state == null
+		or game_state.current_order_id.is_empty()
+		or data_registry == null
+	):
+		return
+	var active_order: OrderDefinition = data_registry.find_order(
+		game_state.current_order_id
+	)
+	if active_order != null:
+		order = active_order
 
 
 func _get_entry_style_text() -> String:

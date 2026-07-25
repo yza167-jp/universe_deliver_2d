@@ -1,24 +1,34 @@
-[gd_resource type="Resource" script_class="RedSandRevisitContract" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="RedSandRevisitContract" load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/definitions/red_sand_revisit_contract.gd" id="1_contract"]
 [ext_resource type="Resource" path="res://data/orders/m1_red_sand_shielding_retrofit.tres" id="2_order"]
 [ext_resource type="Resource" path="res://data/dialogue/m1_red_sand_revisit_arrival.tres" id="3_dialogue"]
 [ext_resource type="Resource" path="res://data/tuning/flight_route_red_sand_m0.tres" id="4_route"]
+[ext_resource type="Resource" path="res://data/dialogue/m1_red_sand_revisit_optional.tres" id="5_optional"]
 
 [resource]
 script = ExtResource("1_contract")
 id = &"red_sand_revisit_contract"
 order = ExtResource("2_order")
 arrival_dialogue = ExtResource("3_dialogue")
+optional_dialogue = ExtResource("5_optional")
 source_route = ExtResource("4_route")
 route_variant_id = &"route_red_sand_revisit_service_lane"
 route_entry_checkpoint_id = &"checkpoint_red_sand_revisit_service_lane"
 route_entry_distance = 26000.0
 route_end_distance = 38000.0
 nominal_route_seconds = 48.0
+changed_facility_route_distance = 28600.0
+route_stage_display_name_keys = Array[StringName]([&"UI_M1_RED_SAND_REVISIT_STAGE_SERVICE_LANE", &"UI_M1_RED_SAND_REVISIT_STAGE_PREPARATION", &"UI_M1_RED_SAND_REVISIT_STAGE_FINAL_APPROACH"])
+route_stage_instruction_keys = Array[StringName]([&"UI_M1_RED_SAND_REVISIT_INSTRUCTION_SERVICE_LANE", &"UI_M1_RED_SAND_REVISIT_INSTRUCTION_PREPARATION", &"UI_M1_RED_SAND_REVISIT_INSTRUCTION_FINAL_APPROACH"])
 available_state_id = &"revisit_red_sand_available"
 accepted_state_id = &"revisit_red_sand_materials_pending"
 completed_state_id = &"revisit_red_sand_completed"
 upload_full_record_flag = &"story_m1_red_sand_retrofit_records_uploaded_full"
 keep_local_record_flag = &"story_m1_red_sand_retrofit_records_kept_local"
+completion_dialogue_flag = &"story_m1_red_sand_revisit_dialogue_completed"
+optional_dialogue_completion_flag = &"story_m1_red_sand_revisit_optional_dialogue_completed"
+record_choice_relation_planet_id = &"planet_red_sand"
+keep_local_relation_bonus = 1
+auto_equip_module_id = &"module_high_voltage_shielding"
 debug_scenario_id = &"red_sand_revisit"

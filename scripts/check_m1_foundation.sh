@@ -99,6 +99,10 @@ run_godot_checked \
   "High-voltage shielding ownership, installation, capability, visual, and save contract" \
   --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t111_high_voltage_shielding_smoke_runner.gd
 
+run_godot_checked \
+  "Red Sand revisit short route, branch settlement, station growth, and Continue" \
+  --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t112_red_sand_revisit_flow_smoke_runner.gd
+
 for scenario_id in \
   red_sand_revisit \
   white_noise_catalog \

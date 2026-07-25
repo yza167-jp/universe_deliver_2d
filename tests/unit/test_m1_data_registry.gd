@@ -401,8 +401,15 @@ func _test_order_contracts(
 		if order == null or order.id == &"order_red_sand_m0":
 			continue
 		expect_true(
-			order.content_readiness
-			== OrderDefinition.ContentReadiness.REGISTERED_ONLY
+			(
+				order.content_readiness
+				== (
+					OrderDefinition.ContentReadiness.PLAYABLE
+					if order.id
+					== &"order_m1_red_sand_shielding_retrofit"
+					else OrderDefinition.ContentReadiness.REGISTERED_ONLY
+				)
+			)
 			and
 			not order.required_chapter.is_empty()
 			and not order.unlock_conditions.is_empty()

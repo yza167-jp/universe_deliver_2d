@@ -28,9 +28,13 @@ const SURFACE_FRAME_RAYCAST_DEFERRED_FRAMES: int = 4
 @onready var low_flight_course: RedSandLowFlightCourse = %LowFlightCourse
 @onready var landing_zone: RedSandLandingZone = %LandingZone
 @onready var scenic_triggers: Node2D = %ScenicTriggers
+@onready var revisit_route_landmark: RedSandRevisitRouteLandmark = (
+	%RevisitRouteLandmark
+)
 
 @export var route_definition: FlightRouteDefinition
 @export var data_registry: GameDataRegistry
+@export var revisit_contract: RedSandRevisitContract
 @export var route_origin_x: float = 320.0
 @export var initial_ship_y: float = 190.0
 @export var force_direct_test_mode: bool = false
@@ -68,11 +72,13 @@ var _surface_frame: FlightSurfaceFrame = FlightSurfaceFrame.new()
 var _applied_surface_frame_offset_y: float = 0.0
 var _surface_frame_raycast_deferred_frames: int = 0
 var _settings_service: SettingsServiceModel
+var _is_revisit_route: bool = false
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	flight_ship.process_mode = Node.PROCESS_MODE_PAUSABLE
+	_is_revisit_route = _resolve_is_revisit_route()
 	if not _validate_runtime_dependencies():
 		set_process(false)
 		set_physics_process(false)
@@ -121,6 +127,18 @@ func _ready() -> void:
 	):
 		push_error("Red Sand route could not configure its landing zone.")
 		return
+	if not revisit_route_landmark.configure(
+		route_origin_x,
+		(
+			revisit_contract.changed_facility_route_distance
+			if revisit_contract != null
+			else 0.0
+		)
+	):
+		push_error("Red Sand revisit landmark could not be configured.")
+		return
+	revisit_route_landmark.set_landmark_enabled(_is_revisit_route)
+	low_flight_course.set_course_enabled(not _is_revisit_route)
 	_reset_surface_frame()
 	_connect_ship_signals()
 	_connect_hazard_signals()
@@ -148,31 +166,58 @@ func _ready() -> void:
 			)
 		)
 	)
-	var first_segment: FlightRouteSegment = route_definition.segments[0]
-	flight_ship.stable_start_position = Vector2(route_origin_x, initial_ship_y)
+	var starting_distance: float = (
+		revisit_contract.route_entry_distance if _is_revisit_route else 0.0
+	)
+	var starting_segment_index: int = route_definition.get_segment_index(
+		starting_distance
+	)
+	var first_segment: FlightRouteSegment = route_definition.segments[
+		starting_segment_index
+	]
+	var starting_checkpoint_id: StringName = (
+		revisit_contract.route_entry_checkpoint_id
+		if _is_revisit_route
+		else first_segment.checkpoint_id
+	)
+	flight_ship.stable_start_position = Vector2(
+		route_origin_x + starting_distance,
+		initial_ship_y
+	)
+	_configure_active_cargo()
 	if not flight_ship.configure_stable_checkpoint(
-		first_segment.checkpoint_id,
+		starting_checkpoint_id,
 		assist_strength,
 		first_segment.environment_profile
 	):
 		push_error("Red Sand route could not configure its initial checkpoint.")
 		return
 	flight_ship.restore_checkpoint()
-	_active_segment_index = 0
-	_maximum_route_distance = 0.0
+	_active_segment_index = starting_segment_index
+	_maximum_route_distance = starting_distance
+	_update_surface_frame()
 	hazard_director.set_active_segment(first_segment.id)
+	hazard_director.reset_for_checkpoint(starting_distance)
 	environment_feedback.set_segment(first_segment)
 	low_flight_course.set_active_segment(first_segment.id)
 	landing_zone.set_active_segment(first_segment.id)
+	route_visuals.reset_to_distance(starting_distance)
 	_reset_altitude_reference()
-	_sync_order_run_checkpoint(first_segment.checkpoint_id)
+	_sync_order_run_checkpoint(starting_checkpoint_id)
 	route_hud.bind_settings_service(_settings_service)
+	if _is_revisit_route:
+		route_hud.configure_revisit_window(revisit_contract)
 	route_hud.bind(
 		flight_ship,
 		route_definition,
 		_altitude_reference_provider,
 		landing_zone.get_landing_center_route_distance()
 	)
+	if (
+		_active_segment_index >= ENTRY_START_SEGMENT_INDEX
+		and _active_segment_index < ENTRY_FINALIZE_SEGMENT_INDEX
+	):
+		_begin_entry_style_tracking()
 	_sync_camera_to_ship()
 	_update_route_visuals()
 	_refresh_hud()
@@ -312,6 +357,14 @@ func get_low_flight_course() -> RedSandLowFlightCourse:
 
 func get_landing_zone() -> RedSandLandingZone:
 	return landing_zone
+
+
+func is_revisit_route() -> bool:
+	return _is_revisit_route
+
+
+func get_revisit_route_landmark() -> RedSandRevisitRouteLandmark:
+	return revisit_route_landmark
 
 
 func get_altitude_reference_provider() -> FlightAltitudeReferenceProvider:
@@ -555,11 +608,21 @@ func _validate_runtime_dependencies() -> bool:
 		or low_flight_course == null
 		or landing_zone == null
 		or scenic_triggers == null
+		or revisit_route_landmark == null
 		or route_definition == null
 	):
 		push_error("Red Sand route is missing required scene dependencies.")
 		return false
 	var validation_errors: PackedStringArray = route_definition.validate()
+	if _is_revisit_route:
+		if revisit_contract == null:
+			validation_errors.append("Red Sand revisit contract is missing.")
+		elif data_registry == null:
+			validation_errors.append("Red Sand revisit registry is missing.")
+		else:
+			validation_errors.append_array(
+				revisit_contract.validate(data_registry)
+			)
 	if validation_errors.is_empty():
 		return true
 	for validation_error: String in validation_errors:
@@ -596,7 +659,7 @@ func _enter_segment(segment_index: int) -> void:
 	elif segment_index == ENTRY_FINALIZE_SEGMENT_INDEX:
 		_finalize_entry_style()
 		_configure_landing_checkpoint(segment)
-	route_hud.show_stage_transition(segment)
+	route_hud.show_stage_transition(segment, segment_index)
 
 
 func _complete_landing(
@@ -801,6 +864,8 @@ func _sync_surface_frame_offset() -> void:
 		low_flight_course.set_surface_frame_offset_y(offset_y)
 	if landing_zone != null:
 		landing_zone.set_surface_frame_offset_y(offset_y)
+	if revisit_route_landmark != null:
+		revisit_route_landmark.set_surface_frame_offset_y(offset_y)
 
 
 func _reset_altitude_reference() -> void:
@@ -826,7 +891,8 @@ func _reset_altitude_reference() -> void:
 		route_definition.get_ground_profile_segment_id(_active_segment_index),
 		altitude_reference_point,
 		flight_ship,
-		self
+		self,
+		_surface_frame_raycast_deferred_frames <= 0
 	)
 	_altitude_invariant_latched = false
 	_reset_altitude_invariant_window()
@@ -1320,6 +1386,28 @@ func _resolve_game_state() -> GameStateModel:
 	if game_state_override != null:
 		return game_state_override
 	return get_node_or_null("/root/GameState") as GameStateModel
+
+
+func _resolve_is_revisit_route() -> bool:
+	var game_state: GameStateModel = _resolve_game_state()
+	return (
+		revisit_contract != null
+		and game_state != null
+		and revisit_contract.is_revisit_order(game_state.current_order_id)
+	)
+
+
+func _configure_active_cargo() -> void:
+	if not _is_revisit_route or flight_ship == null or data_registry == null:
+		return
+	var game_state: GameStateModel = _resolve_game_state()
+	if game_state == null:
+		return
+	var active_order: OrderDefinition = data_registry.find_order(
+		game_state.current_order_id
+	)
+	if active_order != null and active_order.cargo != null:
+		flight_ship.cargo_definition = active_order.cargo
 
 
 func _resolve_scene_router() -> SceneRouterService:

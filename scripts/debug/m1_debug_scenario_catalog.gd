@@ -7,6 +7,9 @@ const ARGUMENT_PREFIX: String = "--m1-debug="
 const CATALOG_SCENE_PATH: String = "res://scenes/debug/m1_catalog_debug.tscn"
 const FLIGHT_LAB_SCENE_PATH: String = "res://scenes/flight/flight_lab.tscn"
 const DELIVERY_LAB_SCENE_PATH: String = "res://scenes/flight/delivery_lab.tscn"
+const RED_SAND_ROUTE_SCENE_PATH: String = (
+	"res://scenes/flight/flight_level.tscn"
+)
 
 const SCENARIO_RED_SAND_REVISIT: StringName = &"red_sand_revisit"
 const SCENARIO_WHITE_NOISE_CATALOG: StringName = &"white_noise_catalog"
@@ -341,6 +344,10 @@ func _build_red_sand_revisit() -> M1DebugScenarioDefinition:
 		M1ProgressRules.PLANET_RED_SAND:
 		M1ProgressRules.REVISIT_RED_SAND_AVAILABLE,
 	}
+	definition.active_order_id = ORDER_RED_SAND_REVISIT
+	definition.target_stage = SceneRouterService.Stage.FLIGHT
+	definition.target_scene_path = RED_SAND_ROUTE_SCENE_PATH
+	definition.preview_only = false
 	return definition
 
 
@@ -503,6 +510,27 @@ func _validate_debug_active_order(
 	registry: GameDataRegistry,
 	errors: PackedStringArray
 ) -> void:
+	if definition.active_order_id == ORDER_RED_SAND_REVISIT:
+		var revisit_order: OrderDefinition = registry.find_order(
+			ORDER_RED_SAND_REVISIT
+		)
+		if (
+			revisit_order == null
+			or not revisit_order.is_playable()
+			or definition.catalog_focus_order_id != revisit_order.id
+			or not definition.fixture_source_order_id.is_empty()
+		):
+			errors.append(
+				"Red Sand revisit debug must use its playable formal order."
+			)
+		if (
+			definition.target_stage != SceneRouterService.Stage.FLIGHT
+			or definition.target_scene_path != RED_SAND_ROUTE_SCENE_PATH
+		):
+			errors.append(
+				"Red Sand revisit debug must open the formal short route."
+			)
+		return
 	if definition.active_order_id != DEBUG_EXPRESS_ORDER_ID:
 		errors.append(
 			"Only the isolated express fixture may seed an active debug order."

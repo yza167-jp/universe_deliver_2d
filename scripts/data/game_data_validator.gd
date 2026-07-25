@@ -566,15 +566,21 @@ static func _validate_m1_packet_contract(
 			errors.append("M1 registry is missing required order '%s'." % order_id)
 			continue
 		if (
-			order_id == M1_ACTUAL_M0_ORDER_ID
+			order_id in [
+				M1_ACTUAL_M0_ORDER_ID,
+				M1_RED_SAND_REVISIT_ORDER_ID,
+			]
 			and order.content_readiness
 			!= OrderDefinition.ContentReadiness.PLAYABLE
 		):
 			errors.append(
-				"M1 actual M0 order '%s' must remain PLAYABLE." % order_id
+				"M1 implemented order '%s' must remain PLAYABLE." % order_id
 			)
 		elif (
-			order_id != M1_ACTUAL_M0_ORDER_ID
+			order_id not in [
+				M1_ACTUAL_M0_ORDER_ID,
+				M1_RED_SAND_REVISIT_ORDER_ID,
+			]
 			and order.content_readiness
 			!= OrderDefinition.ContentReadiness.REGISTERED_ONLY
 		):
@@ -614,6 +620,10 @@ static func _validate_m1_packet_contract(
 		M1_RED_SAND_REVISIT_ORDER_ID
 	)
 	if revisit_order != null:
+		if not is_equal_approx(revisit_order.route_distance, 12000.0):
+			errors.append(
+				"M1 Red Sand revisit must expose its 12000 m playable route."
+			)
 		if not revisit_order.required_completed_order_ids.has(
 			M1_ACTUAL_M0_ORDER_ID
 		):

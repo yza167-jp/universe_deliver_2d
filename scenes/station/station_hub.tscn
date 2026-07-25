@@ -328,6 +328,23 @@ position = Vector2(170, 132)
 [node name="Anchor" type="Marker2D" parent="StateChangeAnchors/M1StationStateRoots/ArchiveTerminalStateRoot" groups=["station_state_anchor"]]
 metadata/state_change_id = &"station_state_archive_terminal"
 
+[node name="Cabinet" type="Polygon2D" parent="StateChangeAnchors/M1StationStateRoots/ArchiveTerminalStateRoot"]
+polygon = PackedVector2Array(-34, -26, 34, -26, 34, 26, -34, 26)
+color = Color(0.0823529, 0.121569, 0.14902, 1)
+
+[node name="Screen" type="Polygon2D" parent="StateChangeAnchors/M1StationStateRoots/ArchiveTerminalStateRoot"]
+polygon = PackedVector2Array(-26, -18, 26, -18, 26, 9, -26, 9)
+color = Color(0.0352941, 0.105882, 0.137255, 1)
+
+[node name="ArchiveLines" type="Line2D" parent="StateChangeAnchors/M1StationStateRoots/ArchiveTerminalStateRoot"]
+points = PackedVector2Array(-19, -10, 17, -10, 17, -6, -7, -6, -7, -2, 22, -2, 22, 2, -14, 2)
+width = 2.0
+default_color = Color(0.466667, 0.788235, 0.768627, 1)
+
+[node name="StatusLight" type="Polygon2D" parent="StateChangeAnchors/M1StationStateRoots/ArchiveTerminalStateRoot"]
+polygon = PackedVector2Array(-4, 17, 4, 17, 4, 23, -4, 23)
+color = Color(0.905882, 0.658824, 0.356863, 1)
+
 [node name="EcologyCornerStateRoot" type="Node2D" parent="StateChangeAnchors/M1StationStateRoots"]
 unique_name_in_owner = true
 visible = false

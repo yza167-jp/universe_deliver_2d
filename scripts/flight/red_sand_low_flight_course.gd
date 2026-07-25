@@ -56,6 +56,7 @@ var _pulse_count: int = 0
 var _route_hints_enabled: bool = false
 var _high_contrast_enabled: bool = false
 var _surface_frame_offset_y: float = 0.0
+var _course_enabled: bool = true
 
 
 func _ready() -> void:
@@ -130,7 +131,9 @@ func validate() -> PackedStringArray:
 
 
 func set_active_segment(segment_id: StringName) -> void:
-	var should_be_active: bool = segment_id == active_segment_id
+	var should_be_active: bool = (
+		_course_enabled and segment_id == active_segment_id
+	)
 	_radar_active = should_be_active
 	_clear_radar_runtime(
 		RadarState.CLEAR if should_be_active else RadarState.INACTIVE,
@@ -196,7 +199,9 @@ func refresh_accessibility() -> void:
 	_route_hints_enabled = route_hints_enabled
 	_high_contrast_enabled = high_contrast_enabled
 	if _route_hints != null:
-		_route_hints.visible = _radar_active and route_hints_enabled
+		_route_hints.visible = (
+			_course_enabled and _radar_active and route_hints_enabled
+		)
 	if _collision_geometry != null:
 		for obstacle_node: Node in _collision_geometry.get_children():
 			var outline: Line2D = obstacle_node.get_node_or_null(
@@ -248,6 +253,24 @@ func is_locked() -> bool:
 
 func is_radar_active() -> bool:
 	return _radar_active
+
+
+func set_course_enabled(enabled: bool) -> void:
+	if _course_enabled == enabled:
+		return
+	_course_enabled = enabled
+	if not enabled:
+		_radar_active = false
+		_clear_radar_runtime(RadarState.INACTIVE, true)
+	if _collision_geometry != null:
+		_collision_geometry.visible = enabled
+	_set_collision_enabled(_collision_geometry, enabled)
+	_update_radar_visuals()
+	refresh_accessibility()
+
+
+func is_course_enabled() -> bool:
+	return _course_enabled
 
 
 ## Kept for the route/HUD bridge; the replacement radar has no landing-buffer state.
@@ -449,7 +472,9 @@ func _update_radar_visuals() -> void:
 			and sector.sector_id == _active_sector_id
 		)
 	if _route_hints != null:
-		_route_hints.visible = _radar_active and _route_hints_enabled
+		_route_hints.visible = (
+			_course_enabled and _radar_active and _route_hints_enabled
+		)
 
 
 func _get_route_distance() -> float:
@@ -535,6 +560,17 @@ func _prepare_course_geometry() -> void:
 			var outline_points: PackedVector2Array = collision.polygon.duplicate()
 			outline_points.append(collision.polygon[0])
 			outline.points = outline_points
+
+
+func _set_collision_enabled(node: Node, enabled: bool) -> void:
+	if node == null:
+		return
+	if node is CollisionShape2D:
+		(node as CollisionShape2D).disabled = not enabled
+	elif node is CollisionPolygon2D:
+		(node as CollisionPolygon2D).disabled = not enabled
+	for child: Node in node.get_children():
+		_set_collision_enabled(child, enabled)
 
 
 func _on_assist_option_changed(option_id: StringName, _enabled: bool) -> void:

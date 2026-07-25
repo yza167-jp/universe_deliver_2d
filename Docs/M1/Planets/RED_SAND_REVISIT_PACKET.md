@@ -41,13 +41,19 @@
 - 展示首单后的设施变化。
 - 不重复 Gate C 的全部危险组合。
 
-### T-110 Working route contract
+### T-112 playable route contract
 
 - 路线变化 ID：`route_red_sand_revisit_service_lane`。
 - 入口检查点：`checkpoint_red_sand_revisit_service_lane`。
 - 复用 `route_red_sand_m0` 的 `26000–38000 m` 窗口。
 - 名义距离：`12000 m`；名义时长：`48 s`。
-- 这些数值用于 T-112 的短回访实现与调参，不代表已开放正式可玩路线。
+- 路线本地显示为 3 段：设施服务航道、着陆准备、最终进场；HUD 进度按
+  `26000–38000 m` 重新映射为 `0–100%`。
+- 回访从 `26000 m` 的专用安全检查点进入，禁用原低空雷达、固定障碍与重复的
+  Gate C 危险组合；失败后仍从服务航道或最终进场安全检查点恢复。
+- `28600 m` 处增加无碰撞的净水/冷却设施、管线、蒸汽、灯光和居民活动地标。
+- T-112 已将该合同接入正式可玩流程；它仍是复用 M0 后半段的短回访，不是第二条
+  完整赤砂路线。
 
 ## Main order
 
@@ -69,12 +75,13 @@ Stable ID：`order_m1_red_sand_shielding_retrofit`
 
 Stable cargo ID：`cargo_relay_pattern_shielding_materials`
 
-T-110 前置与状态合同：
+前置与状态合同：
 
 - 必须完成 `order_red_sand_m0`，并持有 `story_red_sand_order_completed`。
 - 回访状态按 `revisit_red_sand_available` →
   `revisit_red_sand_materials_pending` → `revisit_red_sand_completed` 推进。
-- 订单仍为 `REGISTERED_ONLY`；T-112 才能开放接取、路线和实际交付。
+- T-112 已在路线、抵达、结算、返站和存档闭环完成后将订单设为 `PLAYABLE`。
+- 订单标题与货物显示名仍为 PROVISIONAL；可玩状态不改变 Canon Status。
 
 ## Required/recommended loadout
 
@@ -107,7 +114,15 @@ T-110 使用以下稳定选择标记：
 
 两条分支在同一段老皮信号反馈与白噪线索处汇合。完成合同确定发放免费且唯一的
 `module_high_voltage_shielding` 所有权、档案终端状态、白噪章节和赤砂回访完成
-状态；模块实际能力/外观与可玩结算分别由 T-111、T-112 落地。
+状态；模块实际能力/外观由 T-111 落地，可玩结算由 T-112 落地。
+
+T-112 的局部选择结果：
+
+- 完整上传：获得订单基础赤砂关系 `+1`，公司记录与材料图鉴显示完整上传。
+- 本地保留：在基础 `+1` 外再获得赤砂关系 `+1`，公司记录与材料图鉴显示只上传
+  摘要、完整记录留在本地。
+- 两条分支都取得并自动安装特高压电屏蔽罩、解锁档案终端、推进白噪章节；选择
+  不改变主线可达性，也不揭示旧铭牌或中继网的最终真相。
 
 ## Revisit seed
 

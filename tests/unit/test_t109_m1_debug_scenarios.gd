@@ -213,7 +213,12 @@ func _test_registered_only_guards(
 		expect_true(
 			focused_order != null
 			and focused_order.content_readiness
-			== OrderDefinition.ContentReadiness.REGISTERED_ONLY
+			== (
+				OrderDefinition.ContentReadiness.PLAYABLE
+				if scenario_id
+				== M1DebugScenarioCatalog.SCENARIO_RED_SAND_REVISIT
+				else OrderDefinition.ContentReadiness.REGISTERED_ONLY
+			)
 			and focused_planet != null
 			and (
 				definition.focus_planet_id
@@ -221,7 +226,7 @@ func _test_registered_only_guards(
 				or focused_planet.content_readiness
 				== PlanetDefinition.ContentReadiness.REGISTERED_ONLY
 			),
-			"Scenario must not promote registered content: %s." % scenario_id,
+			"Scenario readiness must match implemented content: %s." % scenario_id,
 			failures
 		)
 		var progress: GameProgressData = catalog.build_initial_progress(
@@ -231,15 +236,25 @@ func _test_registered_only_guards(
 		var state: GameStateModel = GameStateModel.new()
 		if progress != null:
 			progress.apply_to(state)
-		expect_true(
-			focused_order != null
-			and not state.accept_order(focused_order)
-			and state.last_order_error
-			== GameStateModel.ORDER_ERROR_REGISTERED_ONLY,
-			"Scenario injection must preserve the authoritative acceptance guard: %s."
-			% scenario_id,
-			failures
-		)
+		if (
+			scenario_id
+			== M1DebugScenarioCatalog.SCENARIO_RED_SAND_REVISIT
+		):
+			expect_true(
+				focused_order != null and state.accept_order(focused_order),
+				"The implemented revisit scenario must pass authoritative acceptance.",
+				failures
+			)
+		else:
+			expect_true(
+				focused_order != null
+				and not state.accept_order(focused_order)
+				and state.last_order_error
+				== GameStateModel.ORDER_ERROR_REGISTERED_ONLY,
+				"Scenario injection must preserve the authoritative acceptance guard: %s."
+				% scenario_id,
+				failures
+			)
 		state.free()
 
 

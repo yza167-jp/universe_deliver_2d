@@ -538,7 +538,9 @@ func complete_order(
 	order: OrderDefinition,
 	requested_credit_reward: int = -1,
 	station_upgrade_id: StringName = &"",
-	additional_flags: Array[StringName] = []
+	additional_flags: Array[StringName] = [],
+	additional_relation_rewards: Dictionary[StringName, int] = {},
+	reward_modules_to_equip: Array[ShipModuleDefinition] = []
 ) -> bool:
 	last_order_error = &""
 	if not _has_required_order_data(order):
@@ -560,6 +562,11 @@ func complete_order(
 		requested_credit_reward < -1
 		or not _has_valid_order_rewards(order)
 		or not _can_apply_order_progression_rewards(order)
+		or not _has_valid_order_completion_modifiers(
+			order,
+			additional_relation_rewards,
+			reward_modules_to_equip
+		)
 	):
 		last_order_error = ORDER_ERROR_INVALID_REWARD
 		return false
@@ -585,6 +592,11 @@ func complete_order(
 		else requested_credit_reward
 	)
 	var relation_rewards: Dictionary[StringName, int] = order.relation_rewards.duplicate()
+	for planet_id: StringName in additional_relation_rewards:
+		relation_rewards[planet_id] = (
+			relation_rewards.get(planet_id, 0)
+			+ additional_relation_rewards.get(planet_id, 0)
+		)
 	if (
 		order.is_express
 		and order.relation_bonus_on_time > 0
@@ -620,6 +632,15 @@ func complete_order(
 	for module_id: StringName in order.ship_upgrade_rewards:
 		if not ship_upgrade_ids.has(module_id):
 			ship_upgrade_ids.append(module_id)
+	var ship_configuration_was_changed: bool = false
+	for reward_module: ShipModuleDefinition in reward_modules_to_equip:
+		var slot_id: StringName = ShipLoadoutRules.get_configuration_slot_id(
+			reward_module
+		)
+		if ship_configuration.get(slot_id, &"") == reward_module.id:
+			continue
+		ship_configuration[slot_id] = reward_module.id
+		ship_configuration_was_changed = true
 	for state_id: StringName in order.station_state_rewards:
 		_record_station_upgrade(state_id)
 	if (
@@ -649,6 +670,8 @@ func complete_order(
 	_clear_active_order_context()
 	order_status_changed.emit(order.id, OrderStatus.COMPLETED)
 	departure_readiness_changed.emit(false)
+	if ship_configuration_was_changed:
+		ship_configuration_changed.emit()
 	progress_changed.emit(credits)
 	persistent_state_changed.emit()
 	return true
@@ -763,7 +786,9 @@ func settle_current_order(
 	order: OrderDefinition,
 	settlement: OrderSettlementResult,
 	station_upgrade_id: StringName,
-	settlement_flags: Array[StringName] = []
+	settlement_flags: Array[StringName] = [],
+	additional_relation_rewards: Dictionary[StringName, int] = {},
+	reward_modules_to_equip: Array[ShipModuleDefinition] = []
 ) -> bool:
 	last_order_error = &""
 	if (
@@ -817,7 +842,9 @@ func settle_current_order(
 		order,
 		settlement.total_reward,
 		station_upgrade_id,
-		settlement_flags
+		settlement_flags,
+		additional_relation_rewards,
+		reward_modules_to_equip
 	):
 		return false
 	settlement.total_reward = credits - credits_before
@@ -1307,6 +1334,40 @@ func _has_valid_order_rewards(order: OrderDefinition) -> bool:
 			)
 		):
 			return false
+	return true
+
+
+func _has_valid_order_completion_modifiers(
+	order: OrderDefinition,
+	additional_relation_rewards: Dictionary[StringName, int],
+	reward_modules_to_equip: Array[ShipModuleDefinition]
+) -> bool:
+	if order == null:
+		return false
+	for planet_id: StringName in additional_relation_rewards:
+		if (
+			not M1ProgressRules.is_known_planet(planet_id)
+			or additional_relation_rewards.get(planet_id, 0) == 0
+		):
+			return false
+	var occupied_slots: Dictionary[StringName, bool] = {}
+	for module: ShipModuleDefinition in reward_modules_to_equip:
+		if (
+			module == null
+			or module.id.is_empty()
+			or not order.ship_upgrade_rewards.has(module.id)
+			or not M1ProgressRules.is_known_ship_upgrade(module.id)
+		):
+			return false
+		var slot_id: StringName = ShipLoadoutRules.get_configuration_slot_id(
+			module
+		)
+		if (
+			not ShipLoadoutRules.is_valid_slot_id(slot_id)
+			or occupied_slots.has(slot_id)
+		):
+			return false
+		occupied_slots[slot_id] = true
 	return true
 
 

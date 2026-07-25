@@ -4,8 +4,8 @@ const COCKPIT_SCENE_PATH: String = "res://scenes/cockpit/cockpit.tscn"
 const REGISTRY_PATH: String = "res://data/m1_data_registry.tres"
 const VIEWPORT_RECT: Rect2 = Rect2(0.0, 0.0, 640.0, 360.0)
 const M0_ORDER_ID: StringName = &"order_red_sand_m0"
-const REVISIT_ORDER_ID: StringName = (
-	&"order_m1_red_sand_shielding_retrofit"
+const REGISTERED_ORDER_ID: StringName = (
+	&"order_m1_white_noise_archive_core"
 )
 
 var _failures: PackedStringArray = []
@@ -139,8 +139,10 @@ func _run_smoke() -> void:
 	await process_frame
 
 	_game_state.reset_runtime_state()
-	var revisit: OrderDefinition = _registry.find_order(REVISIT_ORDER_ID)
-	_force_active_order(revisit)
+	var registered_order: OrderDefinition = _registry.find_order(
+		REGISTERED_ORDER_ID
+	)
+	_force_active_order(registered_order)
 	_check(
 		_cockpit.activate_hotspot(&"navigation_screen"),
 		"Registered-order navigation fixture could not open."

@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://scripts/arrival/red_sand_arrival.gd" id="1_arrival"]
 [ext_resource type="PackedScene" path="res://scenes/station/station_player.tscn" id="2_player"]
@@ -6,6 +6,7 @@
 [ext_resource type="Resource" path="res://data/dialogue/red_sand_arrival_main.tres" id="4_main"]
 [ext_resource type="Resource" path="res://data/dialogue/red_sand_arrival_optional.tres" id="5_optional"]
 [ext_resource type="Script" path="res://scripts/ui/scene_modal_coordinator.gd" id="6_modal"]
+[ext_resource type="Resource" path="res://data/revisits/red_sand_revisit_contract.tres" id="7_revisit"]
 
 [sub_resource type="SystemFont" id="SystemFontArrival"]
 font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
@@ -37,6 +38,9 @@ size = Vector2(78, 52)
 
 [sub_resource type="RectangleShape2D" id="ShapeReturnInteraction"]
 size = Vector2(76, 48)
+
+[sub_resource type="RectangleShape2D" id="ShapeCoolingInteraction"]
+size = Vector2(112, 72)
 
 [sub_resource type="StyleBoxFlat" id="StyleHeader"]
 bg_color = Color(0.0705882, 0.0666667, 0.0980392, 0.94)
@@ -74,6 +78,7 @@ content_margin_bottom = 7.0
 script = ExtResource("1_arrival")
 main_dialogue_sequence = ExtResource("4_main")
 optional_dialogue_sequence = ExtResource("5_optional")
+revisit_contract = ExtResource("7_revisit")
 
 [node name="CollisionBodies" type="Node2D" parent="."]
 
@@ -239,6 +244,20 @@ color = Color(0.466667, 0.788235, 0.768627, 1)
 polygon = PackedVector2Array(-4, -17, 4, -17, 4, -9, -4, -9)
 color = Color(0.905882, 0.658824, 0.356863, 1)
 
+[node name="CoolingEquipment" type="Area2D" parent="Interactables" groups=["arrival_interactable"]]
+unique_name_in_owner = true
+visible = false
+position = Vector2(702, 222)
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("3_interactable")
+interaction_id = &"red_sand_revisit_cooling_equipment"
+prompt_key = &"UI_M1_RED_SAND_REVISIT_INTERACT_COOLING"
+interaction_priority = 85
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Interactables/CoolingEquipment"]
+shape = SubResource("ShapeCoolingInteraction")
+
 [node name="WorldLabels" type="Control" parent="."]
 layout_mode = 3
 anchors_preset = 0
@@ -261,6 +280,7 @@ text = "CHARACTER_RED_SAND_RECIPIENT_NAME"
 horizontal_alignment = 1
 
 [node name="RecordLabel" type="Label" parent="WorldLabels"]
+unique_name_in_owner = true
 layout_mode = 0
 offset_left = 716.0
 offset_top = 185.0
@@ -271,6 +291,21 @@ theme_override_colors/font_outline_color = Color(0.0705882, 0.0666667, 0.0980392
 theme_override_constants/outline_size = 3
 theme_override_font_sizes/font_size = 12
 text = "UI_RED_SAND_ARRIVAL_RECORD_LABEL"
+horizontal_alignment = 1
+
+[node name="CoolingEquipmentLabel" type="Label" parent="WorldLabels"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_left = 632.0
+offset_top = 160.0
+offset_right = 772.0
+offset_bottom = 181.0
+theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
+theme_override_colors/font_outline_color = Color(0.0705882, 0.0666667, 0.0980392, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 11
+text = "UI_M1_RED_SAND_REVISIT_COOLING_LABEL"
 horizontal_alignment = 1
 
 [node name="ReturnLabel" type="Label" parent="WorldLabels"]
@@ -302,12 +337,14 @@ layout_mode = 2
 theme_override_constants/separation = 1
 
 [node name="LocationLabel" type="Label" parent="ArrivalUI/LocationPanel/Content"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
 theme_override_font_sizes/font_size = 15
 text = "UI_RED_SAND_ARRIVAL_LOCATION"
 
 [node name="ScopeLabel" type="Label" parent="ArrivalUI/LocationPanel/Content"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.686275, 0.737255, 0.764706, 1)
 theme_override_font_sizes/font_size = 11

@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_sequence.gd" id="1_sequence"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_line.gd" id="2_line"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_effect.gd" id="3_effect"]
+[ext_resource type="Resource" path="res://data/characters/red_sand_recipient.tres" id="3_iya"]
+[ext_resource type="Resource" path="res://data/characters/lao_pi.tres" id="4_lao_pi"]
+
+[sub_resource type="Resource" id="EffectOptionalDialogueCompleted"]
+script = ExtResource("3_effect")
+effect_id = &"story_m1_red_sand_revisit_optional_dialogue_completed"
+
+[sub_resource type="Resource" id="LineOptionalGreeting"]
+script = ExtResource("2_line")
+id = &"revisit_optional_greeting"
+speaker = ExtResource("3_iya")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_OPTIONAL_GREETING"
+portrait_expression = &"friendly"
+next_line_id = &"revisit_optional_plaque"
+
+[sub_resource type="Resource" id="LineOptionalPlaque"]
+script = ExtResource("2_line")
+id = &"revisit_optional_plaque"
+speaker = ExtResource("4_lao_pi")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_OPTIONAL_PLAQUE"
+portrait_expression = &"concerned"
+next_line_id = &"revisit_optional_close"
+
+[sub_resource type="Resource" id="LineOptionalClose"]
+script = ExtResource("2_line")
+id = &"revisit_optional_close"
+speaker = ExtResource("3_iya")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_OPTIONAL_CLOSE"
+portrait_expression = &"relaxed"
+effects = [SubResource("EffectOptionalDialogueCompleted")]
+
+[resource]
+script = ExtResource("1_sequence")
+id = &"dialogue_m1_red_sand_revisit_optional"
+start_line_id = &"revisit_optional_greeting"
+lines = [SubResource("LineOptionalGreeting"), SubResource("LineOptionalPlaque"), SubResource("LineOptionalClose")]

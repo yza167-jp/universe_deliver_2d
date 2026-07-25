@@ -1,12 +1,12 @@
 class_name RedSandRevisitContract
 extends Resource
 
-## T-110 data contract for the short Red Sand revisit.
-## It describes the future route and story handoff without making it playable.
+## Authoritative data contract for the short playable Red Sand revisit.
 
 @export var id: StringName = &""
 @export var order: OrderDefinition
 @export var arrival_dialogue: DialogueSequence
+@export var optional_dialogue: DialogueSequence
 @export var source_route: FlightRouteDefinition
 @export var route_variant_id: StringName = &""
 @export var route_entry_checkpoint_id: StringName = &""
@@ -16,11 +16,20 @@ var route_entry_distance: float = 0.0
 var route_end_distance: float = 0.0
 @export_range(1.0, 3600.0, 0.1, "or_greater")
 var nominal_route_seconds: float = 1.0
+@export_range(0.0, 1000000.0, 1.0, "or_greater")
+var changed_facility_route_distance: float = 0.0
+@export var route_stage_display_name_keys: Array[StringName] = []
+@export var route_stage_instruction_keys: Array[StringName] = []
 @export var available_state_id: StringName = &""
 @export var accepted_state_id: StringName = &""
 @export var completed_state_id: StringName = &""
 @export var upload_full_record_flag: StringName = &""
 @export var keep_local_record_flag: StringName = &""
+@export var completion_dialogue_flag: StringName = &""
+@export var optional_dialogue_completion_flag: StringName = &""
+@export var record_choice_relation_planet_id: StringName = &""
+@export_range(0, 10, 1, "or_greater") var keep_local_relation_bonus: int = 0
+@export var auto_equip_module_id: StringName = &""
 @export var debug_scenario_id: StringName = &""
 
 
@@ -40,6 +49,8 @@ func validate(registry: GameDataRegistry) -> PackedStringArray:
 		errors.append("Red Sand revisit contract order is invalid.")
 	if arrival_dialogue == null:
 		errors.append("Red Sand revisit arrival dialogue is missing.")
+	if optional_dialogue == null:
+		errors.append("Red Sand revisit optional dialogue is missing.")
 	if source_route == null or source_route.id != &"route_red_sand_m0":
 		errors.append("Red Sand revisit must reuse the validated M0 route source.")
 	if not M1ProgressRules.is_stable_id(route_variant_id):
@@ -59,6 +70,26 @@ func validate(registry: GameDataRegistry) -> PackedStringArray:
 		errors.append("Red Sand revisit route window is invalid.")
 	if not is_finite(nominal_route_seconds) or nominal_route_seconds <= 0.0:
 		errors.append("Red Sand revisit nominal route time is invalid.")
+	if (
+		not is_finite(changed_facility_route_distance)
+		or changed_facility_route_distance < route_entry_distance
+		or changed_facility_route_distance >= route_end_distance
+	):
+		errors.append("Red Sand revisit changed-facility distance is invalid.")
+	var route_segment_count: int = get_route_segment_count()
+	if (
+		route_segment_count <= 0
+		or route_stage_display_name_keys.size() != route_segment_count
+		or route_stage_instruction_keys.size() != route_segment_count
+	):
+		errors.append("Red Sand revisit route-stage localization is incomplete.")
+	else:
+		for key: StringName in (
+			route_stage_display_name_keys + route_stage_instruction_keys
+		):
+			if key.is_empty():
+				errors.append("Red Sand revisit route-stage localization key is empty.")
+				break
 	var state_ids: Array[StringName] = [
 		available_state_id,
 		accepted_state_id,
@@ -79,6 +110,29 @@ func validate(registry: GameDataRegistry) -> PackedStringArray:
 		or upload_full_record_flag == keep_local_record_flag
 	):
 		errors.append("Red Sand revisit record-choice flags are invalid.")
+	if not M1ProgressRules.is_stable_id(completion_dialogue_flag):
+		errors.append("Red Sand revisit completion dialogue flag is invalid.")
+	if not M1ProgressRules.is_stable_id(optional_dialogue_completion_flag):
+		errors.append("Red Sand revisit optional dialogue completion flag is invalid.")
+	if (
+		not M1ProgressRules.is_known_planet(record_choice_relation_planet_id)
+		or order == null
+		or record_choice_relation_planet_id != order.planet_id
+		or keep_local_relation_bonus <= 0
+	):
+		errors.append("Red Sand revisit choice relation reward is invalid.")
+	var auto_equip_module: ShipModuleDefinition = registry.find_module(
+		auto_equip_module_id
+	)
+	if (
+		auto_equip_module == null
+		or order == null
+		or not order.ship_upgrade_rewards.has(auto_equip_module_id)
+		or not ShipLoadoutRules.is_valid_slot_id(
+			ShipLoadoutRules.get_configuration_slot_id(auto_equip_module)
+		)
+	):
+		errors.append("Red Sand revisit auto-equipped reward module is invalid.")
 	if (
 		debug_scenario_id
 		!= M1DebugScenarioCatalog.SCENARIO_RED_SAND_REVISIT
@@ -89,3 +143,69 @@ func validate(registry: GameDataRegistry) -> PackedStringArray:
 
 func get_route_distance() -> float:
 	return maxf(route_end_distance - route_entry_distance, 0.0)
+
+
+func get_route_segment_count() -> int:
+	if source_route == null or source_route.segments.is_empty():
+		return 0
+	var entry_index: int = source_route.get_segment_index(route_entry_distance)
+	var end_index: int = source_route.get_segment_index(
+		maxf(route_end_distance - 0.001, route_entry_distance)
+	)
+	return maxi(end_index - entry_index + 1, 0)
+
+
+func get_local_stage_index(source_segment_index: int) -> int:
+	if source_route == null:
+		return 0
+	return maxi(
+		source_segment_index
+		- source_route.get_segment_index(route_entry_distance),
+		0
+	)
+
+
+func get_stage_display_name_key(source_segment_index: int) -> StringName:
+	var local_index: int = get_local_stage_index(source_segment_index)
+	if local_index < 0 or local_index >= route_stage_display_name_keys.size():
+		return &""
+	return route_stage_display_name_keys[local_index]
+
+
+func get_stage_instruction_key(source_segment_index: int) -> StringName:
+	var local_index: int = get_local_stage_index(source_segment_index)
+	if local_index < 0 or local_index >= route_stage_instruction_keys.size():
+		return &""
+	return route_stage_instruction_keys[local_index]
+
+
+func is_revisit_order(order_id: StringName) -> bool:
+	return order != null and order_id == order.id
+
+
+func has_valid_record_choice(game_state: GameStateModel) -> bool:
+	if game_state == null:
+		return false
+	var uploaded: bool = game_state.has_story_flag(upload_full_record_flag)
+	var kept_local: bool = game_state.has_story_flag(keep_local_record_flag)
+	return uploaded != kept_local
+
+
+func is_delivery_ready(game_state: GameStateModel) -> bool:
+	return (
+		game_state != null
+		and game_state.has_story_flag(completion_dialogue_flag)
+		and has_valid_record_choice(game_state)
+	)
+
+
+func get_choice_relation_rewards(
+	game_state: GameStateModel
+) -> Dictionary[StringName, int]:
+	var rewards: Dictionary[StringName, int] = {}
+	if (
+		has_valid_record_choice(game_state)
+		and game_state.has_story_flag(keep_local_record_flag)
+	):
+		rewards[record_choice_relation_planet_id] = keep_local_relation_bonus
+	return rewards

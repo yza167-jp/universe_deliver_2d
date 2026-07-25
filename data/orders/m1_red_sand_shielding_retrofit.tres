@@ -20,7 +20,7 @@ script = ExtResource("1_order")
 id = &"order_m1_red_sand_shielding_retrofit"
 display_name_key = &"ORDER_M1_RED_SAND_SHIELDING_RETROFIT_NAME_PROVISIONAL"
 order_type = 2
-content_readiness = 0
+content_readiness = 1
 required_chapter = &"chapter_m1_red_sand_revisit"
 unlock_conditions = [SubResource("UnlockPlanet")]
 required_completed_order_ids = Array[StringName]([&"order_red_sand_m0"])
@@ -43,7 +43,7 @@ revisit_state_rewards = {
 &"planet_red_sand": &"revisit_red_sand_completed"
 }
 repeat_policy = 0
-route_distance = 1.0
+route_distance = 12000.0
 risk_level = 2
 required_modules = [ExtResource("7_drive"), ExtResource("8_shield")]
 recommended_modules = [ExtResource("9_backup")]

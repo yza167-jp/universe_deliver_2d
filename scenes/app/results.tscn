@@ -1,7 +1,9 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/app/order_results.gd" id="1_results"]
 [ext_resource type="Resource" path="res://data/orders/red_sand_m0.tres" id="2_order"]
+[ext_resource type="Resource" path="res://data/m1_data_registry.tres" id="3_registry"]
+[ext_resource type="Resource" path="res://data/revisits/red_sand_revisit_contract.tres" id="4_revisit"]
 
 [sub_resource type="SystemFont" id="SystemFontResults"]
 font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
@@ -62,6 +64,8 @@ grow_vertical = 2
 theme = SubResource("ThemeResults")
 script = ExtResource("1_results")
 order = ExtResource("2_order")
+data_registry = ExtResource("3_registry")
+revisit_contract = ExtResource("4_revisit")
 
 [node name="Background" type="ColorRect" parent="."]
 layout_mode = 1

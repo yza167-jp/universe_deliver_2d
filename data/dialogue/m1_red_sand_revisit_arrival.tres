@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="DialogueSequence" load_steps=22 format=3]
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=28 format=3]
 
 [ext_resource type="Script" path="res://scripts/narrative/dialogue_sequence.gd" id="1_sequence"]
 [ext_resource type="Script" path="res://scripts/narrative/dialogue_line.gd" id="2_line"]
@@ -39,6 +39,14 @@ id = &"revisit_greeting"
 speaker = ExtResource("5_iya")
 text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_GREETING"
 portrait_expression = &"friendly"
+next_line_id = &"revisit_yard_change"
+
+[sub_resource type="Resource" id="LineYardChange"]
+script = ExtResource("2_line")
+id = &"revisit_yard_change"
+speaker = ExtResource("5_iya")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_YARD_CHANGE"
+portrait_expression = &"relaxed"
 next_line_id = &"revisit_first_delivery_result"
 
 [sub_resource type="Resource" id="LineFirstDeliveryResult"]
@@ -47,6 +55,14 @@ id = &"revisit_first_delivery_result"
 speaker = ExtResource("5_iya")
 text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_FIRST_DELIVERY_RESULT"
 portrait_expression = &"relaxed"
+next_line_id = &"revisit_resident_shift"
+
+[sub_resource type="Resource" id="LineResidentShift"]
+script = ExtResource("2_line")
+id = &"revisit_resident_shift"
+speaker = ExtResource("5_iya")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_RESIDENT_SHIFT"
+portrait_expression = &"friendly"
 next_line_id = &"revisit_company_pressure"
 
 [sub_resource type="Resource" id="LineCompanyPressure"]
@@ -55,6 +71,14 @@ id = &"revisit_company_pressure"
 speaker = ExtResource("5_iya")
 text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_COMPANY_PRESSURE"
 portrait_expression = &"serious"
+next_line_id = &"revisit_delivery_check"
+
+[sub_resource type="Resource" id="LineDeliveryCheck"]
+script = ExtResource("2_line")
+id = &"revisit_delivery_check"
+speaker = ExtResource("5_iya")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_DELIVERY_CHECK"
+portrait_expression = &"neutral"
 next_line_id = &"revisit_plaque_pattern"
 
 [sub_resource type="Resource" id="LinePlaquePattern"]
@@ -63,6 +87,14 @@ id = &"revisit_plaque_pattern"
 speaker = ExtResource("6_lao_pi")
 text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_PLAQUE_PATTERN"
 portrait_expression = &"concerned"
+next_line_id = &"revisit_lao_pi_calibration"
+
+[sub_resource type="Resource" id="LineLaoPiCalibration"]
+script = ExtResource("2_line")
+id = &"revisit_lao_pi_calibration"
+speaker = ExtResource("6_lao_pi")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_LAO_PI_CALIBRATION"
+portrait_expression = &"concerned"
 next_line_id = &"revisit_materials"
 
 [sub_resource type="Resource" id="LineMaterials"]
@@ -70,6 +102,14 @@ script = ExtResource("2_line")
 id = &"revisit_materials"
 speaker = ExtResource("5_iya")
 text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_MATERIALS"
+portrait_expression = &"neutral"
+next_line_id = &"revisit_installation"
+
+[sub_resource type="Resource" id="LineInstallation"]
+script = ExtResource("2_line")
+id = &"revisit_installation"
+speaker = ExtResource("5_iya")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_INSTALLATION"
 portrait_expression = &"neutral"
 next_line_id = &"revisit_record_choice"
 
@@ -103,6 +143,14 @@ id = &"revisit_signal"
 speaker = ExtResource("6_lao_pi")
 text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_SIGNAL"
 portrait_expression = &"concerned"
+next_line_id = &"revisit_signal_boundary"
+
+[sub_resource type="Resource" id="LineSignalBoundary"]
+script = ExtResource("2_line")
+id = &"revisit_signal_boundary"
+speaker = ExtResource("6_lao_pi")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_SIGNAL_BOUNDARY"
+portrait_expression = &"neutral"
 next_line_id = &"revisit_close"
 
 [sub_resource type="Resource" id="LineClose"]
@@ -117,4 +165,4 @@ effects = [SubResource("EffectDialogueCompleted")]
 script = ExtResource("1_sequence")
 id = &"dialogue_m1_red_sand_revisit_arrival"
 start_line_id = &"revisit_greeting"
-lines = [SubResource("LineGreeting"), SubResource("LineFirstDeliveryResult"), SubResource("LineCompanyPressure"), SubResource("LinePlaquePattern"), SubResource("LineMaterials"), SubResource("LineRecordChoice"), SubResource("LineUploadResponse"), SubResource("LineLocalResponse"), SubResource("LineSignal"), SubResource("LineClose")]
+lines = [SubResource("LineGreeting"), SubResource("LineYardChange"), SubResource("LineFirstDeliveryResult"), SubResource("LineResidentShift"), SubResource("LineCompanyPressure"), SubResource("LineDeliveryCheck"), SubResource("LinePlaquePattern"), SubResource("LineLaoPiCalibration"), SubResource("LineMaterials"), SubResource("LineInstallation"), SubResource("LineRecordChoice"), SubResource("LineUploadResponse"), SubResource("LineLocalResponse"), SubResource("LineSignal"), SubResource("LineSignalBoundary"), SubResource("LineClose")]

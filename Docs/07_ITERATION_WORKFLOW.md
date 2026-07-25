@@ -128,8 +128,9 @@ GODOT_BIN="/Applications/Godot.app/Contents/MacOS/Godot" \
 ```
 
 这些入口不出现在普通菜单，不读写正常剧情存档，不写玩家设置。右侧紧凑状态框
-显示当前注入上下文；按 `F6` 将内存快照和目标场景一起重置。目录入口只能查看
-尚未落地的 `REGISTERED_ONLY` 内容，不能接取或出发。
+显示当前注入上下文；按 `F6` 将内存快照和目标场景一起重置。T-112 起
+`red_sand_revisit` 会接取正式回访订单并进入 `26000–38000 m` 短路线；白噪、
+穹林、群潮目录仍只能查看尚未落地的 `REGISTERED_ONLY` 内容，不能接取或出发。
 
 ### Level 4 — M1 Human Gate
 

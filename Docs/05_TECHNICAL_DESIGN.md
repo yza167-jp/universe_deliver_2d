@@ -482,11 +482,24 @@ M0 首单必须为 `PLAYABLE`；尚未落地剧情或路线的 M1 订单必须�
 `REGISTERED_ONLY`。注册表验证该数据合同，运行时仍独立检查目的星球和场景路径，
 避免错误数据把占位内容变成可接或可出发订单。
 
-T-110 的 `RedSandRevisitContract` 是数据/剧情骨架，不是第二个运行时路线系统。
-它引用正式回访订单、抵达对白和既有 `route_red_sand_m0`，集中声明短路线变化
-ID、入口检查点、M0 路线窗口、名义时长、回访状态与记录选择标记。当前 Working
-窗口为 `26000–38000 m`，名义 `48 s`；T-112 必须消费或最小修订这一合同后才可
-将回访订单切换为 `PLAYABLE`。
+`RedSandRevisitContract` 是正式短回访的数据合同，不是第二个运行时路线系统。
+它引用正式回访订单、主/可选抵达对白和既有 `route_red_sand_m0`，集中声明短路线
+变化 ID、入口检查点、`26000–38000 m` 路线窗口、`48 s` 名义时长、三个本地
+HUD 阶段、变化设施位置、回访状态、记录选择标记和自动安装奖励。T-112 完成
+路线—抵达—结算—返站—存档闭环后，正式回访订单为 `PLAYABLE`。
+
+`RedSandFlight` 只在当前 active order 精确匹配回访合同时启用该变体：从
+`26000 m` 专用检查点进入，提前锁定已有 surface frame，使用同一 canonical AGL，
+将 HUD 重新映射为本地 `1/3–3/3` 和 `0–100%`，并禁用原
+`RedSandLowFlightCourse` 的雷达、碰撞障碍和提示。新增的
+`RedSandRevisitRouteLandmark` 仅绘制 `28600 m` 处的设备/居民变化且无碰撞；
+M0 从 `0 m` 开始的完整路线不走这些分支。
+
+抵达对白完成标记与二选一标记共同构成交付就绪条件，取消或在选择处退出不能提前
+结算。`OrderResults` 从 M1 注册表按 active order 解析正式订单，并通过
+`GameStateModel.settle_current_order()` 一次提交基础奖励、分支附加关系和需要
+自动安装的剧情模块；所有附加参数在任何 mutation 前验证，避免信用点、模块、
+章节、回访或站点状态部分写入。
 
 ### 6.3 `CargoDefinition`
 
@@ -1136,9 +1149,11 @@ T-109 在既有 Lab 与赤砂直达参数之外增加统一入口：
 `debug_m1_express_order`，再通过 `GameStateModel.accept_order()` 接取。正式注册表
 及其订单、星球就绪状态始终不变。
 
-赤砂回访场景定义额外声明 `revisit_red_sand_available`。生成的快照必须已完成
-`order_red_sand_m0`、持有首单完成标记且尚未取得
-`module_high_voltage_shielding`，以固定 T-110 与 T-111/T-112 之间的开发边界。
+赤砂回访场景定义的基础快照声明 `revisit_red_sand_available`。生成的快照必须
+已完成 `order_red_sand_m0`、持有首单完成标记且尚未取得
+`module_high_voltage_shielding`；T-112 随后接取正式回访订单，将状态推进为
+`revisit_red_sand_materials_pending`，并打开正式短路线。其他调试场景继续遵守
+各自的目录预览或隔离夹具边界。
 
 目录场景复用 `OrderTerminalUI` 并聚焦指定订单；低空投放和加急场景分别复用
 Delivery Lab 与 Flight Lab。持久 UI 只显示 scenario、章节、订单、星球和
@@ -1155,7 +1170,7 @@ Delivery Lab 与 Flight Lab。持久 UI 只显示 scenario、章节、订单、�
 
 保存迁移等验证继续使用测试专用临时路径。`scripts/check_m1_foundation.sh` 作为
 可独立运行的聚合入口，逐项标记 v2 迁移、多星球系统、目录导航、收藏与站点、
-低空投放、加急订单、六个 M1 调试启动和 M0 完整闭环；该入口由
+低空投放、加急订单、赤砂回访闭环、六个 M1 调试启动和 M0 完整闭环；该入口由
 `scripts/check_project.sh` 调用。
 
 ## 18. 依赖策略

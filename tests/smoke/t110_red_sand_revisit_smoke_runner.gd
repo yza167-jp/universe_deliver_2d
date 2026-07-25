@@ -102,7 +102,7 @@ func _run_smoke() -> void:
 	await process_frame
 
 	_check_debug_snapshot()
-	_check_catalog_preview(contract)
+	_check_playable_route_handoff(contract)
 	_check(
 		_save_service.get_storage_access_count() == 0
 		and _settings_service.get_storage_write_count() == 0,
@@ -123,44 +123,65 @@ func _check_debug_snapshot() -> void:
 		and _game_state.has_story_flag(&"story_red_sand_order_completed")
 		and _game_state.get_revisit_state(
 			M1ProgressRules.PLANET_RED_SAND
-		) == M1ProgressRules.REVISIT_RED_SAND_AVAILABLE
+		) == M1ProgressRules.REVISIT_RED_SAND_MATERIALS_PENDING
+		and _game_state.current_order_id
+		== M1DebugScenarioCatalog.ORDER_RED_SAND_REVISIT
+		and _game_state.get_order_status(
+			M1DebugScenarioCatalog.ORDER_RED_SAND_REVISIT
+		) == GameStateModel.OrderStatus.ACCEPTED
 		and not _game_state.ship_upgrade_ids.has(
 			M1ProgressRules.MODULE_HIGH_VOLTAGE_SHIELDING
 		),
-		"T-110 preview did not start after M0 and before retrofit rewards."
+		"T-110 handoff did not start after M0 with accepted materials and no reward."
 	)
 
 
-func _check_catalog_preview(contract: RedSandRevisitContract) -> void:
+func _check_playable_route_handoff(contract: RedSandRevisitContract) -> void:
 	var active_scene: Node = (
 		_app.scene_container.get_child(0)
 		if _app.scene_container.get_child_count() == 1
 		else null
 	)
 	_check(
-		active_scene is M1DebugCatalogView,
-		"T-110 preview did not open the isolated catalog scene."
+		active_scene is RedSandFlight,
+		"T-110 handoff did not open the formal Red Sand short route."
 	)
-	if not active_scene is M1DebugCatalogView:
+	if not active_scene is RedSandFlight:
 		return
-	var terminal: OrderTerminalUI = (
-		active_scene as M1DebugCatalogView
-	).get_order_terminal()
+	var route: RedSandFlight = active_scene as RedSandFlight
 	var order: OrderDefinition = contract.order
 	_check(
-		terminal != null
-		and terminal.visible
-		and terminal.get_selected_order_id() == order.id
-		and not terminal.is_accept_enabled()
-		and terminal.get_order_name_text() == tr(order.display_name_key)
-		and terminal.get_cargo_text().contains(tr(order.cargo.display_name_key))
-		and terminal.get_relation_reward_text().contains("+1")
-		and order.content_readiness
-		== OrderDefinition.ContentReadiness.REGISTERED_ONLY,
-		"T-110 preview did not expose the focused, localized, locked revisit packet."
+		route.is_revisit_route() and order.is_playable(),
+		"T-110 handoff did not use the playable revisit variant."
+	)
+	_check(
+		is_equal_approx(route.get_route_distance(), contract.route_entry_distance),
+		"T-110 handoff started at %.2f instead of %.2f m."
+		% [route.get_route_distance(), contract.route_entry_distance]
+	)
+	_check(
+		route.get_active_segment_index()
+		== contract.source_route.get_segment_index(contract.route_entry_distance),
+		"T-110 handoff opened the wrong reused route segment."
+	)
+	_check(
+		route.get_flight_ship().get_checkpoint_id()
+		== contract.route_entry_checkpoint_id,
+		"T-110 handoff did not capture the dedicated revisit checkpoint."
+	)
+	_check(
+		route.get_route_hud().get_stage_text().contains("1/3")
+		and route.get_route_hud().get_instruction_text()
+		== tr(contract.get_stage_instruction_key(5)),
+		"T-110 handoff did not expose localized 1/3 revisit guidance: %s | %s."
+		% [
+			route.get_route_hud().get_stage_text(),
+			route.get_route_hud().get_instruction_text(),
+		]
 	)
 	_check(
 		contract.arrival_dialogue != null
+		and contract.optional_dialogue != null
 		and contract.source_route != null
 		and contract.source_route.id == &"route_red_sand_m0"
 		and is_equal_approx(contract.get_route_distance(), 12000.0)
@@ -185,8 +206,8 @@ func _finish() -> void:
 	TranslationServer.set_locale(_original_locale)
 	if _failures.is_empty():
 		print(
-			"[t110-red-sand-revisit] PASS: post-M0 isolated preview, "
-			+ "focused localized packet, dialogue, route outline, and "
+			"[t110-red-sand-revisit] PASS: post-M0 formal-order handoff, "
+			+ "localized short-route entry, dialogue contract, and "
 			+ "pre-reward state."
 		)
 		quit(0)
