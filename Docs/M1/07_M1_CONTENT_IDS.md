@@ -88,6 +88,27 @@
 准时关系加成 `+1`。其余六单为非加急。全部 M1 主线、回访与三份必做支线均为
 `UNIQUE`。
 
+### 赤砂回访 T-110 合同
+
+- 前置完成订单：`order_red_sand_m0`。
+- 前置剧情标记：`story_red_sand_order_completed`。
+- 路线变化 ID：`route_red_sand_revisit_service_lane`。
+- 入口检查点：`checkpoint_red_sand_revisit_service_lane`。
+- 复用 `route_red_sand_m0` 的 `26000–38000 m` 窗口；名义距离
+  `12000 m`，名义时长 `48 s`。
+- 回访状态依次为 `revisit_red_sand_available`、
+  `revisit_red_sand_materials_pending`、`revisit_red_sand_completed`。
+- 记录选择标记为
+  `story_m1_red_sand_retrofit_records_uploaded_full` 或
+  `story_m1_red_sand_retrofit_records_kept_local`；二者不创建主线分叉。
+- 完成奖励为 `140` 信用点、赤砂关系 `+1`、
+  `codex_cargo_relay_pattern_shielding_materials`、
+  `module_high_voltage_shielding`、`station_state_archive_terminal`、
+  `chapter_m1_white_noise` 与赤砂回访完成状态。
+
+上述路线值是 T-110 的 `Working` 技术骨架。正式订单继续保持
+`REGISTERED_ONLY`，直到 T-112 完成实际场景、路线、交付与结算闭环。
+
 新增目的地 ID：
 
 - `destination_red_sand_repair_yard`

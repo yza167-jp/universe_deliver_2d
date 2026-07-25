@@ -305,12 +305,16 @@ current_value)`。只有 `changed = true` 时才发出一次 `persistent_state_c
 `COMPLETED` 变回 `ACCEPTED`。
 
 订单完成入口先验证整份奖励，再一次性应用信用点、关系、许可、图鉴、纪念品、
-完成标记和可选站点升级，最后写入 `reward_applied_order_ids` 并清理 active
-上下文。重复完成、重复加载或结算重入在任何奖励变更前返回错误。
+飞船模块所有权、站点状态、章节、回访状态、完成标记和兼容站点升级，最后写入
+`reward_applied_order_ids` 并清理 active 上下文。章节奖励必须是当前章节的下一
+合法节点或已达到节点；重复完成、重复加载、非法跳级或结算重入在任何奖励变更前
+返回错误。
 
 `M1OrderRules` 是无状态规则层：复用 T-102 的章节、星球、许可和模块准入，统一
 加急计时暂停、准时判断和报酬比例。超时在宽限窗口中线性从 `1.0` 降至配置的
 `minimum_reward_ratio`，不把超时直接解释为硬失败。
+`required_completed_order_ids` 是独立的真实完成门槛；章节和剧情标记不能替代
+对应 `completed_order_ids` 记录。
 
 `ExpressOrderHUD` 位于 `App/PersistentUI`，同时承担唯一轻量计时适配器和两行
 玩家反馈。它只解析当前 `ACCEPTED + is_express` 订单，并通过
@@ -418,6 +422,7 @@ display_name_key
 order_type          # MAIN / SIDE / REVISIT
 required_chapter
 unlock_conditions   # PLANET_UNLOCKED / PERMISSION_GRANTED / MODULE_AVAILABLE
+required_completed_order_ids
 sender
 recipient
 destination_planet
@@ -431,6 +436,10 @@ relation_rewards
 permission_rewards
 codex_rewards
 souvenir_rewards
+ship_upgrade_rewards
+station_state_rewards
+chapter_reward
+revisit_state_rewards
 repeat_policy       # UNIQUE / REPEATABLE / ARCHIVED_ONLY
 is_express
 target_seconds
@@ -452,6 +461,12 @@ M0 历史中使用的 `order_red_sand_cooling_core` 只通过注册表 alias 解
 M0 首单必须为 `PLAYABLE`；尚未落地剧情或路线的 M1 订单必须显式为
 `REGISTERED_ONLY`。注册表验证该数据合同，运行时仍独立检查目的星球和场景路径，
 避免错误数据把占位内容变成可接或可出发订单。
+
+T-110 的 `RedSandRevisitContract` 是数据/剧情骨架，不是第二个运行时路线系统。
+它引用正式回访订单、抵达对白和既有 `route_red_sand_m0`，集中声明短路线变化
+ID、入口检查点、M0 路线窗口、名义时长、回访状态与记录选择标记。当前 Working
+窗口为 `26000–38000 m`，名义 `48 s`；T-112 必须消费或最小修订这一合同后才可
+将回访订单切换为 `PLAYABLE`。
 
 ### 6.3 `CargoDefinition`
 
@@ -1100,6 +1115,10 @@ T-109 在既有 Lab 与赤砂直达参数之外增加统一入口：
 状态；加急场景从正式 `REGISTERED_ONLY` 订单深拷贝一个独立的
 `debug_m1_express_order`，再通过 `GameStateModel.accept_order()` 接取。正式注册表
 及其订单、星球就绪状态始终不变。
+
+赤砂回访场景定义额外声明 `revisit_red_sand_available`。生成的快照必须已完成
+`order_red_sand_m0`、持有首单完成标记且尚未取得
+`module_high_voltage_shielding`，以固定 T-110 与 T-111/T-112 之间的开发边界。
 
 目录场景复用 `OrderTerminalUI` 并聚焦指定订单；低空投放和加急场景分别复用
 Delivery Lab 与 Flight Lab。持久 UI 只显示 scenario、章节、订单、星球和

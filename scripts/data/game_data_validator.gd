@@ -7,6 +7,9 @@ const M1_ACTUAL_M0_ORDER_ID: StringName = &"order_red_sand_m0"
 const M1_CANONICAL_M0_ORDER_ALIAS: StringName = &"order_red_sand_cooling_core"
 const M1_STRETCH_ORDER_ID: StringName = &"side_red_sand_unlisted_filters"
 const M1_HIGH_VOLTAGE_MODULE_ID: StringName = &"module_high_voltage_shielding"
+const M1_RED_SAND_REVISIT_ORDER_ID: StringName = (
+	&"order_m1_red_sand_shielding_retrofit"
+)
 const M1_WHITE_NOISE_ORDER_ID: StringName = &"order_m1_white_noise_archive_core"
 const M1_CANOPY_SIDE_ORDER_ID: StringName = &"side_canopy_spore_drop"
 const M1_TIDAL_SIDE_ORDER_ID: StringName = &"side_tidal_beacon_before_eye"
@@ -23,7 +26,7 @@ const M1_NEW_PLANET_IDS: Array[StringName] = [
 ]
 const M1_REQUIRED_ORDER_IDS: Array[StringName] = [
 	M1_ACTUAL_M0_ORDER_ID,
-	&"order_m1_red_sand_shielding_retrofit",
+	M1_RED_SAND_REVISIT_ORDER_ID,
 	M1_WHITE_NOISE_ORDER_ID,
 	&"order_m1_canopy_ecology_cargo",
 	&"order_m1_tidal_weather_core",
@@ -406,6 +409,17 @@ static func _validate_orders(
 			errors
 		)
 		_validate_string_names(
+			"OrderDefinition '%s' required_completed_order_ids" % order.id,
+			order.required_completed_order_ids,
+			errors
+		)
+		for required_order_id: StringName in order.required_completed_order_ids:
+			if registry.find_order(required_order_id) == null:
+				errors.append(
+					"OrderDefinition '%s' requires unknown completed order '%s'."
+					% [order.id, required_order_id]
+				)
+		_validate_string_names(
 			"OrderDefinition '%s' completion_flags" % order.id,
 			order.completion_flags,
 			errors
@@ -596,6 +610,63 @@ static func _validate_m1_packet_contract(
 			errors.append(
 				"M1 required side order '%s' cannot use ARCHIVED_ONLY." % side_order_id
 			)
+	var revisit_order: OrderDefinition = registry.find_order(
+		M1_RED_SAND_REVISIT_ORDER_ID
+	)
+	if revisit_order != null:
+		if not revisit_order.required_completed_order_ids.has(
+			M1_ACTUAL_M0_ORDER_ID
+		):
+			errors.append(
+				"M1 Red Sand revisit must require the completed M0 order."
+			)
+		if not revisit_order.ship_upgrade_rewards.has(
+			M1_HIGH_VOLTAGE_MODULE_ID
+		):
+			errors.append(
+				"M1 Red Sand revisit must reward high-voltage shielding."
+			)
+		if not revisit_order.station_state_rewards.has(
+			StationStateRules.ARCHIVE_TERMINAL_ID
+		):
+			errors.append(
+				"M1 Red Sand revisit must unlock the archive terminal."
+			)
+		if (
+			revisit_order.chapter_reward
+			!= M1ProgressRules.CHAPTER_M1_WHITE_NOISE
+		):
+			errors.append(
+				"M1 Red Sand revisit must advance to the White Noise chapter."
+			)
+		if (
+			revisit_order.revisit_state_rewards.get(
+				M1ProgressRules.PLANET_RED_SAND,
+				&""
+			)
+			!= M1ProgressRules.REVISIT_RED_SAND_COMPLETED
+		):
+			errors.append(
+				"M1 Red Sand revisit must record its completed revisit state."
+			)
+	var high_voltage_reward_sources: int = 0
+	for order: OrderDefinition in registry.orders:
+		if (
+			order != null
+			and order.ship_upgrade_rewards.has(M1_HIGH_VOLTAGE_MODULE_ID)
+		):
+			high_voltage_reward_sources += 1
+	var high_voltage_module: ShipModuleDefinition = registry.find_module(
+		M1_HIGH_VOLTAGE_MODULE_ID
+	)
+	if (
+		high_voltage_reward_sources != 1
+		or high_voltage_module == null
+		or high_voltage_module.cost != 0
+	):
+		errors.append(
+			"M1 high-voltage shielding must have one free mainline reward source."
+		)
 	var white_noise_order: OrderDefinition = registry.find_order(M1_WHITE_NOISE_ORDER_ID)
 	if (
 		white_noise_order != null
@@ -784,6 +855,49 @@ static func _validate_order_rewards(
 			errors.append(
 				"OrderDefinition '%s' references unknown souvenir reward ID '%s'."
 				% [order.id, souvenir_id]
+			)
+	_validate_string_names(
+		"OrderDefinition '%s' ship_upgrade_rewards" % order.id,
+		order.ship_upgrade_rewards,
+		errors
+	)
+	for module_id: StringName in order.ship_upgrade_rewards:
+		if registry.find_module(module_id) == null:
+			errors.append(
+				"OrderDefinition '%s' references unknown ship upgrade reward '%s'."
+				% [order.id, module_id]
+			)
+	_validate_string_names(
+		"OrderDefinition '%s' station_state_rewards" % order.id,
+		order.station_state_rewards,
+		errors
+	)
+	for state_id: StringName in order.station_state_rewards:
+		if not StationStateRules.is_known_state_id(state_id):
+			errors.append(
+				"OrderDefinition '%s' references unknown station state reward '%s'."
+				% [order.id, state_id]
+			)
+	if (
+		not order.chapter_reward.is_empty()
+		and not M1ProgressRules.is_known_chapter(order.chapter_reward)
+	):
+		errors.append(
+			"OrderDefinition '%s' references unknown chapter reward '%s'."
+			% [order.id, order.chapter_reward]
+		)
+	for planet_id: StringName in order.revisit_state_rewards:
+		var state_id: StringName = order.revisit_state_rewards.get(
+			planet_id,
+			&""
+		)
+		if (
+			not M1ProgressRules.is_known_planet(planet_id)
+			or not M1ProgressRules.is_valid_revisit_state_id(state_id)
+		):
+			errors.append(
+				"OrderDefinition '%s' has invalid revisit reward '%s'='%s'."
+				% [order.id, planet_id, state_id]
 			)
 
 

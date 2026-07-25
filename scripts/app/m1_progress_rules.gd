@@ -44,6 +44,20 @@ const PERMISSION_IDS: Array[StringName] = [
 ]
 
 const MODULE_HIGH_VOLTAGE_SHIELDING: StringName = &"module_high_voltage_shielding"
+const MODULE_BIOSIGNAL_ISOLATION: StringName = &"module_biosignal_isolation"
+const MODULE_CROSSWIND_STABILIZER: StringName = &"module_crosswind_stabilizer"
+
+const SHIP_UPGRADE_IDS: Array[StringName] = [
+	MODULE_HIGH_VOLTAGE_SHIELDING,
+	MODULE_BIOSIGNAL_ISOLATION,
+	MODULE_CROSSWIND_STABILIZER,
+]
+
+const REVISIT_RED_SAND_AVAILABLE: StringName = &"revisit_red_sand_available"
+const REVISIT_RED_SAND_MATERIALS_PENDING: StringName = (
+	&"revisit_red_sand_materials_pending"
+)
+const REVISIT_RED_SAND_COMPLETED: StringName = &"revisit_red_sand_completed"
 
 const RELATION_MINIMUM: int = -2
 const RELATION_MAXIMUM: int = 3
@@ -131,6 +145,10 @@ static func is_known_planet(planet_id: StringName) -> bool:
 
 static func is_known_permission(permission_id: StringName) -> bool:
 	return PERMISSION_IDS.has(permission_id)
+
+
+static func is_known_ship_upgrade(module_id: StringName) -> bool:
+	return SHIP_UPGRADE_IDS.has(module_id)
 
 
 static func get_planet_unlock_rule(planet_id: StringName) -> PlanetUnlockRule:

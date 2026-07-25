@@ -124,6 +124,8 @@ func build_initial_progress(
 	progress.story_flags[STORY_M0_ARRIVAL] = true
 	for flag_id: StringName in definition.story_flag_ids:
 		progress.story_flags[flag_id] = true
+	for planet_id: StringName in definition.revisit_states:
+		progress.revisit_state[planet_id] = definition.revisit_states[planet_id]
 	for order_id: StringName in definition.completed_order_ids:
 		progress.completed_order_ids[order_id] = true
 		progress.order_states[order_id] = GameStateModel.OrderStatus.COMPLETED
@@ -281,6 +283,16 @@ func validate_definition(
 	for flag_id: StringName in definition.story_flag_ids:
 		if not M1ProgressRules.is_stable_id(flag_id):
 			errors.append("Invalid story flag ID: %s." % flag_id)
+	for planet_id: StringName in definition.revisit_states:
+		var state_id: StringName = definition.revisit_states.get(
+			planet_id,
+			&""
+		)
+		if (
+			not definition.unlocked_planet_ids.has(planet_id)
+			or not M1ProgressRules.is_valid_revisit_state_id(state_id)
+		):
+			errors.append("Invalid revisit state for %s." % planet_id)
 	return errors
 
 
@@ -325,6 +337,10 @@ func _build_red_sand_revisit() -> M1DebugScenarioDefinition:
 	definition.completed_order_ids = [ORDER_M0]
 	definition.story_flag_ids = [STORY_M0_COMPLETED]
 	definition.relation_values = {M1ProgressRules.PLANET_RED_SAND: 1}
+	definition.revisit_states = {
+		M1ProgressRules.PLANET_RED_SAND:
+		M1ProgressRules.REVISIT_RED_SAND_AVAILABLE,
+	}
 	return definition
 
 

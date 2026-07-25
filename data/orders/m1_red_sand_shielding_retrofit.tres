@@ -23,6 +23,7 @@ order_type = 2
 content_readiness = 0
 required_chapter = &"chapter_m1_red_sand_revisit"
 unlock_conditions = [SubResource("UnlockPlanet")]
+required_completed_order_ids = Array[StringName]([&"order_red_sand_m0"])
 sender = ExtResource("3_sender")
 recipient = ExtResource("4_recipient")
 destination_planet = ExtResource("5_planet")
@@ -35,6 +36,12 @@ relation_rewards = {
 &"planet_red_sand": 1
 }
 codex_rewards = Array[StringName]([&"codex_cargo_relay_pattern_shielding_materials"])
+ship_upgrade_rewards = Array[StringName]([&"module_high_voltage_shielding"])
+station_state_rewards = Array[StringName]([&"station_state_archive_terminal"])
+chapter_reward = &"chapter_m1_white_noise"
+revisit_state_rewards = {
+&"planet_red_sand": &"revisit_red_sand_completed"
+}
 repeat_policy = 0
 route_distance = 1.0
 risk_level = 2

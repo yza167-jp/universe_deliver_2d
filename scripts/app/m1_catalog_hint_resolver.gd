@@ -83,6 +83,11 @@ static func get_order_gate_reference(
 		return &""
 	if reason == M1ProgressRules.REASON_REQUIRED_CHAPTER:
 		return order.required_chapter
+	if (
+		reason == M1ProgressRules.REASON_REQUIRED_COMPLETED_ORDER
+		and not order.required_completed_order_ids.is_empty()
+	):
+		return order.required_completed_order_ids[0]
 	for condition: OrderUnlockCondition in order.unlock_conditions:
 		if condition == null:
 			continue

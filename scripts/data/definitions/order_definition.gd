@@ -30,6 +30,7 @@ enum ContentReadiness {
 @export var content_readiness: ContentReadiness = ContentReadiness.PLAYABLE
 @export var required_chapter: StringName = &""
 @export var unlock_conditions: Array[OrderUnlockCondition] = []
+@export var required_completed_order_ids: Array[StringName] = []
 @export var sender: CharacterDefinition
 @export var recipient: CharacterDefinition
 @export var destination_planet: PlanetDefinition
@@ -42,6 +43,10 @@ enum ContentReadiness {
 @export var permission_rewards: Array[StringName] = []
 @export var codex_rewards: Array[StringName] = []
 @export var souvenir_rewards: Array[StringName] = []
+@export var ship_upgrade_rewards: Array[StringName] = []
+@export var station_state_rewards: Array[StringName] = []
+@export var chapter_reward: StringName = &""
+@export var revisit_state_rewards: Dictionary[StringName, StringName] = {}
 @export var repeat_policy: RepeatPolicy = RepeatPolicy.UNIQUE
 @export var is_express: bool = false
 @export_range(0.0, 86400.0, 0.1, "or_greater") var target_seconds: float = 0.0

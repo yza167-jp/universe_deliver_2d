@@ -41,6 +41,14 @@
 - 展示首单后的设施变化。
 - 不重复 Gate C 的全部危险组合。
 
+### T-110 Working route contract
+
+- 路线变化 ID：`route_red_sand_revisit_service_lane`。
+- 入口检查点：`checkpoint_red_sand_revisit_service_lane`。
+- 复用 `route_red_sand_m0` 的 `26000–38000 m` 窗口。
+- 名义距离：`12000 m`；名义时长：`48 s`。
+- 这些数值用于 T-112 的短回访实现与调参，不代表已开放正式可玩路线。
+
 ## Main order
 
 Stable ID：`order_m1_red_sand_shielding_retrofit`
@@ -60,6 +68,13 @@ Stable ID：`order_m1_red_sand_shielding_retrofit`
 3. 非标电磁层压组件
 
 Stable cargo ID：`cargo_relay_pattern_shielding_materials`
+
+T-110 前置与状态合同：
+
+- 必须完成 `order_red_sand_m0`，并持有 `story_red_sand_order_completed`。
+- 回访状态按 `revisit_red_sand_available` →
+  `revisit_red_sand_materials_pending` → `revisit_red_sand_completed` 推进。
+- 订单仍为 `REGISTERED_ONLY`；T-112 才能开放接取、路线和实际交付。
 
 ## Required/recommended loadout
 
@@ -84,6 +99,15 @@ Stable cargo ID：`cargo_relay_pattern_shielding_materials`
 - 玩家可查看首单设备运行状态。
 - 改装完成后飞船获得可见屏蔽节点。
 - 玩家选择是否上传完整改装记录；只影响公司/伊娅关系和图鉴文本。
+
+T-110 使用以下稳定选择标记：
+
+- `story_m1_red_sand_retrofit_records_uploaded_full`
+- `story_m1_red_sand_retrofit_records_kept_local`
+
+两条分支在同一段老皮信号反馈与白噪线索处汇合。完成合同确定发放免费且唯一的
+`module_high_voltage_shielding` 所有权、档案终端状态、白噪章节和赤砂回访完成
+状态；模块实际能力/外观与可玩结算分别由 T-111、T-112 落地。
 
 ## Revisit seed
 

@@ -16,6 +16,7 @@ var permission_ids: Array[StringName] = []
 var relation_values: Dictionary[StringName, int] = {}
 var completed_order_ids: Array[StringName] = []
 var story_flag_ids: Array[StringName] = []
+var revisit_states: Dictionary[StringName, StringName] = {}
 var target_stage: int = SceneRouterService.Stage.STATION
 var target_scene_path: String = ""
 var preview_only: bool = true
@@ -36,6 +37,7 @@ func to_canonical_dictionary() -> Dictionary[String, Variant]:
 		"relation_values": _sorted_integer_map(relation_values),
 		"completed_order_ids": _sorted_strings(completed_order_ids),
 		"story_flag_ids": _sorted_strings(story_flag_ids),
+		"revisit_states": _sorted_string_name_map(revisit_states),
 		"target_stage": target_stage,
 		"target_scene_path": target_scene_path,
 		"preview_only": preview_only,
@@ -60,4 +62,17 @@ static func _sorted_integer_map(
 	keys.sort()
 	for key: StringName in keys:
 		result[String(key)] = values[key]
+	return result
+
+
+static func _sorted_string_name_map(
+	values: Dictionary[StringName, StringName]
+) -> Dictionary[String, Variant]:
+	var result: Dictionary[String, Variant] = {}
+	var keys: Array[StringName] = []
+	for key: StringName in values:
+		keys.append(key)
+	keys.sort()
+	for key: StringName in keys:
+		result[String(key)] = String(values[key])
 	return result

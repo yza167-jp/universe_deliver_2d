@@ -1,0 +1,120 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=22 format=3]
+
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_sequence.gd" id="1_sequence"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_line.gd" id="2_line"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_choice.gd" id="3_choice"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_effect.gd" id="4_effect"]
+[ext_resource type="Resource" path="res://data/characters/red_sand_recipient.tres" id="5_iya"]
+[ext_resource type="Resource" path="res://data/characters/lao_pi.tres" id="6_lao_pi"]
+
+[sub_resource type="Resource" id="EffectUploadFull"]
+script = ExtResource("4_effect")
+effect_id = &"story_m1_red_sand_retrofit_records_uploaded_full"
+
+[sub_resource type="Resource" id="EffectKeepLocal"]
+script = ExtResource("4_effect")
+effect_id = &"story_m1_red_sand_retrofit_records_kept_local"
+
+[sub_resource type="Resource" id="EffectDialogueCompleted"]
+script = ExtResource("4_effect")
+effect_id = &"story_m1_red_sand_revisit_dialogue_completed"
+
+[sub_resource type="Resource" id="ChoiceUploadFull"]
+script = ExtResource("3_choice")
+id = &"upload_full_retrofit_record"
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_CHOICE_UPLOAD_FULL"
+effects = [SubResource("EffectUploadFull")]
+next_line_id = &"revisit_upload_response"
+
+[sub_resource type="Resource" id="ChoiceKeepLocal"]
+script = ExtResource("3_choice")
+id = &"keep_retrofit_record_local"
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_CHOICE_KEEP_LOCAL"
+effects = [SubResource("EffectKeepLocal")]
+next_line_id = &"revisit_local_response"
+
+[sub_resource type="Resource" id="LineGreeting"]
+script = ExtResource("2_line")
+id = &"revisit_greeting"
+speaker = ExtResource("5_iya")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_GREETING"
+portrait_expression = &"friendly"
+next_line_id = &"revisit_first_delivery_result"
+
+[sub_resource type="Resource" id="LineFirstDeliveryResult"]
+script = ExtResource("2_line")
+id = &"revisit_first_delivery_result"
+speaker = ExtResource("5_iya")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_FIRST_DELIVERY_RESULT"
+portrait_expression = &"relaxed"
+next_line_id = &"revisit_company_pressure"
+
+[sub_resource type="Resource" id="LineCompanyPressure"]
+script = ExtResource("2_line")
+id = &"revisit_company_pressure"
+speaker = ExtResource("5_iya")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_COMPANY_PRESSURE"
+portrait_expression = &"serious"
+next_line_id = &"revisit_plaque_pattern"
+
+[sub_resource type="Resource" id="LinePlaquePattern"]
+script = ExtResource("2_line")
+id = &"revisit_plaque_pattern"
+speaker = ExtResource("6_lao_pi")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_PLAQUE_PATTERN"
+portrait_expression = &"concerned"
+next_line_id = &"revisit_materials"
+
+[sub_resource type="Resource" id="LineMaterials"]
+script = ExtResource("2_line")
+id = &"revisit_materials"
+speaker = ExtResource("5_iya")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_MATERIALS"
+portrait_expression = &"neutral"
+next_line_id = &"revisit_record_choice"
+
+[sub_resource type="Resource" id="LineRecordChoice"]
+script = ExtResource("2_line")
+id = &"revisit_record_choice"
+speaker = ExtResource("5_iya")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_RECORD_CHOICE"
+portrait_expression = &"serious"
+choices = [SubResource("ChoiceUploadFull"), SubResource("ChoiceKeepLocal")]
+
+[sub_resource type="Resource" id="LineUploadResponse"]
+script = ExtResource("2_line")
+id = &"revisit_upload_response"
+speaker = ExtResource("5_iya")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_UPLOAD_RESPONSE"
+portrait_expression = &"neutral"
+next_line_id = &"revisit_signal"
+
+[sub_resource type="Resource" id="LineLocalResponse"]
+script = ExtResource("2_line")
+id = &"revisit_local_response"
+speaker = ExtResource("5_iya")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_LOCAL_RESPONSE"
+portrait_expression = &"friendly"
+next_line_id = &"revisit_signal"
+
+[sub_resource type="Resource" id="LineSignal"]
+script = ExtResource("2_line")
+id = &"revisit_signal"
+speaker = ExtResource("6_lao_pi")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_SIGNAL"
+portrait_expression = &"concerned"
+next_line_id = &"revisit_close"
+
+[sub_resource type="Resource" id="LineClose"]
+script = ExtResource("2_line")
+id = &"revisit_close"
+speaker = ExtResource("5_iya")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_CLOSE"
+portrait_expression = &"friendly"
+effects = [SubResource("EffectDialogueCompleted")]
+
+[resource]
+script = ExtResource("1_sequence")
+id = &"dialogue_m1_red_sand_revisit_arrival"
+start_line_id = &"revisit_greeting"
+lines = [SubResource("LineGreeting"), SubResource("LineFirstDeliveryResult"), SubResource("LineCompanyPressure"), SubResource("LinePlaquePattern"), SubResource("LineMaterials"), SubResource("LineRecordChoice"), SubResource("LineUploadResponse"), SubResource("LineLocalResponse"), SubResource("LineSignal"), SubResource("LineClose")]

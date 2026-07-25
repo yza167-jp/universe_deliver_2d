@@ -91,6 +91,10 @@ run_godot_checked \
   "M1 scenario state, reset, target scenes, and storage isolation" \
   --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t109_m1_debug_smoke_runner.gd
 
+run_godot_checked \
+  "Red Sand revisit post-M0 packet, dialogue, route outline, and isolated preview" \
+  --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t110_red_sand_revisit_smoke_runner.gd
+
 for scenario_id in \
   red_sand_revisit \
   white_noise_catalog \

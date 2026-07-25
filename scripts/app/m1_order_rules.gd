@@ -18,7 +18,8 @@ static func get_unlock_error(
 	unlocked_planet_ids: Array[StringName],
 	planet_permission_ids: Array[StringName],
 	ship_configuration: Dictionary[StringName, StringName],
-	ship_upgrade_ids: Array[StringName]
+	ship_upgrade_ids: Array[StringName],
+	completed_order_ids: Dictionary[StringName, bool]
 ) -> StringName:
 	if order == null:
 		return REASON_INVALID_CONDITION
@@ -57,6 +58,9 @@ static func get_unlock_error(
 					return M1ProgressRules.REASON_REQUIRED_MODULE
 			_:
 				return REASON_INVALID_CONDITION
+	for required_order_id: StringName in order.required_completed_order_ids:
+		if not completed_order_ids.get(required_order_id, false):
+			return M1ProgressRules.REASON_REQUIRED_COMPLETED_ORDER
 	return &""
 
 
