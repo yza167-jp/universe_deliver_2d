@@ -222,6 +222,10 @@ run_step \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/m1_catalog_navigation_smoke_runner.gd
 
 run_step \
+  "M1 codex, souvenir wall, modal restore, and station-state smoke test" \
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t106_station_collections_smoke_runner.gd
+
+run_step \
   "Gate A station-to-cockpit playable path smoke test" \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/station_gate_a_smoke_runner.gd
 

@@ -1,4 +1,4 @@
-[gd_scene load_steps=35 format=3]
+[gd_scene load_steps=37 format=3]
 
 [ext_resource type="Script" path="res://scripts/station/station_hub.gd" id="1_hub"]
 [ext_resource type="PackedScene" path="res://scenes/station/station_player.tscn" id="2_player"]
@@ -20,6 +20,8 @@
 [ext_resource type="Script" path="res://scripts/station/station_modal_coordinator.gd" id="18_modal_coordinator"]
 [ext_resource type="Script" path="res://scripts/station/station_return_state_controller.gd" id="19_return_state"]
 [ext_resource type="Resource" path="res://data/dialogue/lao_pi_first_delivery_return.tres" id="20_return_dialogue"]
+[ext_resource type="PackedScene" path="res://scenes/ui/souvenir_wall.tscn" id="21_souvenir_wall"]
+[ext_resource type="Script" path="res://scripts/station/station_state_presenter.gd" id="22_state_presenter"]
 
 [sub_resource type="SystemFont" id="SystemFontStation"]
 font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
@@ -316,6 +318,32 @@ metadata/state_change_id = &"workbench_upgrade"
 position = Vector2(480, 96)
 metadata/state_change_id = &"station_lighting_upgrade"
 
+[node name="M1StationStateRoots" type="Node2D" parent="StateChangeAnchors"]
+
+[node name="ArchiveTerminalStateRoot" type="Node2D" parent="StateChangeAnchors/M1StationStateRoots"]
+unique_name_in_owner = true
+visible = false
+position = Vector2(170, 132)
+
+[node name="Anchor" type="Marker2D" parent="StateChangeAnchors/M1StationStateRoots/ArchiveTerminalStateRoot" groups=["station_state_anchor"]]
+metadata/state_change_id = &"station_state_archive_terminal"
+
+[node name="EcologyCornerStateRoot" type="Node2D" parent="StateChangeAnchors/M1StationStateRoots"]
+unique_name_in_owner = true
+visible = false
+position = Vector2(808, 398)
+
+[node name="Anchor" type="Marker2D" parent="StateChangeAnchors/M1StationStateRoots/EcologyCornerStateRoot" groups=["station_state_anchor"]]
+metadata/state_change_id = &"station_state_ecology_corner"
+
+[node name="RelayObservatoryStateRoot" type="Node2D" parent="StateChangeAnchors/M1StationStateRoots"]
+unique_name_in_owner = true
+visible = false
+position = Vector2(480, 84)
+
+[node name="Anchor" type="Marker2D" parent="StateChangeAnchors/M1StationStateRoots/RelayObservatoryStateRoot" groups=["station_state_anchor"]]
+metadata/state_change_id = &"station_state_relay_observatory"
+
 [node name="FirstDeliveryDisplay" type="Node2D" parent="StateChangeAnchors"]
 unique_name_in_owner = true
 visible = false
@@ -477,6 +505,10 @@ return_sequence = ExtResource("20_return_dialogue")
 unique_name_in_owner = true
 script = ExtResource("19_return_state")
 
+[node name="StationStatePresenter" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("22_state_presenter")
+
 [node name="StationOrderTerminalController" type="Node" parent="."]
 unique_name_in_owner = true
 script = ExtResource("12_order_terminal_controller")
@@ -538,6 +570,12 @@ unique_name_in_owner = true
 layer = 20
 
 [node name="ShipLoadoutUI" parent="ShipLoadoutUILayer" instance=ExtResource("15_ship_loadout_ui")]
+unique_name_in_owner = true
+
+[node name="SouvenirWallUILayer" type="CanvasLayer" parent="."]
+layer = 23
+
+[node name="SouvenirWallUI" parent="SouvenirWallUILayer" instance=ExtResource("21_souvenir_wall")]
 unique_name_in_owner = true
 
 [node name="ReturnFeedbackLayer" type="CanvasLayer" parent="."]

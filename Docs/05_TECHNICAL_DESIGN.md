@@ -332,6 +332,27 @@ active order 置顶，同一时刻最多一个当前主线，未发现的可选�
 唯一权威旅行入口，不建立自由星图或第二份导航状态。正常场景读取
 `m1_data_registry.tres`；`m0_data_registry.tres` 仅用于显式回归夹具。
 
+### 5.7 M1 图鉴、纪念品墙与站点状态投影
+
+`CodexCatalogModel` 与 `SouvenirWallModel` 都是无状态查询层。前者将
+`GameDataRegistry.codex_entries / souvenirs` 与
+`GameStateModel.codex_entry_ids / souvenir_ids` 投影为分类目录；后者始终按
+注册表顺序生成纪念品墙槽位。两者只返回玩家可见的本地化 Key，不从 UI 写入
+GameState。隐藏锁定条目不进入图鉴，允许出现的锁定位与全部未获得纪念品槽只使用
+通用未知文本。对应的图鉴纪念品与物理纪念品通过稳定 ID 关联，在图鉴中去重。
+
+`CodexBrowserUI` 是独立可复用的 640×360 灰盒组件，本阶段不挂入正常快递站；
+T-113 才能通过档案终端开放。`SouvenirWallUI` 由现有墙面交互打开，并通过
+`StationModalCoordinator` 获取世界输入锁；鼠标与键盘共用选择函数，关闭时恢复
+打开前焦点、玩家控制和场景提示。
+
+`StationStateRules` 只登记三个精确 `station_state_*` ID 及其摘要等级。
+`GameStateModel.unlock_station_state()` 是唯一普通写入口：非法 ID 拒绝、重复 ID
+成功但无变化，实际变化只发出一次持久化通知与站点解锁事件。
+`StationStatePresenter` 只按 `station_upgrade_ids` 切换三个隐藏根节点，不读取
+`station_state_level` 推断内容。等级只向上汇总，存档加载只恢复并刷新，不重放
+升级事件。
+
 ## 6. 数据定义
 
 使用自定义 Resource（`.tres`）作为 M0 首选，因为：
@@ -443,7 +464,12 @@ story_unlock_flags
 `CodexEntryDefinition` 额外声明星球、人物、货物、异常或纪念品类别。验证器同时
 检查跨类型重复 ID、关联星球、奖励引用和中英文文本。
 
-### 6.5 ID 规则
+M0 首单 Resource 与 `m0_data_registry.tres` 保持冻结的信用点奖励合同；当前首单
+结算通过 `GameStateModel` 的 M0 兼容步骤，在同一次持久化提交中补齐赤砂星、
+伊娅、旧中继铭牌图鉴与物理铭牌。v1→v2 迁移使用同一组稳定 ID，并以集合去重保证
+不会出现第二份奖励。
+
+### 6.6 ID 规则
 
 - 使用稳定英文 `snake_case`，例如 `planet_red_sand`。
 - 显示名改变不改变 ID。
@@ -844,6 +870,11 @@ schema `0`（没有版本字段）的已知 M0 字段先迁移到 v1，并通过
 内存迁移；成功继续并进入下一稳定节点后，安全写入才生成 v2 主档，同时由现有
 轮换流程保留原有效 v1 备份。
 
+站点状态额外验证所有 `station_state_*` 候选必须属于
+`StationStateRules.STATE_IDS`。读取时允许由 `station_upgrade_ids` 将
+`station_state_level` 向上归一化，但绝不由等级补发设施 ID；因此粗粒度摘要不能
+成为第二份功能真相。
+
 ### 11.4 自动保存与继续入口
 
 `SaveService` 监听 `GameState.persistent_state_changed`，并在 `STATION`、`RESULTS`
@@ -943,8 +974,10 @@ M0 赤砂星路线暂由场景局部 `AudioStreamPlayer` 播放程序合成的�
 - 使用同一 App、`GameState` 与测试存档实际贯穿新游戏、教程接单、驾驶舱旅行、
   飞行失败重试、着陆剧情、结算返站、重建 App 和继续游戏；同时断言暂停、局部
   音频、持久对话层和单一活动场景的生命周期边界。
-- 大厅、赤砂星维修场与返航纪念品的阻塞模态输入锁，以及非阻塞观察的提示隐藏、
-  移动保留、空格/回车关闭、重复触发阻止和最终来源关闭后的恢复。
+- 大厅正式面板、返航纪念品详情与赤砂星维修场的阻塞模态输入锁，以及其他非阻塞
+  观察文字的提示隐藏、移动保留、手动关闭、重复触发阻止和最终来源关闭后的恢复。
+- 图鉴分类与锁定去剧透、多槽纪念品顺序、鼠标/键盘同一路径、站点精确 ID 根节点、
+  `station_state_level` 单调摘要及加载不重放事件。
 - 雷暴真实积分路线固定覆盖 `W` 普通最大前速且无 Boost 时命中、锁定后 Boost 前冲躲开、急刹进入
   倒车后落在命中区后方，以及小幅俯仰仍命中；测试不得使用输入无敌或强制命中。
 

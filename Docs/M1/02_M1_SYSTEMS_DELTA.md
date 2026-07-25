@@ -171,6 +171,19 @@ M1 运行时关系范围集中为 `-2…+3`。每次正常关系变化携带唯�
 
 站点变化以可见场景和新互动为主，不发展成资源经营模拟。
 
+T-106 只建立三个设施的隐藏场景根节点，不提前放置互动或剧情。功能解锁以
+`station_upgrade_ids` 中的精确稳定 ID 为权威：
+
+```text
+station_state_archive_terminal
+station_state_ecology_corner
+station_state_relay_observatory
+```
+
+`station_state_level` 只取已解锁状态要求的最高等级，作为单调递增摘要；等级本身
+不能反向推导或提前显示设施。重复解锁不发出第二次持久化变更，存档恢复只刷新场景
+根节点，不重放升级事件。
+
 ## 9. 星球独特机制扩展方式
 
 核心飞船脚本不得堆叠 `if planet_id == ...`。
@@ -210,6 +223,20 @@ M0 的统一伤害、HUD、帮助、重试和 SceneRouter 继续复用。
 - 图鉴记录人物和选择结果，而非只列百科。
 - M1 不要求 100% 收集。
 - 约 95% 隐藏结局属于完整游戏远期，不在 M1 实现。
+
+T-106 基础实现：
+
+- `CodexCatalogModel` 是无状态只读投影，输入为 M1 注册表与
+  `codex_entry_ids / souvenir_ids`；分类、列表和详情 UI 不直接改写进度。
+- `hidden_when_locked = true` 的条目完全不进入结果；允许保留锁定位的条目只显示
+  通用“未知记录”，不暴露标题与说明。
+- 图鉴中的纪念品条目与物理纪念品 ID 只投影为一条记录，避免旧中继铭牌重复。
+- 快递站纪念品墙固定按 `GameDataRegistry.souvenirs` 顺序生成多槽位；未获得槽位
+  只显示统一锁定占位。
+- 纪念品详情使用 `StationModalCoordinator` 的阻塞模态，关闭后恢复玩家控制、
+  交互提示和打开前的 UI 焦点。
+- `CodexBrowserUI` 当前只作为可复用灰盒与测试入口；正式档案终端仍由 T-113
+  解锁。
 
 ## 12. M1 回归合同
 

@@ -107,6 +107,7 @@ static func capture(game_state: GameStateModel) -> GameProgressData:
 	progress.demo_ending_flags = _copy_variant_map(game_state.demo_ending_flags)
 	progress.last_stable_station_state = game_state.last_stable_station_state
 	progress._apply_completed_m0_compatibility()
+	progress._apply_station_state_compatibility()
 	progress._apply_order_state_compatibility()
 	progress._validate_consistency()
 	return progress
@@ -269,6 +270,7 @@ func _read_dictionary(source: Dictionary) -> void:
 	_read_schema_v1_fields(payload)
 	if not validation_error.is_empty():
 		return
+	_apply_station_state_compatibility()
 	_apply_order_state_compatibility()
 	_validate_consistency()
 	if not validation_error.is_empty():
@@ -280,6 +282,7 @@ func _read_dictionary(source: Dictionary) -> void:
 		_read_schema_v2_fields(payload)
 	if not validation_error.is_empty():
 		return
+	_apply_station_state_compatibility()
 	_apply_order_state_compatibility()
 	_validate_consistency()
 
@@ -430,6 +433,13 @@ func _apply_order_state_compatibility() -> void:
 		order_states[current_order_id] = GameStateModel.OrderStatus.ACCEPTED
 
 
+func _apply_station_state_compatibility() -> void:
+	station_state_level = maxi(
+		station_state_level,
+		StationStateRules.get_required_summary_level(station_upgrade_ids)
+	)
+
+
 func _validate_consistency() -> void:
 	if settings_reference.is_empty():
 		validation_error = "settings_reference cannot be empty."
@@ -504,6 +514,23 @@ func _validate_consistency() -> void:
 func _validate_schema_v2_consistency() -> void:
 	if station_state_level < 0:
 		validation_error = "station_state_level cannot be negative."
+		return
+	for station_upgrade_id: StringName in station_upgrade_ids:
+		if (
+			StationStateRules.is_station_state_candidate(station_upgrade_id)
+			and not StationStateRules.is_known_state_id(station_upgrade_id)
+		):
+			validation_error = (
+				"Unknown station state ID: %s." % station_upgrade_id
+			)
+			return
+	var required_station_level: int = (
+		StationStateRules.get_required_summary_level(station_upgrade_ids)
+	)
+	if station_state_level < required_station_level:
+		validation_error = (
+			"station_state_level is below its authoritative state IDs."
+		)
 		return
 	if (
 		not main_story_chapter.is_empty()

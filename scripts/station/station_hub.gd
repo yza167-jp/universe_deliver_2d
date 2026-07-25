@@ -34,6 +34,7 @@ var _architecture_layer: TileMapLayer
 var _camera: Camera2D
 var _player: StationPlayer
 var _layout_initialized: bool = false
+var _memorabilia_slot_states: Array[bool] = [false, false, false, false]
 
 
 func _ready() -> void:
@@ -188,6 +189,16 @@ func get_return_state_controller() -> StationReturnStateController:
 	) as StationReturnStateController
 
 
+func get_souvenir_wall_ui() -> SouvenirWallUI:
+	return get_node_or_null(
+		"SouvenirWallUILayer/SouvenirWallUI"
+	) as SouvenirWallUI
+
+
+func get_station_state_presenter() -> StationStatePresenter:
+	return get_node_or_null("StationStatePresenter") as StationStatePresenter
+
+
 func get_interactables() -> Array[Interactable2D]:
 	var interactables: Array[Interactable2D] = []
 	var interaction_root: Node = get_node_or_null("Interactables")
@@ -245,6 +256,19 @@ func get_feature_visual_rect(feature_id: StringName) -> Rect2:
 		&"memorabilia_wall":
 			feature_size = Vector2(112.0, 56.0)
 	return Rect2(anchor.position - feature_size * 0.5, feature_size)
+
+
+func set_memorabilia_slot_states(slot_states: Array[bool]) -> void:
+	_memorabilia_slot_states = slot_states.duplicate()
+	if _memorabilia_slot_states.is_empty():
+		_memorabilia_slot_states = [false, false, false, false]
+	if _layout_initialized:
+		_localize_feature_labels()
+	queue_redraw()
+
+
+func get_memorabilia_slot_states() -> Array[bool]:
+	return _memorabilia_slot_states.duplicate()
 
 
 func _draw() -> void:
@@ -376,17 +400,28 @@ func _draw_rest_area(rect: Rect2) -> void:
 func _draw_memorabilia_wall(rect: Rect2) -> void:
 	draw_rect(rect, WARM_STATION_DARK.lightened(0.1), true)
 	draw_rect(rect, MUTED_TEXT, false, 3.0)
-	for row: int in 2:
-		for column: int in 4:
-			var frame_rect: Rect2 = Rect2(
-				rect.position + Vector2(9.0 + float(column * 25), 8.0 + float(row * 23)),
-				Vector2(18.0, 16.0)
-			)
-			var frame_color: Color = COMPANY_CREAM.darkened(0.48)
-			if row == 0 and column == 0:
-				frame_color = FRIENDLY_CYAN
-			draw_rect(frame_rect, DEEP_SPACE, true)
-			draw_rect(frame_rect, frame_color, false, 2.0)
+	var slot_count: int = maxi(_memorabilia_slot_states.size(), 4)
+	var column_count: int = 4
+	var row_count: int = ceili(float(slot_count) / float(column_count))
+	var slot_height: float = 30.0 if row_count == 1 else 16.0
+	for slot_index: int in slot_count:
+		var row: int = slot_index / column_count
+		var column: int = slot_index % column_count
+		var frame_rect: Rect2 = Rect2(
+			rect.position + Vector2(
+				9.0 + float(column * 25),
+				8.0 + float(row * 23)
+			),
+			Vector2(18.0, slot_height)
+		)
+		var frame_color: Color = COMPANY_CREAM.darkened(0.48)
+		if (
+			slot_index < _memorabilia_slot_states.size()
+			and _memorabilia_slot_states[slot_index]
+		):
+			frame_color = FRIENDLY_CYAN
+		draw_rect(frame_rect, DEEP_SPACE, true)
+		draw_rect(frame_rect, frame_color, false, 2.0)
 
 
 func _draw_entrance_marker() -> void:
@@ -412,18 +447,24 @@ func _localize_feature_labels() -> void:
 	_set_label_text("FeatureLabels/WorkbenchLabel", "UI_STATION_WORKBENCH")
 	_set_label_text("FeatureLabels/CockpitEntryLabel", "UI_STATION_COCKPIT_ENTRY")
 	_set_label_text("FeatureLabels/LaoPiRestLabel", "UI_STATION_LAO_PI_REST")
-	var memorabilia_key: String = "UI_STATION_MEMORABILIA_WALL"
-	var game_state: GameStateModel
-	if is_inside_tree():
-		game_state = get_node_or_null("/root/GameState") as GameStateModel
-	if (
-		game_state != null
-		and game_state.has_station_upgrade(
-			M0ProgressIds.STATION_UPGRADE_FIRST_DELIVERY_DISPLAY
-		)
-	):
-		memorabilia_key = "UI_STATION_MEMORABILIA_WALL_FILLED"
-	_set_label_text("FeatureLabels/MemorabiliaLabel", memorabilia_key)
+	var acquired_count: int = 0
+	for is_acquired: bool in _memorabilia_slot_states:
+		if is_acquired:
+			acquired_count += 1
+	var memorabilia_label: Label = get_node_or_null(
+		"FeatureLabels/MemorabiliaLabel"
+	) as Label
+	if memorabilia_label != null:
+		if acquired_count <= 0:
+			memorabilia_label.text = tr("UI_STATION_MEMORABILIA_WALL")
+		elif acquired_count == 1 and _memorabilia_slot_states[0]:
+			memorabilia_label.text = tr(
+				"UI_STATION_MEMORABILIA_WALL_FILLED"
+			)
+		else:
+			memorabilia_label.text = tr(
+				"UI_STATION_MEMORABILIA_WALL_COUNT_FORMAT"
+			) % [acquired_count, _memorabilia_slot_states.size()]
 	_set_label_text("FeatureLabels/EntranceLabel", "UI_STATION_ENTRANCE")
 
 

@@ -29,7 +29,9 @@ func _test_v2_round_trip(failures: Array[String]) -> void:
 	source.read_dialogue_ids[&"dialogue_test/line_02"] = true
 	source.completed_order_ids[&"order_orientation"] = true
 	source.credits = 97
-	source.station_upgrade_ids[&"station_upgrade_archive_terminal"] = true
+	source.station_upgrade_ids[
+		StationStateRules.ARCHIVE_TERMINAL_ID
+	] = true
 	source.departure_confirmed = true
 	source.travel_state = GameStateModel.TravelState.CRUISE
 	source.travel_destination_id = &"planet_red_sand"

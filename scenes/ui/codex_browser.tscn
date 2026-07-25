@@ -1,0 +1,220 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/codex_browser_ui.gd" id="1_ui"]
+[ext_resource type="Resource" path="res://data/m1_data_registry.tres" id="2_registry"]
+
+[sub_resource type="SystemFont" id="SystemFontCodex"]
+font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
+allow_system_fallback = true
+
+[sub_resource type="Theme" id="ThemeCodex"]
+default_font = SubResource("SystemFontCodex")
+
+[sub_resource type="StyleBoxFlat" id="StyleCodexPanel"]
+bg_color = Color(0.0313726, 0.0666667, 0.121569, 0.99)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.466667, 0.788235, 0.768627, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleCodexSection"]
+bg_color = Color(0.0784314, 0.164706, 0.270588, 0.72)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.603922, 0.654902, 0.709804, 0.55)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="CodexBrowserUI" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+theme = SubResource("ThemeCodex")
+script = ExtResource("1_ui")
+data_registry = ExtResource("2_registry")
+
+[node name="Dimmer" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.0156863, 0.027451, 0.0470588, 0.78)
+
+[node name="CodexPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 10.0
+offset_right = -12.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleCodexPanel")
+
+[node name="Margin" type="MarginContainer" parent="CodexPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="Content" type="VBoxContainer" parent="CodexPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Header" type="HBoxContainer" parent="CodexPanel/Margin/Content"]
+custom_minimum_size = Vector2(0, 26)
+layout_mode = 2
+
+[node name="CodexTitleLabel" type="Label" parent="CodexPanel/Margin/Content/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
+theme_override_font_sizes/font_size = 18
+text = "UI_CODEX_TITLE"
+
+[node name="HeaderSpacer" type="Control" parent="CodexPanel/Margin/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SummaryLabel" type="Label" parent="CodexPanel/Margin/Content/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.654902, 0.709804, 1)
+theme_override_font_sizes/font_size = 11
+text = "UI_CODEX_ENTRY_COUNT_FORMAT"
+vertical_alignment = 1
+
+[node name="CategoryRow" type="HBoxContainer" parent="CodexPanel/Margin/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Body" type="HBoxContainer" parent="CodexPanel/Margin/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="EntryPanel" type="PanelContainer" parent="CodexPanel/Margin/Content/Body"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleCodexSection")
+
+[node name="Margin" type="MarginContainer" parent="CodexPanel/Margin/Content/Body/EntryPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="Content" type="VBoxContainer" parent="CodexPanel/Margin/Content/Body/EntryPanel/Margin"]
+layout_mode = 2
+
+[node name="EntryScroll" type="ScrollContainer" parent="CodexPanel/Margin/Content/Body/EntryPanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="EntryList" type="VBoxContainer" parent="CodexPanel/Margin/Content/Body/EntryPanel/Margin/Content/EntryScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="EmptyLabel" type="Label" parent="CodexPanel/Margin/Content/Body/EntryPanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.654902, 0.709804, 1)
+theme_override_font_sizes/font_size = 12
+text = "UI_CODEX_CATEGORY_EMPTY"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="DetailPanel" type="PanelContainer" parent="CodexPanel/Margin/Content/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleCodexSection")
+
+[node name="Margin" type="MarginContainer" parent="CodexPanel/Margin/Content/Body/DetailPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="Content" type="VBoxContainer" parent="CodexPanel/Margin/Content/Body/DetailPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DetailTitleLabel" type="Label" parent="CodexPanel/Margin/Content/Body/DetailPanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
+theme_override_font_sizes/font_size = 19
+text = "UI_CODEX_NO_SELECTION_TITLE"
+autowrap_mode = 2
+
+[node name="DetailStatusLabel" type="Label" parent="CodexPanel/Margin/Content/Body/DetailPanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
+theme_override_font_sizes/font_size = 12
+text = "UI_CODEX_NO_SELECTION_STATUS"
+
+[node name="DetailScroll" type="ScrollContainer" parent="CodexPanel/Margin/Content/Body/DetailPanel/Margin/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="DetailDescriptionLabel" type="Label" parent="CodexPanel/Margin/Content/Body/DetailPanel/Margin/Content/DetailScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 13
+text = "UI_CODEX_NO_SELECTION_DESCRIPTION"
+autowrap_mode = 2
+
+[node name="Footer" type="HBoxContainer" parent="CodexPanel/Margin/Content"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+
+[node name="FooterHint" type="Label" parent="CodexPanel/Margin/Content/Footer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.603922, 0.654902, 0.709804, 1)
+theme_override_font_sizes/font_size = 11
+text = "UI_CODEX_NAV_HINT"
+vertical_alignment = 1
+
+[node name="CloseButton" type="Button" parent="CodexPanel/Margin/Content/Footer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(88, 32)
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "UI_CODEX_CLOSE"

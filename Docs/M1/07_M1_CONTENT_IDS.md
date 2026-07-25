@@ -136,3 +136,23 @@
 
 赤砂回访另登记 `codex_cargo_relay_pattern_shielding_materials`。所有新增条目默认在
 未解锁时隐藏。
+
+T-106 查询约定：
+
+- 图鉴纪念品 ID `codex_souvenir_old_relay_plaque` 与物理纪念品
+  `souvenir_old_relay_plaque` 在浏览器中只生成一条可读记录。
+- 纪念品墙按本节四个 `souvenir_*` 在注册表中的顺序生成四个槽位；未获得槽位
+  不显示候选名称或说明。
+- M0 首单当前结算与 v1→v2 迁移都补齐旧中继铭牌，但去重后始终只有一份。
+
+## 站点状态
+
+设施状态使用以下精确稳定 ID：
+
+- `station_state_archive_terminal`
+- `station_state_ecology_corner`
+- `station_state_relay_observatory`
+
+M0 既有 `station_upgrade_first_delivery_display` 继续只代表首单纪念品展示，不重命名
+为新的 M1 设施状态。`station_upgrade_ids` 决定各设施根节点是否启用；
+`station_state_level` 只记录最高摘要等级。

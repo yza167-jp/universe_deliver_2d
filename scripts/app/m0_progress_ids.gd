@@ -13,3 +13,7 @@ const STORY_RETURN_DIALOGUE_COMPLETED: StringName = (
 const STATION_UPGRADE_FIRST_DELIVERY_DISPLAY: StringName = (
 	&"station_upgrade_first_delivery_display"
 )
+const CODEX_PLANET_RED_SAND: StringName = &"codex_planet_red_sand"
+const CODEX_CHARACTER_IYA: StringName = &"codex_character_iya"
+const CODEX_RELAY_PLAQUE: StringName = &"codex_souvenir_old_relay_plaque"
+const SOUVENIR_RELAY_PLAQUE: StringName = &"souvenir_old_relay_plaque"

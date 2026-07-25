@@ -115,11 +115,17 @@ module_crosswind_stabilizer
 ### 站点状态
 
 ```text
-station_state_m0_first_delivery
+station_upgrade_first_delivery_display   # M0 既有展示解锁，继续保留
 station_state_archive_terminal
 station_state_ecology_corner
 station_state_relay_observatory
 ```
+
+三个 `station_state_*` ID 在 `station_upgrade_ids` 中是设施功能解锁的权威记录。
+`station_state_level` 是它们与 M0 首单展示状态的单调摘要：读取时只允许根据权威 ID
+向上补齐，不能由较高等级反向生成缺失 ID，也不能用于提前显示设施。未知
+`station_state_*` ID 必须拒绝；加载已验证存档只发出运行时恢复通知，不重放设施
+解锁事件。
 
 ### M0 兼容与既有图鉴
 
@@ -152,6 +158,10 @@ souvenir_ids includes souvenir_old_relay_plaque when station upgrade exists
 station_state_level >= 1
 last_stable_station_state = station_after_first_delivery
 ```
+
+当前 M0 首单结算也在同一次持久化变更中补齐上述三条图鉴与一件纪念品；冻结的
+`m0_data_registry.tres` 和首单 Resource 仍保持原 M0 奖励合同。迁移、当前结算与
+再次保存都使用去重写入，不会生成第二份铭牌。
 
 白噪星不能因迁移直接解锁；必须完成赤砂回访并取得屏蔽罩。
 

@@ -10,6 +10,7 @@ signal departure_readiness_changed(confirmed: bool)
 signal travel_state_changed(state: TravelState, destination_id: StringName)
 signal progress_changed(credits: int)
 signal persistent_state_changed
+signal station_state_unlocked(state_id: StringName, summary_level: int)
 
 enum OrderStatus {
 	AVAILABLE,
@@ -619,7 +620,8 @@ func complete_order(
 		if not additional_flag.is_empty():
 			story_flags[additional_flag] = true
 	if not station_upgrade_id.is_empty():
-		station_upgrade_ids[station_upgrade_id] = true
+		_record_station_upgrade(station_upgrade_id)
+	_apply_m0_first_delivery_collection_compatibility(station_upgrade_id)
 	order_states[order.id] = OrderStatus.COMPLETED
 	_clear_active_order_context()
 	order_status_changed.emit(order.id, OrderStatus.COMPLETED)
@@ -782,6 +784,37 @@ func get_credits() -> int:
 
 func has_station_upgrade(upgrade_id: StringName) -> bool:
 	return not upgrade_id.is_empty() and station_upgrade_ids.get(upgrade_id, false)
+
+
+func has_station_state(state_id: StringName) -> bool:
+	return (
+		StationStateRules.is_known_state_id(state_id)
+		and has_station_upgrade(state_id)
+	)
+
+
+func unlock_station_state(state_id: StringName) -> ProgressChangeResult:
+	var previous_level: int = station_state_level
+	if not StationStateRules.is_known_state_id(state_id):
+		return ProgressChangeResult.rejected(
+			StationStateRules.REASON_INVALID_STATION_STATE,
+			previous_level,
+			previous_level
+		)
+	if has_station_state(state_id):
+		return ProgressChangeResult.accepted(
+			false,
+			previous_level,
+			station_state_level,
+			M1ProgressRules.REASON_ALREADY_PRESENT
+		)
+	_record_station_upgrade(state_id)
+	persistent_state_changed.emit()
+	return ProgressChangeResult.accepted(
+		true,
+		previous_level,
+		station_state_level
+	)
 
 
 func get_active_order_run_state() -> OrderRunState:
@@ -1064,6 +1097,38 @@ func _store_planet_relation(planet_id: StringName, value: int) -> void:
 		planet_relation_values.erase(planet_id)
 	else:
 		planet_relation_values[planet_id] = value
+
+
+func _record_station_upgrade(upgrade_id: StringName) -> bool:
+	if upgrade_id.is_empty() or station_upgrade_ids.get(upgrade_id, false):
+		return false
+	station_upgrade_ids[upgrade_id] = true
+	station_state_level = maxi(
+		station_state_level,
+		StationStateRules.get_required_summary_level(station_upgrade_ids)
+	)
+	if StationStateRules.is_known_state_id(upgrade_id):
+		station_state_unlocked.emit(upgrade_id, station_state_level)
+	return true
+
+
+func _apply_m0_first_delivery_collection_compatibility(
+	station_upgrade_id: StringName
+) -> void:
+	if (
+		station_upgrade_id
+		!= M0ProgressIds.STATION_UPGRADE_FIRST_DELIVERY_DISPLAY
+	):
+		return
+	for entry_id: StringName in [
+		M0ProgressIds.CODEX_PLANET_RED_SAND,
+		M0ProgressIds.CODEX_CHARACTER_IYA,
+		M0ProgressIds.CODEX_RELAY_PLAQUE,
+	]:
+		if not codex_entry_ids.has(entry_id):
+			codex_entry_ids.append(entry_id)
+	if not souvenir_ids.has(M0ProgressIds.SOUVENIR_RELAY_PLAQUE):
+		souvenir_ids.append(M0ProgressIds.SOUVENIR_RELAY_PLAQUE)
 
 
 func _get_dialogue_read_id(sequence_id: StringName, line_id: StringName) -> StringName:
