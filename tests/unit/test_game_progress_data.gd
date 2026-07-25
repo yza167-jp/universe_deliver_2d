@@ -404,6 +404,50 @@ func _test_collections_and_dictionaries_are_validated(
 		failures
 	)
 
+	var out_of_range_relation: GameProgressData = GameProgressData.from_dictionary({
+		"schema_version": 2,
+		"game_progress": {
+			"planet_relation_values": {"planet_red_sand": 4},
+		},
+	})
+	expect_true(
+		not out_of_range_relation.is_valid()
+		and out_of_range_relation.validation_error.contains(
+			"planet_relation_values"
+		),
+		"Persisted relations must stay inside the M1 bounded range.",
+		failures
+	)
+
+	var invalid_chapter: GameProgressData = GameProgressData.from_dictionary({
+		"schema_version": 2,
+		"game_progress": {
+			"main_story_chapter": "chapter_unknown",
+		},
+	})
+	var invalid_planet: GameProgressData = GameProgressData.from_dictionary({
+		"schema_version": 2,
+		"game_progress": {
+			"unlocked_planet_ids": ["planet_unknown"],
+		},
+	})
+	var invalid_permission: GameProgressData = GameProgressData.from_dictionary({
+		"schema_version": 2,
+		"game_progress": {
+			"planet_permission_ids": ["permission_unknown"],
+		},
+	})
+	expect_true(
+		not invalid_chapter.is_valid()
+		and invalid_chapter.validation_error.contains("main_story_chapter")
+		and not invalid_planet.is_valid()
+		and invalid_planet.validation_error.contains("planet")
+		and not invalid_permission.is_valid()
+		and invalid_permission.validation_error.contains("permission"),
+		"Schema v2 must reject unknown chapter, planet, and permission IDs.",
+		failures
+	)
+
 	var invalid_revisit: GameProgressData = GameProgressData.from_dictionary({
 		"schema_version": 2,
 		"game_progress": {

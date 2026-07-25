@@ -6,11 +6,15 @@ const TEST_BACKUP_PATH: String = "user://t052_save_service.backup.json"
 const TEST_REJECTED_PATH: String = "user://t052_save_service.invalid.json"
 const SETTINGS_SENTINEL_PATH: String = "user://t052_settings_sentinel.cfg"
 
+var _persistent_change_count: int = 0
+
 
 func run() -> Array[String]:
 	var failures: Array[String] = []
 	_remove_test_files()
 	_test_safe_write_and_backup_recovery(failures)
+	_remove_test_files()
+	_test_m1_runtime_round_trip_without_reward_replay(failures)
 	_remove_test_files()
 	_test_v1_migration_waits_for_safe_save(failures)
 	_remove_test_files()
@@ -79,6 +83,104 @@ func _test_safe_write_and_backup_recovery(failures: Array[String]) -> void:
 	expect_true(
 		_read_text(TEST_SAVE_PATH) == "{not valid json",
 		"Backup recovery must not silently overwrite the rejected primary.",
+		failures
+	)
+	service.free()
+	game_state.free()
+
+
+func _test_m1_runtime_round_trip_without_reward_replay(
+	failures: Array[String]
+) -> void:
+	var game_state: GameStateModel = GameStateModel.new()
+	var service: SaveServiceModel = _create_service(game_state)
+	game_state.main_story_chapter = M1ProgressRules.CHAPTER_M1_RED_SAND_REVISIT
+	game_state.unlocked_planet_ids = [M1ProgressRules.PLANET_RED_SAND]
+	game_state.ship_upgrade_ids = [
+		M1ProgressRules.MODULE_HIGH_VOLTAGE_SHIELDING,
+	]
+	expect_true(
+		game_state.advance_main_story_chapter(
+			M1ProgressRules.CHAPTER_M1_WHITE_NOISE
+		).changed
+		and game_state.unlock_planet(
+			M1ProgressRules.PLANET_WHITE_NOISE
+		).changed
+		and game_state.change_planet_relation(
+			M1ProgressRules.PLANET_WHITE_NOISE,
+			2,
+			&"save_service_archive_choice"
+		).changed
+		and game_state.grant_permission(
+			M1ProgressRules.PERMISSION_WHITE_NOISE_ARCHIVE_ACCESS
+		).changed
+		and game_state.unlock_codex_entry(
+			&"codex_planet_white_noise"
+		).changed
+		and game_state.add_souvenir(
+			&"souvenir_white_noise_memory_fragment"
+		).changed
+		and game_state.set_revisit_state(
+			M1ProgressRules.PLANET_RED_SAND,
+			&"revisit_red_sand_completed"
+		).changed,
+		"M1 runtime APIs must establish a complete save fixture.",
+		failures
+	)
+	expect_true(service.save_progress(), service.last_error, failures)
+
+	game_state.reset_runtime_state()
+	_persistent_change_count = 0
+	game_state.persistent_state_changed.connect(_on_persistent_state_changed)
+	expect_true(service.load_progress(), service.last_error, failures)
+	expect_true(
+		game_state.get_main_story_chapter()
+		== M1ProgressRules.CHAPTER_M1_WHITE_NOISE
+		and game_state.is_planet_unlocked(M1ProgressRules.PLANET_WHITE_NOISE)
+		and game_state.get_planet_relation(
+			M1ProgressRules.PLANET_WHITE_NOISE
+		) == 2
+		and game_state.has_permission(
+			M1ProgressRules.PERMISSION_WHITE_NOISE_ARCHIVE_ACCESS
+		)
+		and game_state.has_codex_entry(&"codex_planet_white_noise")
+		and game_state.has_souvenir(
+			&"souvenir_white_noise_memory_fragment"
+		)
+		and game_state.get_revisit_state(
+			M1ProgressRules.PLANET_RED_SAND
+		) == &"revisit_red_sand_completed"
+		and _persistent_change_count == 0,
+		"SaveService must restore all M1 fields without replaying progress events.",
+		failures
+	)
+
+	var repeated_relation: ProgressChangeResult = game_state.change_planet_relation(
+		M1ProgressRules.PLANET_WHITE_NOISE,
+		2,
+		&"save_service_archive_choice"
+	)
+	var repeated_permission: ProgressChangeResult = game_state.grant_permission(
+		M1ProgressRules.PERMISSION_WHITE_NOISE_ARCHIVE_ACCESS
+	)
+	var repeated_codex: ProgressChangeResult = game_state.unlock_codex_entry(
+		&"codex_planet_white_noise"
+	)
+	var repeated_souvenir: ProgressChangeResult = game_state.add_souvenir(
+		&"souvenir_white_noise_memory_fragment"
+	)
+	var repeated_revisit: ProgressChangeResult = game_state.set_revisit_state(
+		M1ProgressRules.PLANET_RED_SAND,
+		&"revisit_red_sand_completed"
+	)
+	expect_true(
+		not repeated_relation.changed
+		and not repeated_permission.changed
+		and not repeated_codex.changed
+		and not repeated_souvenir.changed
+		and not repeated_revisit.changed
+		and _persistent_change_count == 0,
+		"Reloaded rewards and collection events must remain idempotent.",
 		failures
 	)
 	service.free()
@@ -413,3 +515,7 @@ func _remove_test_files() -> void:
 	]:
 		if FileAccess.file_exists(path):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+
+
+func _on_persistent_state_changed() -> void:
+	_persistent_change_count += 1

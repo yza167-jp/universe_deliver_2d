@@ -5,8 +5,10 @@ const CURRENT_SCHEMA_VERSION: int = 2
 const DEFAULT_SETTINGS_REFERENCE: StringName = &"local_settings"
 const LEGACY_RED_SAND_ORDER_ID: StringName = &"order_red_sand_m0"
 const CANONICAL_RED_SAND_ORDER_ID: StringName = &"order_red_sand_cooling_core"
-const RED_SAND_PLANET_ID: StringName = &"planet_red_sand"
-const RED_SAND_REVISIT_CHAPTER_ID: StringName = &"chapter_m1_red_sand_revisit"
+const RED_SAND_PLANET_ID: StringName = M1ProgressRules.PLANET_RED_SAND
+const RED_SAND_REVISIT_CHAPTER_ID: StringName = (
+	M1ProgressRules.CHAPTER_M1_RED_SAND_REVISIT
+)
 const FIRST_DELIVERY_STATION_STATE_ID: StringName = &"station_after_first_delivery"
 const RED_SAND_CODEX_ENTRY_ID: StringName = &"codex_planet_red_sand"
 const IYA_CODEX_ENTRY_ID: StringName = &"codex_character_iya"
@@ -446,14 +448,36 @@ func _validate_schema_v2_consistency() -> void:
 	if station_state_level < 0:
 		validation_error = "station_state_level cannot be negative."
 		return
+	if (
+		not main_story_chapter.is_empty()
+		and not M1ProgressRules.is_known_chapter(main_story_chapter)
+	):
+		validation_error = "Unknown main_story_chapter: %s." % main_story_chapter
+		return
 	if not _validate_id_array(unlocked_planet_ids, "unlocked_planet_ids"):
 		return
+	for planet_id: StringName in unlocked_planet_ids:
+		if not M1ProgressRules.is_known_planet(planet_id):
+			validation_error = "Unknown unlocked planet: %s." % planet_id
+			return
 	if not _validate_id_array(planet_permission_ids, "planet_permission_ids"):
 		return
+	for permission_id: StringName in planet_permission_ids:
+		if not M1ProgressRules.is_known_permission(permission_id):
+			validation_error = "Unknown planet permission: %s." % permission_id
+			return
 	if not _validate_id_array(codex_entry_ids, "codex_entry_ids"):
 		return
+	for codex_entry_id: StringName in codex_entry_ids:
+		if not M1ProgressRules.is_valid_codex_entry_id(codex_entry_id):
+			validation_error = "Invalid codex entry ID: %s." % codex_entry_id
+			return
 	if not _validate_id_array(souvenir_ids, "souvenir_ids"):
 		return
+	for souvenir_id: StringName in souvenir_ids:
+		if not M1ProgressRules.is_valid_souvenir_id(souvenir_id):
+			validation_error = "Invalid souvenir ID: %s." % souvenir_id
+			return
 	if not _validate_id_array(
 		completed_side_order_ids,
 		"completed_side_order_ids"
@@ -464,12 +488,26 @@ func _validate_schema_v2_consistency() -> void:
 	if not _validate_id_array(ship_upgrade_ids, "ship_upgrade_ids"):
 		return
 	for relation_id: StringName in planet_relation_values:
-		if relation_id.is_empty():
-			validation_error = "planet_relation_values cannot contain an empty key."
+		var relation_value: int = planet_relation_values.get(relation_id, 0)
+		if (
+			not M1ProgressRules.is_known_planet(relation_id)
+			or relation_value < M1ProgressRules.RELATION_MINIMUM
+			or relation_value > M1ProgressRules.RELATION_MAXIMUM
+		):
+			validation_error = (
+				"planet_relation_values must use known planets and the supported range."
+			)
 			return
 	for revisit_id: StringName in revisit_state:
-		if revisit_id.is_empty() or revisit_state.get(revisit_id, &"").is_empty():
-			validation_error = "revisit_state keys and values must be non-empty stable IDs."
+		if (
+			not M1ProgressRules.is_known_planet(revisit_id)
+			or not M1ProgressRules.is_valid_revisit_state_id(
+				revisit_state.get(revisit_id, &"")
+			)
+		):
+			validation_error = (
+				"revisit_state must use known planets and stable state IDs."
+			)
 			return
 	for flag_id: StringName in demo_ending_flags:
 		if flag_id.is_empty() or not _is_supported_demo_ending_flag_value(

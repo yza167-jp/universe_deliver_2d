@@ -262,6 +262,28 @@ computed_stats
 激光炮的兼容挂点，并新增 `shield_backup_power` 作为第二功能挂点；旧 v1 存档
 缺少后者时按空槽读取，不需要改变 schema。
 
+### 5.4 M1 多星球进度运行时合同
+
+`GameStateModel` 是章节、解锁、关系、许可、图鉴、纪念品和回访状态的唯一运行时
+入口；这些字段直接对应 schema v2，不建立第二份 Progress Manager 或存档副本。
+场景/UI 只能调用公开查询与变更方法，不能直接编辑存档 Dictionary。
+
+`M1ProgressRules` 只保存稳定 ID、章节顺序、关系范围和星球准入白名单，不持有玩家
+状态。主线按
+`M0 完成 → 赤砂回访 → 白噪 → 穹林 → 群潮 → Demo epilogue`
+逐个推进；跳级、倒退和未知 ID 均返回稳定原因 Key。星球规则统一读取当前章节、
+前序解锁、已取得或已安装模块、许可、剧情标记、已完成订单和可选白名单上下文。
+当前白噪星要求章节已到 `chapter_m1_white_noise`、赤砂星已解锁且拥有或安装
+`module_high_voltage_shielding`；穹林和群潮还要求各自前一颗星球已解锁。
+
+所有变更返回 `ProgressChangeResult(success, changed, reason_key, previous_value,
+current_value)`。只有 `changed = true` 时才发出一次 `persistent_state_changed`；
+重复章节、重复解锁、重复许可、重复收藏和重复回访状态均为成功但无变化的幂等
+结果。关系限定为 `-2…+3`，生产调用必须提供唯一事件 ID；已应用事件以
+`m1_relation_event/<planet>/<event>` 写入既有 `story_flags`，保证保存、加载后也
+不能重复增加。加载由 `GameProgressData.apply_to()` 直接恢复已验证字段，只发出
+`runtime_state_restored`，不重放奖励或持久化变更。
+
 ## 6. 数据定义
 
 使用自定义 Resource（`.tres`）作为 M0 首选，因为：
@@ -729,8 +751,10 @@ schema `0`（没有版本字段）的已知 M0 字段先迁移到 v1，并通过
 未完成档继续由既有 M0 字段决定进度，新增字段使用空集合、空 ID、空字典和等级 0。
 
 高于当前版本、类型错误、负数资源或不一致订单状态会被拒绝，不把部分数据写进
-`GameState`。读取旧档只执行内存迁移；成功继续并进入下一稳定节点后，安全写入才
-生成 v2 主档，同时由现有轮换流程保留原有效 v1 备份。
+`GameState`。schema v2 还验证章节、星球、许可为当前稳定白名单，关系只使用已知
+星球且位于 `-2…+3`，图鉴、纪念品与回访状态使用稳定英文 ID。读取旧档只执行
+内存迁移；成功继续并进入下一稳定节点后，安全写入才生成 v2 主档，同时由现有
+轮换流程保留原有效 v1 备份。
 
 ### 11.4 自动保存与继续入口
 

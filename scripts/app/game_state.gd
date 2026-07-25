@@ -120,6 +120,314 @@ func reset_runtime_state() -> void:
 	runtime_state_reset.emit()
 
 
+func get_main_story_chapter() -> StringName:
+	return main_story_chapter
+
+
+func has_reached_main_story_chapter(chapter_id: StringName) -> bool:
+	return M1ProgressRules.has_reached_chapter(main_story_chapter, chapter_id)
+
+
+func get_next_main_story_chapter() -> StringName:
+	var current_index: int = M1ProgressRules.get_chapter_index(main_story_chapter)
+	if current_index < 0 or current_index + 1 >= M1ProgressRules.CHAPTER_SEQUENCE.size():
+		return &""
+	return M1ProgressRules.CHAPTER_SEQUENCE[current_index + 1]
+
+
+func get_main_story_advance_reason(chapter_id: StringName) -> StringName:
+	return M1ProgressRules.get_chapter_advance_reason(main_story_chapter, chapter_id)
+
+
+func advance_main_story_chapter(chapter_id: StringName) -> ProgressChangeResult:
+	var previous_chapter: StringName = main_story_chapter
+	var reason: StringName = get_main_story_advance_reason(chapter_id)
+	if reason == M1ProgressRules.REASON_ALREADY_CURRENT:
+		return ProgressChangeResult.accepted(
+			false,
+			previous_chapter,
+			main_story_chapter,
+			reason
+		)
+	if not reason.is_empty():
+		return ProgressChangeResult.rejected(
+			reason,
+			previous_chapter,
+			main_story_chapter
+		)
+	main_story_chapter = chapter_id
+	persistent_state_changed.emit()
+	return ProgressChangeResult.accepted(
+		true,
+		previous_chapter,
+		main_story_chapter
+	)
+
+
+func is_planet_unlocked(planet_id: StringName) -> bool:
+	return (
+		M1ProgressRules.is_known_planet(planet_id)
+		and unlocked_planet_ids.has(planet_id)
+	)
+
+
+func get_planet_unlock_reason(
+	planet_id: StringName,
+	whitelist_context: Dictionary[StringName, bool] = {}
+) -> StringName:
+	if not M1ProgressRules.is_known_planet(planet_id):
+		return M1ProgressRules.REASON_INVALID_PLANET
+	if unlocked_planet_ids.has(planet_id):
+		return M1ProgressRules.REASON_ALREADY_UNLOCKED
+	return M1ProgressRules.evaluate_planet_unlock(
+		planet_id,
+		main_story_chapter,
+		unlocked_planet_ids,
+		ship_configuration,
+		ship_upgrade_ids,
+		planet_permission_ids,
+		story_flags,
+		completed_order_ids,
+		whitelist_context
+	)
+
+
+func can_unlock_planet(
+	planet_id: StringName,
+	whitelist_context: Dictionary[StringName, bool] = {}
+) -> bool:
+	var reason: StringName = get_planet_unlock_reason(
+		planet_id,
+		whitelist_context
+	)
+	return (
+		reason.is_empty()
+		or reason == M1ProgressRules.REASON_ALREADY_UNLOCKED
+	)
+
+
+func unlock_planet(
+	planet_id: StringName,
+	whitelist_context: Dictionary[StringName, bool] = {}
+) -> ProgressChangeResult:
+	var reason: StringName = get_planet_unlock_reason(
+		planet_id,
+		whitelist_context
+	)
+	if reason == M1ProgressRules.REASON_ALREADY_UNLOCKED:
+		return ProgressChangeResult.accepted(
+			false,
+			planet_id,
+			planet_id,
+			reason
+		)
+	if not reason.is_empty():
+		return ProgressChangeResult.rejected(reason, &"", &"")
+	unlocked_planet_ids.append(planet_id)
+	persistent_state_changed.emit()
+	return ProgressChangeResult.accepted(true, &"", planet_id)
+
+
+func get_planet_relation(planet_id: StringName) -> int:
+	if not M1ProgressRules.is_known_planet(planet_id):
+		return 0
+	return planet_relation_values.get(planet_id, 0)
+
+
+func has_applied_planet_relation_event(
+	planet_id: StringName,
+	event_id: StringName
+) -> bool:
+	if (
+		not M1ProgressRules.is_known_planet(planet_id)
+		or not M1ProgressRules.is_stable_id(event_id)
+	):
+		return false
+	return story_flags.get(
+		M1ProgressRules.get_relation_event_flag(planet_id, event_id),
+		false
+	)
+
+
+func change_planet_relation(
+	planet_id: StringName,
+	delta: int,
+	unique_event_id: StringName
+) -> ProgressChangeResult:
+	var previous_value: int = get_planet_relation(planet_id)
+	if not M1ProgressRules.is_known_planet(planet_id):
+		return ProgressChangeResult.rejected(
+			M1ProgressRules.REASON_INVALID_PLANET,
+			previous_value,
+			previous_value
+		)
+	if not M1ProgressRules.is_stable_id(unique_event_id):
+		return ProgressChangeResult.rejected(
+			M1ProgressRules.REASON_INVALID_RELATION_EVENT,
+			previous_value,
+			previous_value
+		)
+	if has_applied_planet_relation_event(planet_id, unique_event_id):
+		return ProgressChangeResult.accepted(
+			false,
+			previous_value,
+			previous_value,
+			M1ProgressRules.REASON_ALREADY_APPLIED
+		)
+	var next_value: int = M1ProgressRules.clamp_relation(previous_value + delta)
+	if next_value == previous_value:
+		return ProgressChangeResult.accepted(
+			false,
+			previous_value,
+			previous_value,
+			M1ProgressRules.REASON_RELATION_AT_LIMIT
+		)
+	_store_planet_relation(planet_id, next_value)
+	story_flags[
+		M1ProgressRules.get_relation_event_flag(planet_id, unique_event_id)
+	] = true
+	persistent_state_changed.emit()
+	return ProgressChangeResult.accepted(true, previous_value, next_value)
+
+
+## Reserved for validated migration, debug setup, and bounded internal corrections.
+func set_planet_relation(
+	planet_id: StringName,
+	value: int
+) -> ProgressChangeResult:
+	var previous_value: int = get_planet_relation(planet_id)
+	if not M1ProgressRules.is_known_planet(planet_id):
+		return ProgressChangeResult.rejected(
+			M1ProgressRules.REASON_INVALID_PLANET,
+			previous_value,
+			previous_value
+		)
+	var next_value: int = M1ProgressRules.clamp_relation(value)
+	if next_value == previous_value:
+		return ProgressChangeResult.accepted(
+			false,
+			previous_value,
+			previous_value,
+			M1ProgressRules.REASON_ALREADY_CURRENT
+		)
+	_store_planet_relation(planet_id, next_value)
+	persistent_state_changed.emit()
+	return ProgressChangeResult.accepted(true, previous_value, next_value)
+
+
+func has_permission(permission_id: StringName) -> bool:
+	return (
+		M1ProgressRules.is_known_permission(permission_id)
+		and planet_permission_ids.has(permission_id)
+	)
+
+
+func grant_permission(permission_id: StringName) -> ProgressChangeResult:
+	if not M1ProgressRules.is_known_permission(permission_id):
+		return ProgressChangeResult.rejected(
+			M1ProgressRules.REASON_INVALID_PERMISSION,
+			&"",
+			&""
+		)
+	if planet_permission_ids.has(permission_id):
+		return ProgressChangeResult.accepted(
+			false,
+			permission_id,
+			permission_id,
+			M1ProgressRules.REASON_ALREADY_GRANTED
+		)
+	planet_permission_ids.append(permission_id)
+	persistent_state_changed.emit()
+	return ProgressChangeResult.accepted(true, &"", permission_id)
+
+
+func has_codex_entry(entry_id: StringName) -> bool:
+	return (
+		M1ProgressRules.is_valid_codex_entry_id(entry_id)
+		and codex_entry_ids.has(entry_id)
+	)
+
+
+func unlock_codex_entry(entry_id: StringName) -> ProgressChangeResult:
+	if not M1ProgressRules.is_valid_codex_entry_id(entry_id):
+		return ProgressChangeResult.rejected(
+			M1ProgressRules.REASON_INVALID_CODEX_ENTRY,
+			&"",
+			&""
+		)
+	if codex_entry_ids.has(entry_id):
+		return ProgressChangeResult.accepted(
+			false,
+			entry_id,
+			entry_id,
+			M1ProgressRules.REASON_ALREADY_PRESENT
+		)
+	codex_entry_ids.append(entry_id)
+	persistent_state_changed.emit()
+	return ProgressChangeResult.accepted(true, &"", entry_id)
+
+
+func has_souvenir(souvenir_id: StringName) -> bool:
+	return (
+		M1ProgressRules.is_valid_souvenir_id(souvenir_id)
+		and souvenir_ids.has(souvenir_id)
+	)
+
+
+func add_souvenir(souvenir_id: StringName) -> ProgressChangeResult:
+	if not M1ProgressRules.is_valid_souvenir_id(souvenir_id):
+		return ProgressChangeResult.rejected(
+			M1ProgressRules.REASON_INVALID_SOUVENIR,
+			&"",
+			&""
+		)
+	if souvenir_ids.has(souvenir_id):
+		return ProgressChangeResult.accepted(
+			false,
+			souvenir_id,
+			souvenir_id,
+			M1ProgressRules.REASON_ALREADY_PRESENT
+		)
+	souvenir_ids.append(souvenir_id)
+	persistent_state_changed.emit()
+	return ProgressChangeResult.accepted(true, &"", souvenir_id)
+
+
+func get_revisit_state(planet_id: StringName) -> StringName:
+	if not M1ProgressRules.is_known_planet(planet_id):
+		return &""
+	return revisit_state.get(planet_id, &"")
+
+
+func set_revisit_state(
+	planet_id: StringName,
+	state_id: StringName
+) -> ProgressChangeResult:
+	var previous_state: StringName = get_revisit_state(planet_id)
+	if not M1ProgressRules.is_known_planet(planet_id):
+		return ProgressChangeResult.rejected(
+			M1ProgressRules.REASON_INVALID_PLANET,
+			previous_state,
+			previous_state
+		)
+	if not M1ProgressRules.is_valid_revisit_state_id(state_id):
+		return ProgressChangeResult.rejected(
+			M1ProgressRules.REASON_INVALID_REVISIT_STATE,
+			previous_state,
+			previous_state
+		)
+	if previous_state == state_id:
+		return ProgressChangeResult.accepted(
+			false,
+			previous_state,
+			previous_state,
+			M1ProgressRules.REASON_ALREADY_CURRENT
+		)
+	revisit_state[planet_id] = state_id
+	persistent_state_changed.emit()
+	return ProgressChangeResult.accepted(true, previous_state, state_id)
+
+
 func get_order_status(order_id: StringName) -> OrderStatus:
 	if has_completed_order(order_id):
 		return OrderStatus.COMPLETED
@@ -483,6 +791,13 @@ func mark_dialogue_line_read(sequence_id: StringName, line_id: StringName) -> vo
 
 func has_read_dialogue_line(sequence_id: StringName, line_id: StringName) -> bool:
 	return read_dialogue_ids.get(_get_dialogue_read_id(sequence_id, line_id), false)
+
+
+func _store_planet_relation(planet_id: StringName, value: int) -> void:
+	if value == 0:
+		planet_relation_values.erase(planet_id)
+	else:
+		planet_relation_values[planet_id] = value
 
 
 func _get_dialogue_read_id(sequence_id: StringName, line_id: StringName) -> StringName:
