@@ -8,6 +8,7 @@ signal input_binding_changed(action: StringName)
 const DEFAULT_SETTINGS_PATH: String = "user://settings.cfg"
 const SETTINGS_SECTION: String = "settings"
 const INPUT_SECTION: String = "input"
+const M1_DEBUG_ARGUMENT_PREFIX: String = "--m1-debug="
 
 const SLOW_MOTION_ASSIST: StringName = &"slow_motion_assist"
 const ROUTE_HINTS_ENABLED: StringName = &"route_hints_enabled"
@@ -34,15 +35,21 @@ const SUPPORTED_ACTIONS: Array[StringName] = [
 	&"flight_environment_cycle",
 	&"flight_assist_cycle",
 	&"flight_laser_toggle",
+	&"m1_debug_reset",
 	&"pause",
 ]
 
 var settings: LocalSettingsData = LocalSettingsData.new()
 var storage_path: String = DEFAULT_SETTINGS_PATH
 var last_error: String = ""
+var isolated_debug_session: bool = false
+var _storage_write_count: int = 0
 
 
 func _ready() -> void:
+	isolated_debug_session = should_isolate_debug_settings(
+		OS.get_cmdline_user_args()
+	)
 	if not load_settings():
 		push_warning("Local settings could not be loaded: %s" % last_error)
 
@@ -57,7 +64,7 @@ func load_settings() -> bool:
 	if load_error == ERR_FILE_NOT_FOUND:
 		_apply_runtime_settings()
 		settings_changed.emit()
-		return save_settings()
+		return true if isolated_debug_session else save_settings()
 	if load_error != OK:
 		last_error = "Could not load %s (error %d)." % [storage_path, load_error]
 		return false
@@ -67,21 +74,49 @@ func load_settings() -> bool:
 	_apply_runtime_settings()
 	settings_changed.emit()
 	if migrated_legacy_flight_lab_bindings:
-		return save_settings()
+		return true if isolated_debug_session else save_settings()
 	return true
 
 
 func save_settings() -> bool:
 	last_error = ""
+	if isolated_debug_session:
+		last_error = "Player settings are read-only during an M1 debug session."
+		return false
 	var config: ConfigFile = ConfigFile.new()
 	settings.sanitize()
 	settings.write_to_config(config, SETTINGS_SECTION)
 	_write_input_bindings(config)
+	_storage_write_count += 1
 	var save_error: Error = config.save(storage_path)
 	if save_error != OK:
 		last_error = "Could not save %s (error %d)." % [storage_path, save_error]
 		return false
 	return true
+
+
+static func should_isolate_debug_settings(
+	user_arguments: PackedStringArray
+) -> bool:
+	for argument: String in user_arguments:
+		if (
+			argument == "--m1-debug"
+			or argument.begins_with(M1_DEBUG_ARGUMENT_PREFIX)
+		):
+			return true
+	return false
+
+
+func set_isolated_debug_session(isolated: bool) -> void:
+	isolated_debug_session = isolated
+
+
+func get_storage_write_count() -> int:
+	return _storage_write_count
+
+
+func reset_storage_write_count() -> void:
+	_storage_write_count = 0
 
 
 func set_master_volume(value: float) -> bool:
@@ -361,6 +396,8 @@ static func _build_default_events(action: StringName) -> Array[InputEvent]:
 			events.append(_create_key_event(KEY_G, true))
 		&"flight_laser_toggle":
 			events.append(_create_key_event(KEY_L, true))
+		&"m1_debug_reset":
+			events.append(_create_key_event(KEY_F6))
 		&"pause":
 			events.append(_create_key_event(KEY_ESCAPE))
 	return events

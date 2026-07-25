@@ -1085,6 +1085,40 @@ M0 目标：M1 Max 本地运行稳定 60 FPS，并保留未来低配优化余量
 
 调试入口不得默认出现在普通玩家界面，也不得成为主流程必需条件。
 
+### 17.1 M1 隔离调试场景
+
+T-109 在既有 Lab 与赤砂直达参数之外增加统一入口：
+
+```text
+--m1-debug=<scenario_id>
+```
+
+`M1DebugScenarioCatalog` 集中声明 scenario 的章节、已解锁星球、目录焦点、
+可用/已安装模块、许可、关系、目标 Stage、目标场景和预览限制，并在应用前验证
+稳定 ID、章节对应的星球前缀、订单/星球引用、模块槽位和隔离夹具组合。
+`M1DebugScenarioController` 只通过通过校验的 `GameProgressData` 内存快照恢复基础
+状态；加急场景从正式 `REGISTERED_ONLY` 订单深拷贝一个独立的
+`debug_m1_express_order`，再通过 `GameStateModel.accept_order()` 接取。正式注册表
+及其订单、星球就绪状态始终不变。
+
+目录场景复用 `OrderTerminalUI` 并聚焦指定订单；低空投放和加急场景分别复用
+Delivery Lab 与 Flight Lab。持久 UI 只显示 scenario、章节、订单、星球和
+“自动存档已关闭”，不建立玩家可见调试菜单。`F6 / m1_debug_reset` 重新应用初始
+快照并重载目标场景，使运行时数据和场景夹具同时回到确定状态。
+
+带 `--m1-debug` 的进程在 `MainMenu` 第一次查询继续游戏前即进入隔离模式：
+
+- `SaveService` 关闭自动保存，并在任何正常存档读取、写入、新游戏或继续游戏操作
+  到达文件层前拒绝请求；
+- `SettingsService` 可以读取现有本机设置用于一致的显示/输入，但禁止写回、首次
+  创建或旧绑定迁移写入；
+- 调试状态只存在于当前进程，不使用第二个玩家存档，也不带入下次普通启动。
+
+保存迁移等验证继续使用测试专用临时路径。`scripts/check_m1_foundation.sh` 作为
+可独立运行的聚合入口，逐项标记 v2 迁移、多星球系统、目录导航、收藏与站点、
+低空投放、加急订单、六个 M1 调试启动和 M0 完整闭环；该入口由
+`scripts/check_project.sh` 调用。
+
 ## 18. 依赖策略
 
 初始第三方依赖为 0。

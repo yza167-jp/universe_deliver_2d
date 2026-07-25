@@ -24,6 +24,14 @@ func run() -> Array[String]:
 		"App scene must contain PersistentUI.",
 		failures
 	)
+	var m1_debug_status: M1DebugStatus = main_scene.get_node_or_null(
+		NodePath("PersistentUI/M1DebugStatus")
+	) as M1DebugStatus
+	expect_true(
+		m1_debug_status != null and not m1_debug_status.visible,
+		"Normal startup must keep the M1 debug status hidden.",
+		failures
+	)
 	expect_true(
 		main_scene.get_node_or_null(NodePath("TransitionLayer")) != null,
 		"App scene must contain TransitionLayer.",
@@ -78,6 +86,18 @@ func run() -> Array[String]:
 			PackedStringArray([UniverseDeliverApp.DEBUG_FLIGHT_LAB_ARGUMENT])
 		),
 		"Release builds must ignore the direct Flight Lab argument.",
+		failures
+	)
+	expect_true(
+		UniverseDeliverApp.should_start_in_m1_debug(
+			true,
+			PackedStringArray(["--m1-debug=red_sand_revisit"])
+		)
+		and not UniverseDeliverApp.should_start_in_m1_debug(
+			false,
+			PackedStringArray(["--m1-debug=red_sand_revisit"])
+		),
+		"M1 debug arguments must be explicit and debug-build-only.",
 		failures
 	)
 	expect_true(

@@ -103,6 +103,34 @@ M0 新游戏
 
 不要求每次人工重玩完整 M0，但自动回归必须保持。
 
+### M1 基础聚合回归入口
+
+T-109 起可单独运行：
+
+```bash
+GODOT_BIN="/Applications/Godot.app/Contents/MacOS/Godot" \
+  ./scripts/check_m1_foundation.sh
+```
+
+该脚本按子系统分别报告：类型化 M1 合同、v1→v2 迁移、多星球订单/导航、图鉴/
+纪念品/站点、低空投放、加急订单、M1 调试场景及 M0 完整闭环。它同时属于
+`./scripts/check_project.sh` 的必跑项，失败时保留具体子系统名称。
+
+开发构建可用以下入口直达内容：
+
+```bash
+"$GODOT_BIN" --path . --language zh_CN -- --m1-debug=red_sand_revisit
+"$GODOT_BIN" --path . --language zh_CN -- --m1-debug=white_noise_catalog
+"$GODOT_BIN" --path . --language zh_CN -- --m1-debug=canopy_catalog
+"$GODOT_BIN" --path . --language zh_CN -- --m1-debug=tidal_catalog
+"$GODOT_BIN" --path . --language zh_CN -- --m1-debug=low_altitude_drop
+"$GODOT_BIN" --path . --language zh_CN -- --m1-debug=express_order
+```
+
+这些入口不出现在普通菜单，不读写正常剧情存档，不写玩家设置。右侧紧凑状态框
+显示当前注入上下文；按 `F6` 将内存快照和目标场景一起重置。目录入口只能查看
+尚未落地的 `REGISTERED_ONLY` 内容，不能接取或出发。
+
 ### Level 4 — M1 Human Gate
 
 - Gate E / T-119。

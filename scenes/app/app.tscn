@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/app/app.gd" id="1_app"]
 [ext_resource type="PackedScene" path="res://scenes/narrative/dialogue_ui.tscn" id="2_dialogue_ui"]
 [ext_resource type="PackedScene" path="res://scenes/ui/debug_settings_panel.tscn" id="3_debug_settings"]
 [ext_resource type="PackedScene" path="res://scenes/ui/express_order_hud.tscn" id="4_express_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/m1_debug_status.tscn" id="5_m1_debug_status"]
 
 [node name="App" type="Control"]
 layout_mode = 3
@@ -29,6 +30,8 @@ layer = 10
 [node name="ExpressOrderHUD" parent="PersistentUI" instance=ExtResource("4_express_hud")]
 
 [node name="DialogueUI" parent="PersistentUI" instance=ExtResource("2_dialogue_ui")]
+
+[node name="M1DebugStatus" parent="PersistentUI" instance=ExtResource("5_m1_debug_status")]
 
 [node name="TransitionLayer" type="CanvasLayer" parent="."]
 layer = 50

@@ -238,6 +238,10 @@ run_step \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t108_express_order_smoke_runner.gd
 
 run_step \
+  "M1 foundation aggregate regression pack" \
+  env GODOT_BIN="${GODOT_EXECUTABLE}" "${PROJECT_ROOT}/scripts/check_m1_foundation.sh"
+
+run_step \
   "Gate A station-to-cockpit playable path smoke test" \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/station_gate_a_smoke_runner.gd
 

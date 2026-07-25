@@ -114,6 +114,10 @@ flight_laser_toggle={
 "deadzone": 0.5,
 "events": []
 }
+m1_debug_reset={
+"deadzone": 0.5,
+"events": []
+}
 pause={
 "deadzone": 0.5,
 "events": []

@@ -34,6 +34,8 @@ const ERROR_INVALID_SAVE: StringName = &"invalid_save"
 const ERROR_READ_FAILED: StringName = &"read_failed"
 const ERROR_WRITE_FAILED: StringName = &"write_failed"
 const ERROR_RUNTIME_UNAVAILABLE: StringName = &"runtime_unavailable"
+const ERROR_DEBUG_STORAGE_ISOLATED: StringName = &"debug_storage_isolated"
+const M1_DEBUG_ARGUMENT_PREFIX: String = "--m1-debug="
 
 const AUTOSAVE_STAGES: PackedInt32Array = [
 	SceneRouterService.Stage.STATION,
@@ -55,6 +57,7 @@ var rejected_path: String = DEFAULT_REJECTED_PATH
 var game_state_override: GameStateModel
 var scene_router_override: SceneRouterService
 var automatic_saves_enabled: bool = false
+var isolated_debug_session: bool = false
 var availability: SaveAvailability = SaveAvailability.NONE
 var last_load_source: LoadSource = LoadSource.NONE
 var last_error_code: StringName = ERROR_NONE
@@ -63,9 +66,14 @@ var last_error: String = ""
 
 var _save_queued: bool = false
 var _suspend_automatic_saves: bool = false
+var _storage_read_count: int = 0
+var _storage_write_count: int = 0
 
 
 func _ready() -> void:
+	isolated_debug_session = should_isolate_debug_storage(
+		OS.get_cmdline_user_args()
+	)
 	set_automatic_saves_enabled(
 		should_enable_automatic_saves(
 			OS.get_cmdline_args(),
@@ -106,7 +114,47 @@ static func should_enable_automatic_saves(
 	for debug_argument: String in DEBUG_ROUTE_ARGUMENTS:
 		if user_arguments.has(debug_argument):
 			return false
+	if should_isolate_debug_storage(user_arguments):
+		return false
 	return true
+
+
+static func should_isolate_debug_storage(
+	user_arguments: PackedStringArray
+) -> bool:
+	for argument: String in user_arguments:
+		if (
+			argument == "--m1-debug"
+			or argument.begins_with(M1_DEBUG_ARGUMENT_PREFIX)
+		):
+			return true
+	return false
+
+
+func set_isolated_debug_session(isolated: bool) -> void:
+	isolated_debug_session = isolated
+	if isolated:
+		if is_inside_tree():
+			set_automatic_saves_enabled(false)
+		else:
+			automatic_saves_enabled = false
+
+
+func get_storage_access_count() -> int:
+	return _storage_read_count + _storage_write_count
+
+
+func get_storage_read_count() -> int:
+	return _storage_read_count
+
+
+func get_storage_write_count() -> int:
+	return _storage_write_count
+
+
+func reset_storage_access_count() -> void:
+	_storage_read_count = 0
+	_storage_write_count = 0
 
 
 func configure_storage_paths(
@@ -132,6 +180,8 @@ func reset_storage_paths() -> void:
 
 
 func start_new_game() -> bool:
+	if isolated_debug_session:
+		return _reject_isolated_storage("start a new game")
 	var game_state: GameStateModel = _resolve_game_state()
 	if game_state == null:
 		return _fail(ERROR_RUNTIME_UNAVAILABLE, "GameState is unavailable.")
@@ -143,6 +193,8 @@ func start_new_game() -> bool:
 
 func save_progress() -> bool:
 	_clear_result_state()
+	if isolated_debug_session:
+		return _reject_isolated_storage("save progress")
 	var game_state: GameStateModel = _resolve_game_state()
 	if game_state == null:
 		return _fail(ERROR_RUNTIME_UNAVAILABLE, "GameState is unavailable.")
@@ -205,6 +257,12 @@ func save_progress() -> bool:
 
 func refresh_save_availability() -> SaveAvailability:
 	_clear_result_state()
+	if isolated_debug_session:
+		availability = SaveAvailability.NONE
+		last_error_code = ERROR_DEBUG_STORAGE_ISOLATED
+		last_error = "Progress storage is isolated for this M1 debug session."
+		save_availability_changed.emit(availability)
+		return availability
 	var primary_result: Dictionary = _read_progress_file(storage_path)
 	if _result_has_valid_progress(primary_result):
 		availability = SaveAvailability.PRIMARY
@@ -239,6 +297,8 @@ func refresh_save_availability() -> SaveAvailability:
 
 
 func load_progress() -> bool:
+	if isolated_debug_session:
+		return _reject_isolated_storage("load progress")
 	var current_availability: SaveAvailability = refresh_save_availability()
 	var selected_path: String = ""
 	match current_availability:
@@ -339,6 +399,7 @@ func _replace_primary_with_temporary(serialized_text: String) -> bool:
 
 
 func _read_progress_file(path: String) -> Dictionary[String, Variant]:
+	_storage_read_count += 1
 	var result: Dictionary[String, Variant] = {
 		"exists": FileAccess.file_exists(path),
 		"progress": null,
@@ -378,6 +439,7 @@ func _read_progress_file(path: String) -> Dictionary[String, Variant]:
 
 
 func _write_text(path: String, text: String) -> Error:
+	_storage_write_count += 1
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
 		return FileAccess.get_open_error()
@@ -389,6 +451,7 @@ func _write_text(path: String, text: String) -> Error:
 
 
 func _remove_file_if_present(path: String) -> Error:
+	_storage_write_count += 1
 	if not FileAccess.file_exists(path):
 		return OK
 	return DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
@@ -417,6 +480,15 @@ func _fail(error_code: StringName, message: String) -> bool:
 	last_error_code = error_code
 	last_error = message
 	return false
+
+
+func _reject_isolated_storage(operation: String) -> bool:
+	_clear_result_state()
+	availability = SaveAvailability.NONE
+	return _fail(
+		ERROR_DEBUG_STORAGE_ISOLATED,
+		"M1 debug sessions cannot %s in normal progress storage." % operation
+	)
 
 
 func _resolve_game_state() -> GameStateModel:

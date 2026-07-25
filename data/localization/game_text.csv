@@ -826,3 +826,7 @@ UI_DELIVERY_DROP_REASON_INVALID_PROFILE,"投放配置无效，当前不能释放
 UI_DELIVERY_DROP_RESULT_CORE,"核心区接收成功","Core receive success"
 UI_DELIVERY_DROP_RESULT_OUTER,"外圈部分成功","Outer partial success"
 UI_DELIVERY_DROP_RESULT_MISSED,"未命中接收区","Receive zone missed"
+UI_M1_DEBUG_STATUS_SCENARIO,"M1 调试 · %s","M1 DEBUG · %s"
+UI_M1_DEBUG_STATUS_CONTEXT,"章节 %s\n订单 %s\n星球 %s","Chapter %s\nOrder %s\nPlanet %s"
+UI_M1_DEBUG_STATUS_ISOLATED,"自动存档已关闭 · F6 重置","Autosave off · F6 reset"
+UI_M1_DEBUG_STATUS_UNSAFE,"警告：调试数据未隔离","WARNING: debug data is not isolated"
