@@ -12,9 +12,12 @@ signal progress_changed(credits: int)
 signal persistent_state_changed
 
 enum OrderStatus {
-	NOT_ACCEPTED,
+	AVAILABLE,
 	ACCEPTED,
 	COMPLETED,
+	FAILED,
+	ABANDONED,
+	ARCHIVED,
 }
 
 enum TravelState {
@@ -31,8 +34,16 @@ const ORDER_ERROR_STORY_REQUIREMENT: StringName = &"story_requirement"
 const ORDER_ERROR_ACTIVE_ORDER: StringName = &"active_order"
 const ORDER_ERROR_ALREADY_ACCEPTED: StringName = &"already_accepted"
 const ORDER_ERROR_ALREADY_COMPLETED: StringName = &"already_completed"
+const ORDER_ERROR_ARCHIVED: StringName = &"archived"
+const ORDER_ERROR_ARCHIVED_ONLY: StringName = &"archived_only"
 const ORDER_ERROR_NOT_ACTIVE: StringName = &"not_active"
 const ORDER_ERROR_INVALID_SETTLEMENT: StringName = &"invalid_settlement"
+const ORDER_ERROR_INVALID_TRANSITION: StringName = &"invalid_order_transition"
+const ORDER_ERROR_INVALID_REWARD: StringName = &"invalid_order_reward"
+const ORDER_ERROR_INVALID_TIMING: StringName = &"invalid_order_timing"
+const ORDER_ERROR_MAIN_CANNOT_ABANDON: StringName = &"main_order_cannot_abandon"
+const ORDER_ERROR_MAIN_RETRY_REQUIRED: StringName = &"main_order_retry_required"
+const ORDER_ERROR_RETRY_NOT_ALLOWED: StringName = &"retry_not_allowed"
 
 const LOADOUT_ERROR_MISSING_DATA: StringName = &"missing_data"
 const LOADOUT_ERROR_ORDER_NOT_ACCEPTED: StringName = &"order_not_accepted"
@@ -72,6 +83,8 @@ var codex_entry_ids: Array[StringName] = []
 var souvenir_ids: Array[StringName] = []
 var completed_side_order_ids: Array[StringName] = []
 var failed_side_order_ids: Array[StringName] = []
+var order_states: Dictionary[StringName, int] = {}
+var reward_applied_order_ids: Array[StringName] = []
 var station_state_level: int = 0
 var ship_upgrade_ids: Array[StringName] = []
 var revisit_state: Dictionary[StringName, StringName] = {}
@@ -108,6 +121,8 @@ func reset_runtime_state() -> void:
 	souvenir_ids.clear()
 	completed_side_order_ids.clear()
 	failed_side_order_ids.clear()
+	order_states.clear()
+	reward_applied_order_ids.clear()
 	station_state_level = 0
 	ship_upgrade_ids.clear()
 	revisit_state.clear()
@@ -429,22 +444,47 @@ func set_revisit_state(
 
 
 func get_order_status(order_id: StringName) -> OrderStatus:
+	if order_id.is_empty():
+		return OrderStatus.AVAILABLE
+	if current_order_id == order_id:
+		return OrderStatus.ACCEPTED
+	if order_states.has(order_id):
+		return int(order_states.get(order_id, OrderStatus.AVAILABLE))
 	if has_completed_order(order_id):
 		return OrderStatus.COMPLETED
-	if not order_id.is_empty() and current_order_id == order_id:
-		return OrderStatus.ACCEPTED
-	return OrderStatus.NOT_ACCEPTED
+	if failed_side_order_ids.has(order_id):
+		return OrderStatus.FAILED
+	return OrderStatus.AVAILABLE
 
 
 func get_order_acceptance_error(order: OrderDefinition) -> StringName:
 	if not _has_required_order_data(order):
 		return ORDER_ERROR_MISSING_DATA
-	if has_completed_order(order.id):
-		return ORDER_ERROR_ALREADY_COMPLETED
-	if current_order_id == order.id:
-		return ORDER_ERROR_ALREADY_ACCEPTED
+	if order.repeat_policy == OrderDefinition.RepeatPolicy.ARCHIVED_ONLY:
+		return ORDER_ERROR_ARCHIVED_ONLY
+	var status: OrderStatus = get_order_status(order.id)
+	match status:
+		OrderStatus.ACCEPTED:
+			return ORDER_ERROR_ALREADY_ACCEPTED
+		OrderStatus.COMPLETED:
+			return ORDER_ERROR_ALREADY_COMPLETED
+		OrderStatus.ARCHIVED:
+			return ORDER_ERROR_ARCHIVED
+		OrderStatus.FAILED, OrderStatus.ABANDONED:
+			if order.repeat_policy != OrderDefinition.RepeatPolicy.REPEATABLE:
+				return ORDER_ERROR_RETRY_NOT_ALLOWED
 	if not current_order_id.is_empty():
 		return ORDER_ERROR_ACTIVE_ORDER
+	var unlock_error: StringName = M1OrderRules.get_unlock_error(
+		order,
+		main_story_chapter,
+		unlocked_planet_ids,
+		planet_permission_ids,
+		ship_configuration,
+		ship_upgrade_ids
+	)
+	if not unlock_error.is_empty():
+		return unlock_error
 	for requirement: StringName in order.story_requirements:
 		if not has_story_flag(requirement):
 			return ORDER_ERROR_STORY_REQUIREMENT
@@ -460,8 +500,10 @@ func accept_order(order: OrderDefinition) -> bool:
 	if not last_order_error.is_empty():
 		return false
 	current_order_id = order.id
-	destination_id = order.destination_planet.id
+	destination_id = order.planet_id
 	cargo_id = order.cargo.id
+	order_states[order.id] = OrderStatus.ACCEPTED
+	failed_side_order_ids.erase(order.id)
 	order_run_state.reset(order.id)
 	departure_confirmed = false
 	last_loadout_error = &""
@@ -472,29 +514,214 @@ func accept_order(order: OrderDefinition) -> bool:
 	return true
 
 
-## Moves the active order forward without exposing a main-order cancellation transition.
+## Compatibility entry used by M0 tests and direct flows; rewards still use the unified ledger.
 func complete_current_order(order: OrderDefinition) -> bool:
+	return complete_order(order)
+
+
+func complete_order(
+	order: OrderDefinition,
+	requested_credit_reward: int = -1,
+	station_upgrade_id: StringName = &"",
+	additional_flags: Array[StringName] = []
+) -> bool:
 	last_order_error = &""
 	if not _has_required_order_data(order):
 		last_order_error = ORDER_ERROR_MISSING_DATA
 		return false
-	if current_order_id != order.id:
+	if (
+		get_order_status(order.id) == OrderStatus.COMPLETED
+		or has_applied_order_reward(order.id)
+	):
+		last_order_error = ORDER_ERROR_ALREADY_COMPLETED
+		return false
+	if (
+		current_order_id != order.id
+		or get_order_status(order.id) != OrderStatus.ACCEPTED
+	):
 		last_order_error = ORDER_ERROR_NOT_ACTIVE
 		return false
+	if requested_credit_reward < -1 or not _has_valid_order_rewards(order):
+		last_order_error = ORDER_ERROR_INVALID_REWARD
+		return false
+
+	var base_credit_reward: int = (
+		order.credit_reward
+		if requested_credit_reward < 0
+		else requested_credit_reward
+	)
+	var elapsed_seconds: float = (
+		0.0
+		if order_run_state == null
+		else order_run_state.elapsed_time
+	)
+	var reward_ratio: float = M1OrderRules.get_reward_ratio(order, elapsed_seconds)
+	var final_credit_reward: int = maxi(
+		roundi(float(base_credit_reward) * reward_ratio),
+		0
+	)
+	var relation_rewards: Dictionary[StringName, int] = order.relation_rewards.duplicate()
+	if (
+		order.is_express
+		and order.relation_bonus_on_time > 0
+		and M1OrderRules.is_on_time(order, elapsed_seconds)
+	):
+		relation_rewards[order.planet_id] = (
+			relation_rewards.get(order.planet_id, 0)
+			+ order.relation_bonus_on_time
+		)
+
+	credits += final_credit_reward
+	for planet_id: StringName in relation_rewards:
+		var previous_relation: int = get_planet_relation(planet_id)
+		_store_planet_relation(
+			planet_id,
+			M1ProgressRules.clamp_relation(
+				previous_relation + relation_rewards.get(planet_id, 0)
+			)
+		)
+		var relation_event_id: StringName = StringName("reward_%s" % order.id)
+		story_flags[
+			M1ProgressRules.get_relation_event_flag(planet_id, relation_event_id)
+		] = true
+	for permission_id: StringName in order.permission_rewards:
+		if not planet_permission_ids.has(permission_id):
+			planet_permission_ids.append(permission_id)
+	for entry_id: StringName in order.codex_rewards:
+		if not codex_entry_ids.has(entry_id):
+			codex_entry_ids.append(entry_id)
+	for souvenir_id: StringName in order.souvenir_rewards:
+		if not souvenir_ids.has(souvenir_id):
+			souvenir_ids.append(souvenir_id)
 	completed_order_ids[order.id] = true
+	if order.order_type == OrderDefinition.OrderType.SIDE:
+		if not completed_side_order_ids.has(order.id):
+			completed_side_order_ids.append(order.id)
+		failed_side_order_ids.erase(order.id)
+	if not reward_applied_order_ids.has(order.id):
+		reward_applied_order_ids.append(order.id)
 	for completion_flag: StringName in order.completion_flags:
-		set_story_flag(completion_flag)
-	current_order_id = &""
-	departure_confirmed = false
-	last_loadout_error = &""
-	_reset_travel_state(false)
+		if not completion_flag.is_empty():
+			story_flags[completion_flag] = true
+	for additional_flag: StringName in additional_flags:
+		if not additional_flag.is_empty():
+			story_flags[additional_flag] = true
+	if not station_upgrade_id.is_empty():
+		station_upgrade_ids[station_upgrade_id] = true
+	order_states[order.id] = OrderStatus.COMPLETED
+	_clear_active_order_context()
 	order_status_changed.emit(order.id, OrderStatus.COMPLETED)
+	departure_readiness_changed.emit(false)
+	progress_changed.emit(credits)
+	persistent_state_changed.emit()
+	return true
+
+
+func fail_order(order: OrderDefinition) -> bool:
+	last_order_error = &""
+	if not _has_required_order_data(order):
+		last_order_error = ORDER_ERROR_MISSING_DATA
+		return false
+	if current_order_id != order.id or get_order_status(order.id) != OrderStatus.ACCEPTED:
+		last_order_error = ORDER_ERROR_INVALID_TRANSITION
+		return false
+	if order.is_mainline():
+		last_order_error = ORDER_ERROR_MAIN_RETRY_REQUIRED
+		return false
+	order_states[order.id] = OrderStatus.FAILED
+	if not failed_side_order_ids.has(order.id):
+		failed_side_order_ids.append(order.id)
+	_clear_active_order_context()
+	order_status_changed.emit(order.id, OrderStatus.FAILED)
 	departure_readiness_changed.emit(false)
 	persistent_state_changed.emit()
 	return true
 
 
-## Commits the one-way main-order reward after the result has been calculated.
+func abandon_order(order: OrderDefinition) -> bool:
+	last_order_error = &""
+	if not _has_required_order_data(order):
+		last_order_error = ORDER_ERROR_MISSING_DATA
+		return false
+	if order.is_mainline():
+		last_order_error = ORDER_ERROR_MAIN_CANNOT_ABANDON
+		return false
+	if current_order_id != order.id or get_order_status(order.id) != OrderStatus.ACCEPTED:
+		last_order_error = ORDER_ERROR_INVALID_TRANSITION
+		return false
+	order_states[order.id] = OrderStatus.ABANDONED
+	_clear_active_order_context()
+	order_status_changed.emit(order.id, OrderStatus.ABANDONED)
+	departure_readiness_changed.emit(false)
+	persistent_state_changed.emit()
+	return true
+
+
+func archive_order(order: OrderDefinition) -> bool:
+	last_order_error = &""
+	if not _has_required_order_data(order):
+		last_order_error = ORDER_ERROR_MISSING_DATA
+		return false
+	if order.repeat_policy != OrderDefinition.RepeatPolicy.ARCHIVED_ONLY:
+		last_order_error = ORDER_ERROR_INVALID_TRANSITION
+		return false
+	var status: OrderStatus = get_order_status(order.id)
+	if status not in [
+		OrderStatus.AVAILABLE,
+		OrderStatus.FAILED,
+		OrderStatus.ABANDONED,
+	]:
+		last_order_error = ORDER_ERROR_INVALID_TRANSITION
+		return false
+	order_states[order.id] = OrderStatus.ARCHIVED
+	order_status_changed.emit(order.id, OrderStatus.ARCHIVED)
+	persistent_state_changed.emit()
+	return true
+
+
+func advance_active_order_time(
+	order: OrderDefinition,
+	delta: float,
+	dialogue_open: bool = false,
+	help_open: bool = false,
+	game_paused: bool = false
+) -> bool:
+	last_order_error = &""
+	if (
+		not _has_required_order_data(order)
+		or current_order_id != order.id
+		or get_order_status(order.id) != OrderStatus.ACCEPTED
+	):
+		last_order_error = ORDER_ERROR_NOT_ACTIVE
+		return false
+	if not is_finite(delta) or delta < 0.0:
+		last_order_error = ORDER_ERROR_INVALID_TIMING
+		return false
+	var timing_paused: bool = M1OrderRules.is_timing_paused(
+		dialogue_open,
+		help_open,
+		game_paused
+	)
+	order_run_state.elapsed_time = M1OrderRules.advance_elapsed_time(
+		order_run_state.elapsed_time,
+		delta,
+		order.is_express,
+		timing_paused
+	)
+	return true
+
+
+func get_active_order_reward_ratio(order: OrderDefinition) -> float:
+	if (
+		order == null
+		or current_order_id != order.id
+		or order_run_state == null
+	):
+		return 1.0
+	return M1OrderRules.get_reward_ratio(order, order_run_state.elapsed_time)
+
+
+## Commits the one-way M0 result through the same unified reward ledger.
 func settle_current_order(
 	order: OrderDefinition,
 	settlement: OrderSettlementResult,
@@ -517,23 +744,24 @@ func settle_current_order(
 	if current_order_id != order.id:
 		last_order_error = ORDER_ERROR_NOT_ACTIVE
 		return false
-	if not complete_current_order(order):
+	var credits_before: int = credits
+	if not complete_order(
+		order,
+		settlement.total_reward,
+		station_upgrade_id,
+		settlement_flags
+	):
 		return false
-
-	credits += settlement.total_reward
-	station_upgrade_ids[station_upgrade_id] = true
-	for settlement_flag: StringName in settlement_flags:
-		if not settlement_flag.is_empty():
-			set_story_flag(settlement_flag)
-	destination_id = &""
-	cargo_id = &""
-	progress_changed.emit(credits)
-	persistent_state_changed.emit()
+	settlement.total_reward = credits - credits_before
 	return true
 
 
 func has_completed_order(order_id: StringName) -> bool:
 	return not order_id.is_empty() and completed_order_ids.get(order_id, false)
+
+
+func has_applied_order_reward(order_id: StringName) -> bool:
+	return not order_id.is_empty() and reward_applied_order_ids.has(order_id)
 
 
 func get_credits() -> int:
@@ -812,22 +1040,97 @@ func _has_required_order_data(order: OrderDefinition) -> bool:
 	if (
 		order == null
 		or order.id.is_empty()
+		or not M1ProgressRules.is_stable_id(order.id)
 		or order.display_name_key.is_empty()
+		or order.order_type < OrderDefinition.OrderType.MAIN
+		or order.order_type > OrderDefinition.OrderType.REVISIT
+		or order.repeat_policy < OrderDefinition.RepeatPolicy.UNIQUE
+		or order.repeat_policy > OrderDefinition.RepeatPolicy.ARCHIVED_ONLY
 		or order.sender == null
 		or order.sender.id.is_empty()
 		or order.recipient == null
 		or order.recipient.id.is_empty()
 		or order.destination_planet == null
 		or order.destination_planet.id.is_empty()
+		or not M1ProgressRules.is_known_planet(order.planet_id)
+		or order.destination_planet.id != order.planet_id
+		or not M1ProgressRules.is_stable_id(order.destination_id)
 		or order.cargo == null
 		or order.cargo.id.is_empty()
 		or order.customer_history_keys.is_empty()
+		or order.delivery_type < OrderDefinition.DeliveryType.LANDING
+		or order.delivery_type > OrderDefinition.DeliveryType.LOW_ALTITUDE_DROP
+		or (
+			not order.required_chapter.is_empty()
+			and not M1ProgressRules.is_known_chapter(order.required_chapter)
+		)
+		or (
+			order.is_mainline()
+			and order.repeat_policy != OrderDefinition.RepeatPolicy.UNIQUE
+		)
 	):
 		return false
+	if order.is_express:
+		if (
+			not is_finite(order.target_seconds)
+			or order.target_seconds <= 0.0
+			or not is_finite(order.grace_seconds)
+			or order.grace_seconds < 0.0
+			or not is_finite(order.minimum_reward_ratio)
+			or order.minimum_reward_ratio < 0.0
+			or order.minimum_reward_ratio > 1.0
+			or order.relation_bonus_on_time < 0
+		):
+			return false
+	elif (
+		not is_zero_approx(order.target_seconds)
+		or not is_zero_approx(order.grace_seconds)
+		or not is_equal_approx(order.minimum_reward_ratio, 1.0)
+		or order.relation_bonus_on_time != 0
+	):
+		return false
+	for condition: OrderUnlockCondition in order.unlock_conditions:
+		if (
+			condition == null
+			or condition.reference_id.is_empty()
+			or condition.condition_type < OrderUnlockCondition.ConditionType.PLANET_UNLOCKED
+			or condition.condition_type > OrderUnlockCondition.ConditionType.MODULE_AVAILABLE
+		):
+			return false
 	for module: ShipModuleDefinition in order.required_modules:
 		if module == null or module.id.is_empty():
 			return false
+	return _has_valid_order_rewards(order)
+
+
+func _has_valid_order_rewards(order: OrderDefinition) -> bool:
+	if order == null or order.credit_reward < 0:
+		return false
+	for planet_id: StringName in order.relation_rewards:
+		if (
+			not M1ProgressRules.is_known_planet(planet_id)
+			or order.relation_rewards.get(planet_id, 0) == 0
+		):
+			return false
+	for permission_id: StringName in order.permission_rewards:
+		if not M1ProgressRules.is_known_permission(permission_id):
+			return false
+	for entry_id: StringName in order.codex_rewards:
+		if not M1ProgressRules.is_valid_codex_entry_id(entry_id):
+			return false
+	for souvenir_id: StringName in order.souvenir_rewards:
+		if not M1ProgressRules.is_valid_souvenir_id(souvenir_id):
+			return false
 	return true
+
+
+func _clear_active_order_context() -> void:
+	current_order_id = &""
+	destination_id = &""
+	cargo_id = &""
+	departure_confirmed = false
+	last_loadout_error = &""
+	_reset_travel_state(false)
 
 
 func _invalidate_departure_confirmation() -> void:

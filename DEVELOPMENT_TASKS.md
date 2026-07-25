@@ -167,7 +167,7 @@ T-101。
 
 ## T-103 — 主线/支线订单模型与一次一单状态流
 
-**State:** `Ready`
+**State:** `Done`
 **Priority:** P0  
 **Goal:** 在保持“一次一单”的叙事聚焦下支持主线、支线、部分成功和回访订单。
 
@@ -193,11 +193,34 @@ T-101。
 
 T-102。
 
+### 实现结果（2026-07-25）
+
+- `OrderDefinition` 统一支持 `MAIN / SIDE / REVISIT`、`LANDING /
+  LOW_ALTITUDE_DROP`、章节/星球/许可/模块解锁条件、五类奖励、三种重复策略与轻量
+  加急参数；M0 赤砂首单已迁移到新字段但保持 UNIQUE、非加急、信用点奖励和着陆
+  交付不变。
+- `GameStateModel` 建立 `AVAILABLE / ACCEPTED / COMPLETED / FAILED / ABANDONED /
+  ARCHIVED` 状态流，并继续以 `current_order_id` 作为唯一 active order 槽位。
+  主线/回访不可放弃且失败后保持 active 进入既有重试；支线失败/放弃释放槽位，
+  只有显式 `REPEATABLE` 才能重接，完成态永不重新开放。
+- 统一完成入口在变更前验证整份奖励，单次应用信用点、关系、许可、图鉴、纪念品、
+  完成标记和可选站点升级；`reward_applied_order_ids` 与完成状态共同阻止重复调用、
+  重复加载或结算重入再次发奖。
+- 加急订单只在 active 且未打开对话/帮助、游戏未暂停时累计计时；超时在宽限窗口
+  内线性降至最低报酬比例，不直接失败，检查点与存档恢复保留计时。
+- schema v2 增补订单状态图与奖励账本，并为缺少新字段的既有 v2/v1 档从
+  current/completed/failed 记录安全补齐；验证拒绝多 active、未知状态和不一致
+  终态。订单注册表同时验证重复 ID、章节/星球/模块、交付方式和全部奖励引用。
+- 新增 T-103 运行时与数据验证覆盖；53 套测试、Godot 4.7.1 全脚本解析、v1→v2
+  迁移、SaveService、M0 首单结算/完整闭环、订单终端及完整项目检查全部通过。
+- 已知限制：本任务不落地 M1 Packet 内容、不重做订单/导航 UI、不显示加急倒计时，
+  也不实现低空投放；这些仍属于 T-104 及后续任务。
+
 ---
 
 ## T-104 — M1 内容注册表、Packet 数据与引用验证
 
-**State:** `Blocked`  
+**State:** `Ready`
 **Priority:** P0  
 **Goal:** 三颗新星球和全部订单从一致数据入口加载，Codex 不通过硬编码扩写内容。
 

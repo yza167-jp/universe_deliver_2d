@@ -272,9 +272,9 @@ func _refresh_content() -> void:
 		_translate_planet(order_definition.destination_planet, unavailable_text),
 		order_definition.route_distance,
 		order_definition.risk_level,
-		_translate_delivery_method(order_definition.delivery_method),
+		_translate_delivery_type(order_definition.delivery_type),
 	]
-	_reward_label.text = tr("UI_ORDER_REWARD_FORMAT") % order_definition.reward_credits
+	_reward_label.text = tr("UI_ORDER_REWARD_FORMAT") % order_definition.credit_reward
 	_environment_label.text = _translate_planet_description(
 		order_definition.destination_planet,
 		unavailable_text
@@ -312,7 +312,7 @@ func _refresh_order_state() -> void:
 		return
 	var status: GameStateModel.OrderStatus = _game_state.get_order_status(order_definition.id)
 	match status:
-		GameStateModel.OrderStatus.NOT_ACCEPTED:
+		GameStateModel.OrderStatus.AVAILABLE:
 			_status_badge_label.text = tr("UI_ORDER_STATUS_NOT_ACCEPTED")
 			_accept_button.text = tr("UI_ORDER_ACCEPT")
 			var error_id: StringName = _game_state.get_order_acceptance_error(order_definition)
@@ -331,6 +331,16 @@ func _refresh_order_state() -> void:
 			_accept_button.text = tr("UI_ORDER_COMPLETED_BUTTON")
 			_accept_button.disabled = true
 			_feedback_label.text = tr("UI_ORDER_FEEDBACK_COMPLETED")
+		GameStateModel.OrderStatus.FAILED, GameStateModel.OrderStatus.ABANDONED:
+			_status_badge_label.text = tr("UI_ORDER_STATUS_UNAVAILABLE")
+			_accept_button.text = tr("UI_ORDER_ACCEPT")
+			_accept_button.disabled = true
+			_feedback_label.text = tr("UI_ORDER_ERROR_STATE_UNAVAILABLE")
+		GameStateModel.OrderStatus.ARCHIVED:
+			_status_badge_label.text = tr("UI_ORDER_STATUS_UNAVAILABLE")
+			_accept_button.text = tr("UI_ORDER_COMPLETED_BUTTON")
+			_accept_button.disabled = true
+			_feedback_label.text = tr("UI_ORDER_ERROR_STATE_UNAVAILABLE")
 
 
 func _apply_invalid_state(error_id: StringName) -> void:
@@ -384,16 +394,12 @@ func _translate_cargo_description(cargo: CargoDefinition, fallback: String) -> S
 	return _translate_key(cargo.company_description_key, fallback)
 
 
-func _translate_delivery_method(delivery_method: OrderDefinition.DeliveryMethod) -> String:
-	match delivery_method:
-		OrderDefinition.DeliveryMethod.LANDING:
+func _translate_delivery_type(delivery_type: OrderDefinition.DeliveryType) -> String:
+	match delivery_type:
+		OrderDefinition.DeliveryType.LANDING:
 			return tr("UI_ORDER_DELIVERY_LANDING")
-		OrderDefinition.DeliveryMethod.AIRDROP:
+		OrderDefinition.DeliveryType.LOW_ALTITUDE_DROP:
 			return tr("UI_ORDER_DELIVERY_AIRDROP")
-		OrderDefinition.DeliveryMethod.CHECKPOINT:
-			return tr("UI_ORDER_DELIVERY_CHECKPOINT")
-		OrderDefinition.DeliveryMethod.DOCKING:
-			return tr("UI_ORDER_DELIVERY_DOCKING")
 	return tr("UI_ORDER_VALUE_UNAVAILABLE")
 
 

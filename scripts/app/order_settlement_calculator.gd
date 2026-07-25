@@ -19,7 +19,7 @@ static func calculate(
 
 	var result: OrderSettlementResult = OrderSettlementResult.new()
 	result.order_id = order.id
-	result.base_reward = maxi(order.reward_credits, 0)
+	result.base_reward = maxi(order.credit_reward, 0)
 	result.cargo_integrity = clampf(run_state.cargo_integrity, 0.0, MAX_CARGO_INTEGRITY)
 	var payout_ratio: float = lerpf(
 		MIN_MAIN_ORDER_PAYOUT_RATIO,

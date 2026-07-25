@@ -45,6 +45,8 @@ var codex_entry_ids: Array[StringName] = []
 var souvenir_ids: Array[StringName] = []
 var completed_side_order_ids: Array[StringName] = []
 var failed_side_order_ids: Array[StringName] = []
+var order_states: Dictionary[StringName, int] = {}
+var reward_applied_order_ids: Array[StringName] = []
 var station_state_level: int = 0
 var ship_upgrade_ids: Array[StringName] = []
 var revisit_state: Dictionary[StringName, StringName] = {}
@@ -95,12 +97,17 @@ static func capture(game_state: GameStateModel) -> GameProgressData:
 	progress.failed_side_order_ids = _copy_unique_id_array(
 		game_state.failed_side_order_ids
 	)
+	progress.order_states = _copy_order_state_map(game_state.order_states)
+	progress.reward_applied_order_ids = _copy_unique_id_array(
+		game_state.reward_applied_order_ids
+	)
 	progress.station_state_level = game_state.station_state_level
 	progress.ship_upgrade_ids = _copy_unique_id_array(game_state.ship_upgrade_ids)
 	progress.revisit_state = _copy_string_name_map(game_state.revisit_state)
 	progress.demo_ending_flags = _copy_variant_map(game_state.demo_ending_flags)
 	progress.last_stable_station_state = game_state.last_stable_station_state
 	progress._apply_completed_m0_compatibility()
+	progress._apply_order_state_compatibility()
 	progress._validate_consistency()
 	return progress
 
@@ -142,6 +149,8 @@ func to_dictionary() -> Dictionary[String, Variant]:
 		"souvenir_ids": _serialize_id_array(souvenir_ids),
 		"completed_side_order_ids": _serialize_id_array(completed_side_order_ids),
 		"failed_side_order_ids": _serialize_id_array(failed_side_order_ids),
+		"order_states": _serialize_order_state_map(order_states),
+		"reward_applied_order_ids": _serialize_id_array(reward_applied_order_ids),
 		"station_state_level": station_state_level,
 		"ship_upgrade_ids": _serialize_id_array(ship_upgrade_ids),
 		"revisit_state": _serialize_string_name_map(revisit_state),
@@ -184,6 +193,10 @@ func apply_to(game_state: GameStateModel) -> bool:
 		completed_side_order_ids
 	)
 	game_state.failed_side_order_ids = _copy_unique_id_array(failed_side_order_ids)
+	game_state.order_states = _copy_order_state_map(order_states)
+	game_state.reward_applied_order_ids = _copy_unique_id_array(
+		reward_applied_order_ids
+	)
 	game_state.station_state_level = station_state_level
 	game_state.ship_upgrade_ids = _copy_unique_id_array(ship_upgrade_ids)
 	game_state.revisit_state = _copy_string_name_map(revisit_state)
@@ -256,6 +269,7 @@ func _read_dictionary(source: Dictionary) -> void:
 	_read_schema_v1_fields(payload)
 	if not validation_error.is_empty():
 		return
+	_apply_order_state_compatibility()
 	_validate_consistency()
 	if not validation_error.is_empty():
 		return
@@ -266,6 +280,7 @@ func _read_dictionary(source: Dictionary) -> void:
 		_read_schema_v2_fields(payload)
 	if not validation_error.is_empty():
 		return
+	_apply_order_state_compatibility()
 	_validate_consistency()
 
 
@@ -308,6 +323,11 @@ func _read_schema_v2_fields(payload: Dictionary) -> void:
 		"completed_side_order_ids"
 	)
 	failed_side_order_ids = _read_progress_id_array(payload, "failed_side_order_ids")
+	order_states = _read_order_state_map(payload)
+	reward_applied_order_ids = _read_progress_id_array(
+		payload,
+		"reward_applied_order_ids"
+	)
 	if payload.has("station_state_level"):
 		station_state_level = _read_integer(
 			payload.get("station_state_level"),
@@ -353,6 +373,7 @@ static func _migrate_schema_0_to_1(source: Dictionary) -> Dictionary:
 
 func _migrate_schema_1_to_2() -> void:
 	_apply_completed_m0_compatibility()
+	_apply_order_state_compatibility()
 
 
 func _apply_completed_m0_compatibility() -> void:
@@ -390,6 +411,25 @@ func _apply_completed_m0_compatibility() -> void:
 		last_stable_station_state = FIRST_DELIVERY_STATION_STATE_ID
 
 
+func _apply_order_state_compatibility() -> void:
+	for completed_id: StringName in completed_side_order_ids:
+		completed_order_ids[completed_id] = true
+	for completed_id: StringName in completed_order_ids:
+		if not completed_order_ids.get(completed_id, false):
+			continue
+		if not order_states.has(completed_id):
+			order_states[completed_id] = GameStateModel.OrderStatus.COMPLETED
+		_append_unique_id(reward_applied_order_ids, completed_id)
+	for failed_id: StringName in failed_side_order_ids:
+		if (
+			not completed_order_ids.get(failed_id, false)
+			and not order_states.has(failed_id)
+		):
+			order_states[failed_id] = GameStateModel.OrderStatus.FAILED
+	if not current_order_id.is_empty() and not order_states.has(current_order_id):
+		order_states[current_order_id] = GameStateModel.OrderStatus.ACCEPTED
+
+
 func _validate_consistency() -> void:
 	if settings_reference.is_empty():
 		validation_error = "settings_reference cannot be empty."
@@ -412,9 +452,18 @@ func _validate_consistency() -> void:
 			return
 		if (
 			not order_run_state.order_id.is_empty()
-			and not completed_order_ids.get(order_run_state.order_id, false)
+			and int(
+				order_states.get(
+					order_run_state.order_id,
+					GameStateModel.OrderStatus.AVAILABLE
+				)
+			) not in [
+				GameStateModel.OrderStatus.COMPLETED,
+				GameStateModel.OrderStatus.FAILED,
+				GameStateModel.OrderStatus.ABANDONED,
+			]
 		):
-			validation_error = "Completed order-run state has no completed-order record."
+			validation_error = "Inactive order-run state has no terminal order-state record."
 			return
 	else:
 		if destination_id.is_empty() or cargo_id.is_empty():
@@ -422,6 +471,14 @@ func _validate_consistency() -> void:
 			return
 		if completed_order_ids.get(current_order_id, false):
 			validation_error = "An order cannot be active and completed at the same time."
+			return
+		if int(
+			order_states.get(
+				current_order_id,
+				GameStateModel.OrderStatus.AVAILABLE
+			)
+		) != GameStateModel.OrderStatus.ACCEPTED:
+			validation_error = "The active order must have ACCEPTED order state."
 			return
 		if order_run_state.order_id.is_empty():
 			order_run_state.order_id = current_order_id
@@ -485,8 +542,90 @@ func _validate_schema_v2_consistency() -> void:
 		return
 	if not _validate_id_array(failed_side_order_ids, "failed_side_order_ids"):
 		return
+	if not _validate_id_array(
+		reward_applied_order_ids,
+		"reward_applied_order_ids"
+	):
+		return
 	if not _validate_id_array(ship_upgrade_ids, "ship_upgrade_ids"):
 		return
+	var accepted_order_ids: Array[StringName] = []
+	for order_id: StringName in order_states:
+		if not M1ProgressRules.is_stable_id(order_id):
+			validation_error = "order_states contains an invalid order ID: %s." % order_id
+			return
+		var status: int = order_states.get(
+			order_id,
+			GameStateModel.OrderStatus.AVAILABLE
+		)
+		if status <= GameStateModel.OrderStatus.AVAILABLE or status > GameStateModel.OrderStatus.ARCHIVED:
+			validation_error = "order_states contains an invalid status for %s." % order_id
+			return
+		if status == GameStateModel.OrderStatus.ACCEPTED:
+			accepted_order_ids.append(order_id)
+		if (
+			status == GameStateModel.OrderStatus.COMPLETED
+			and not completed_order_ids.get(order_id, false)
+		):
+			validation_error = (
+				"COMPLETED order state requires a completed_order_ids record: %s."
+				% order_id
+			)
+			return
+		if (
+			status == GameStateModel.OrderStatus.FAILED
+			and not failed_side_order_ids.has(order_id)
+		):
+			validation_error = (
+				"FAILED order state requires a failed_side_order_ids record: %s."
+				% order_id
+			)
+			return
+	if accepted_order_ids.size() > 1:
+		validation_error = "Only one order may have ACCEPTED state."
+		return
+	if current_order_id.is_empty():
+		if not accepted_order_ids.is_empty():
+			validation_error = "ACCEPTED order state requires current_order_id."
+			return
+	elif accepted_order_ids != [current_order_id]:
+		validation_error = "current_order_id must be the only ACCEPTED order state."
+		return
+	for completed_id: StringName in completed_order_ids:
+		if not completed_order_ids.get(completed_id, false):
+			continue
+		if int(
+			order_states.get(
+				completed_id,
+				GameStateModel.OrderStatus.AVAILABLE
+			)
+		) != GameStateModel.OrderStatus.COMPLETED:
+			validation_error = (
+				"completed_order_ids requires COMPLETED order state: %s."
+				% completed_id
+			)
+			return
+		if not reward_applied_order_ids.has(completed_id):
+			validation_error = (
+				"Completed order is missing its reward-applied ledger entry: %s."
+				% completed_id
+			)
+			return
+	for reward_order_id: StringName in reward_applied_order_ids:
+		if (
+			not completed_order_ids.get(reward_order_id, false)
+			or int(
+				order_states.get(
+					reward_order_id,
+					GameStateModel.OrderStatus.AVAILABLE
+				)
+			) != GameStateModel.OrderStatus.COMPLETED
+		):
+			validation_error = (
+				"reward_applied_order_ids must reference a COMPLETED order: %s."
+				% reward_order_id
+			)
+			return
 	for relation_id: StringName in planet_relation_values:
 		var relation_value: int = planet_relation_values.get(relation_id, 0)
 		if (
@@ -521,6 +660,29 @@ func _validate_schema_v2_consistency() -> void:
 		if failed_side_order_ids.has(completed_id):
 			validation_error = (
 				"A side order cannot be both completed and failed: %s." % completed_id
+			)
+			return
+		if int(
+			order_states.get(
+				completed_id,
+				GameStateModel.OrderStatus.AVAILABLE
+			)
+		) != GameStateModel.OrderStatus.COMPLETED:
+			validation_error = (
+				"completed_side_order_ids requires COMPLETED order state: %s."
+				% completed_id
+			)
+			return
+	for failed_id: StringName in failed_side_order_ids:
+		if int(
+			order_states.get(
+				failed_id,
+				GameStateModel.OrderStatus.AVAILABLE
+			)
+		) != GameStateModel.OrderStatus.FAILED:
+			validation_error = (
+				"failed_side_order_ids requires FAILED order state: %s."
+				% failed_id
 			)
 			return
 	if (
@@ -649,6 +811,43 @@ func _read_integer_map(
 		if not validation_error.is_empty():
 			return values
 	return values
+
+
+func _read_order_state_map(
+	payload: Dictionary
+) -> Dictionary[StringName, int]:
+	var states: Dictionary[StringName, int] = {}
+	if not payload.has("order_states"):
+		return states
+	var raw_value: Variant = payload.get("order_states")
+	if not raw_value is Dictionary:
+		validation_error = "order_states must be an object."
+		return states
+	var raw_states: Dictionary = raw_value as Dictionary
+	for raw_key: Variant in raw_states:
+		var order_id: StringName = _read_string_name(
+			raw_key,
+			"order_states key",
+			false
+		)
+		if not validation_error.is_empty():
+			return states
+		var status_name: StringName = _read_string_name(
+			raw_states.get(raw_key),
+			"order_states.%s" % order_id,
+			false
+		)
+		if not validation_error.is_empty():
+			return states
+		var status: int = _order_status_from_name(status_name)
+		if status < 0:
+			validation_error = "Unknown order status '%s' for %s." % [
+				status_name,
+				order_id,
+			]
+			return states
+		states[order_id] = status
+	return states
 
 
 func _read_string_name_dictionary(
@@ -935,6 +1134,38 @@ static func _travel_state_to_name(state: GameStateModel.TravelState) -> String:
 			return "IDLE"
 
 
+static func _order_status_from_name(status_name: StringName) -> int:
+	match status_name:
+		&"AVAILABLE":
+			return GameStateModel.OrderStatus.AVAILABLE
+		&"ACCEPTED":
+			return GameStateModel.OrderStatus.ACCEPTED
+		&"COMPLETED":
+			return GameStateModel.OrderStatus.COMPLETED
+		&"FAILED":
+			return GameStateModel.OrderStatus.FAILED
+		&"ABANDONED":
+			return GameStateModel.OrderStatus.ABANDONED
+		&"ARCHIVED":
+			return GameStateModel.OrderStatus.ARCHIVED
+	return -1
+
+
+static func _order_status_to_name(status: int) -> String:
+	match status:
+		GameStateModel.OrderStatus.ACCEPTED:
+			return "ACCEPTED"
+		GameStateModel.OrderStatus.COMPLETED:
+			return "COMPLETED"
+		GameStateModel.OrderStatus.FAILED:
+			return "FAILED"
+		GameStateModel.OrderStatus.ABANDONED:
+			return "ABANDONED"
+		GameStateModel.OrderStatus.ARCHIVED:
+			return "ARCHIVED"
+	return "AVAILABLE"
+
+
 static func _serialize_configuration(
 	configuration: Dictionary[StringName, StringName]
 ) -> Dictionary[String, Variant]:
@@ -950,6 +1181,21 @@ static func _serialize_integer_map(
 	var serialized: Dictionary[String, Variant] = {}
 	for key: StringName in values:
 		serialized[String(key)] = values[key]
+	return serialized
+
+
+static func _serialize_order_state_map(
+	states: Dictionary[StringName, int]
+) -> Dictionary[String, Variant]:
+	var serialized: Dictionary[String, Variant] = {}
+	var order_ids: Array[StringName] = []
+	for order_id: StringName in states:
+		order_ids.append(order_id)
+	order_ids.sort()
+	for order_id: StringName in order_ids:
+		serialized[String(order_id)] = _order_status_to_name(
+			states.get(order_id, GameStateModel.OrderStatus.AVAILABLE)
+		)
 	return serialized
 
 
@@ -1045,6 +1291,15 @@ static func _copy_integer_map(
 	var copy: Dictionary[StringName, int] = {}
 	for key: StringName in source:
 		copy[key] = source[key]
+	return copy
+
+
+static func _copy_order_state_map(
+	source: Dictionary[StringName, int]
+) -> Dictionary[StringName, int]:
+	var copy: Dictionary[StringName, int] = {}
+	for order_id: StringName in source:
+		copy[order_id] = source[order_id]
 	return copy
 
 

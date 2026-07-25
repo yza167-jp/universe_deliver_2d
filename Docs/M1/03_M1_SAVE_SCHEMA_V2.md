@@ -39,6 +39,8 @@ codex_entry_ids
 souvenir_ids
 completed_side_order_ids
 failed_side_order_ids
+order_states
+reward_applied_order_ids
 station_state_level
 ship_upgrade_ids
 revisit_state
@@ -57,6 +59,8 @@ codex_entry_ids: Array[StringName]
 souvenir_ids: Array[StringName]
 completed_side_order_ids: Array[StringName]
 failed_side_order_ids: Array[StringName]
+order_states: Dictionary[StringName, StringName]
+reward_applied_order_ids: Array[StringName]
 station_state_level: int
 ship_upgrade_ids: Array[StringName]
 revisit_state: Dictionary[StringName, StringName]
@@ -71,6 +75,10 @@ last_stable_station_state: StringName
 - `station_state_level = 0`。
 - `demo_ending_flags` 只接受布尔、整数、有限浮点数或非空稳定 ID。
 - 集合读取和写回均去重；字典键和值必须通过类型验证。
+- `order_states` 只保存非 `AVAILABLE` 状态名；旧 v2 档缺少该字段时，由既有
+  current/completed/failed 记录补齐。
+- 旧档中已经完成的订单会同步补入 `reward_applied_order_ids`，把历史奖励视为已
+  结算，防止加载后重放。
 
 ## 3. 稳定 ID
 
@@ -173,9 +181,12 @@ last_stable_station_state = station_after_first_delivery
 
 ## 6. 支线状态
 
-一次仍只有一个 `current_order_id`。支线历史存入：
+一次仍只有一个 `current_order_id`，且它必须是 `order_states` 中唯一的
+`ACCEPTED`。订单状态与奖励幂等账本存入：
 
 ```text
+order_states
+reward_applied_order_ids
 completed_side_order_ids
 failed_side_order_ids
 story_flags
@@ -183,11 +194,30 @@ planet_relation_values
 codex_entry_ids
 ```
 
+合法状态名为：
+
+```text
+ACCEPTED
+COMPLETED
+FAILED
+ABANDONED
+ARCHIVED
+```
+
+`AVAILABLE` 是没有持久状态记录时的派生默认值。所有 `COMPLETED` 订单必须同时
+存在于 `completed_order_ids` 与 `reward_applied_order_ids`；账本条目也必须反向
+指向完成订单。这样保存、加载、重试和重复结算都不能再次发放奖励。
+
 放弃支线：
 
 - 清除 active order。
-- 可写入非永久冷却/可重接状态，具体由 OrderDefinition 决定。
+- 写入 `ABANDONED`；仅 `REPEATABLE` 策略允许重新接取。
 - 不加入 `failed_side_order_ids`，除非订单设计明确将放弃视为失败。
+
+失败支线写入 `FAILED` 并释放 active order；仅 `REPEATABLE` 策略允许重新接取。
+主线与回访订单失败不写入失败终态，而是保持 `ACCEPTED` 进入检查点重试，避免
+主线死档。`ARCHIVED_ONLY` 条目只能由 `AVAILABLE / FAILED / ABANDONED` 转为
+`ARCHIVED`，不能占用 active order。
 
 部分成功：
 
@@ -243,6 +273,9 @@ ending_relay_signal_detected
 10. 多星球、关系、许可、图鉴、纪念品、支线和结尾变量往返一致。
 11. 设置独立。
 12. M0 新游戏/继续回归。
+13. 订单状态图只允许一个 `ACCEPTED`，未知状态拒绝。
+14. active 订单计时和检查点往返一致。
+15. 完成订单的奖励账本往返一致且不重复发奖。
 
 ## 10. 明确不做
 

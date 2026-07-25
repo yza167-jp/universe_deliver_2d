@@ -33,6 +33,14 @@ func run() -> Array[String]:
 		"Red Sand order must reference its destination planet.",
 		failures
 	)
+	expect_true(
+		order.order_type == OrderDefinition.OrderType.MAIN
+		and order.repeat_policy == OrderDefinition.RepeatPolicy.UNIQUE
+		and order.planet_id == &"planet_red_sand"
+		and order.destination_id == &"planet_red_sand",
+		"The M0 first order must retain a unique main-order identity and stable destination IDs.",
+		failures
+	)
 	if order.destination_planet != null:
 		var environment: FlightEnvironmentProfile = (
 			order.destination_planet.flight_environment_profile
@@ -67,8 +75,18 @@ func run() -> Array[String]:
 		failures
 	)
 	expect_true(
-		order.delivery_method == OrderDefinition.DeliveryMethod.LANDING,
+		order.delivery_type == OrderDefinition.DeliveryType.LANDING,
 		"Red Sand M0 order must use landing delivery.",
+		failures
+	)
+	expect_true(
+		order.credit_reward == 100
+		and not order.is_express
+		and order.relation_rewards.is_empty()
+		and order.permission_rewards.is_empty()
+		and order.codex_rewards.is_empty()
+		and order.souvenir_rewards.is_empty(),
+		"The M0 first order must keep its original non-express credit-only reward.",
 		failures
 	)
 

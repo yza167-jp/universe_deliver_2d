@@ -67,6 +67,17 @@ func _test_v2_round_trip(failures: Array[String]) -> void:
 	source.souvenir_ids = [&"souvenir_old_relay_plaque"]
 	source.completed_side_order_ids = [&"side_white_noise_returned_memory"]
 	source.failed_side_order_ids = [&"side_canopy_spore_rush"]
+	source.completed_order_ids[&"side_white_noise_returned_memory"] = true
+	source.order_states[source.current_order_id] = GameStateModel.OrderStatus.ACCEPTED
+	source.order_states[&"order_orientation"] = GameStateModel.OrderStatus.COMPLETED
+	source.order_states[
+		&"side_white_noise_returned_memory"
+	] = GameStateModel.OrderStatus.COMPLETED
+	source.order_states[&"side_canopy_spore_rush"] = GameStateModel.OrderStatus.FAILED
+	source.reward_applied_order_ids = [
+		&"order_orientation",
+		&"side_white_noise_returned_memory",
+	]
 	source.station_state_level = 2
 	source.ship_upgrade_ids = [
 		&"module_high_voltage_shielding",
@@ -116,7 +127,11 @@ func _test_v2_round_trip(failures: Array[String]) -> void:
 	expect_true(
 		restored.story_flags == source.story_flags
 		and restored.read_dialogue_ids == source.read_dialogue_ids
-		and restored.completed_order_ids == source.completed_order_ids,
+		and restored.completed_order_ids.get(&"order_orientation", false)
+		and restored.completed_order_ids.get(
+			&"side_white_noise_returned_memory",
+			false
+		),
 		"M0 story, dialogue, and completed-order IDs must round-trip.",
 		failures
 	)
@@ -152,6 +167,11 @@ func _test_v2_round_trip(failures: Array[String]) -> void:
 	expect_true(
 		restored.completed_side_order_ids == [&"side_white_noise_returned_memory"]
 		and restored.failed_side_order_ids == [&"side_canopy_spore_rush"]
+		and restored.order_states == source.order_states
+		and restored.reward_applied_order_ids == [
+			&"order_orientation",
+			&"side_white_noise_returned_memory",
+		]
 		and restored.station_state_level == 2
 		and restored.ship_upgrade_ids == [
 			&"module_biosignal_isolation",

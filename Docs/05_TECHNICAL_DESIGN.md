@@ -216,6 +216,8 @@ codex_entry_ids
 souvenir_ids
 completed_side_order_ids
 failed_side_order_ids
+order_states              # 非 AVAILABLE 的订单状态名
+reward_applied_order_ids  # 已原子结算奖励的订单 ID
 station_state_level
 ship_upgrade_ids
 revisit_state
@@ -223,8 +225,12 @@ demo_ending_flags
 last_stable_station_state
 ```
 
-集合字段在解析和写回时去重；关系、回访与结尾字典验证键和值类型。设置内容、场景
-节点、`NodePath` 和运行时节点引用不进入剧情存档。
+集合字段在解析和写回时去重；关系、回访、订单状态与结尾字典验证键和值类型。
+`order_states` 只允许 `ACCEPTED / COMPLETED / FAILED / ABANDONED / ARCHIVED`，
+且最多一个 `ACCEPTED` 并与 `current_order_id` 相同。每个完成订单都必须有
+`reward_applied_order_ids` 账本记录；旧 v2 档缺少新增字段时从既有
+current/completed/failed 记录补齐，不重新发奖。设置内容、场景节点、`NodePath`
+和运行时节点引用不进入剧情存档。
 
 ### 5.2 `OrderRunState`
 
@@ -245,8 +251,10 @@ optional_trigger_ids
 result_tags
 ```
 
-离开/完成订单后保留必要的订单结果，不把整棵场景树存档。M0 的继续游戏固定回到
-快递站稳定状态，不恢复驾驶舱、飞行、抵达或结算场景节点。
+`elapsed_time` 只由 active 加急订单累计；对话、帮助面板和系统暂停时冻结，检查点
+重试和存档恢复保留当前值。离开/完成订单后保留必要的订单结果，不把整棵场景树
+存档。M0 的继续游戏固定回到快递站稳定状态，不恢复驾驶舱、飞行、抵达或结算
+场景节点。
 
 ### 5.3 `ShipLoadout`
 
@@ -284,6 +292,26 @@ current_value)`。只有 `changed = true` 时才发出一次 `persistent_state_c
 不能重复增加。加载由 `GameProgressData.apply_to()` 直接恢复已验证字段，只发出
 `runtime_state_restored`，不重放奖励或持久化变更。
 
+### 5.5 M1 一次一单运行时合同
+
+`GameStateModel` 持有唯一 active order 槽位，并以
+`AVAILABLE → ACCEPTED → COMPLETED / FAILED / ABANDONED` 为主要状态流；
+`ARCHIVED_ONLY` 条目可由可用、失败或放弃态进入 `ARCHIVED`，但不能接取。完成、
+失败、放弃和归档都必须经公开方法执行，UI 与场景不能直接写 `order_states`。
+
+主线与 `REVISIT` 订单固定使用 `UNIQUE`，不能放弃；飞行失败时保持
+`ACCEPTED`，继续使用既有检查点重试。支线失败/放弃会释放 active 槽位，但只有
+`REPEATABLE` 允许再次接取。完成是永久终态；所有重复策略都不能把
+`COMPLETED` 变回 `ACCEPTED`。
+
+订单完成入口先验证整份奖励，再一次性应用信用点、关系、许可、图鉴、纪念品、
+完成标记和可选站点升级，最后写入 `reward_applied_order_ids` 并清理 active
+上下文。重复完成、重复加载或结算重入在任何奖励变更前返回错误。
+
+`M1OrderRules` 是无状态规则层：复用 T-102 的章节、星球、许可和模块准入，统一
+加急计时暂停、准时判断和报酬比例。超时在宽限窗口中线性从 `1.0` 降至配置的
+`minimum_reward_ratio`，不把超时直接解释为硬失败。
+
 ## 6. 数据定义
 
 使用自定义 Resource（`.tres`）作为 M0 首选，因为：
@@ -313,19 +341,39 @@ music_theme_id: StringName
 
 ```text
 id
-order_type  # MAIN / SIDE
-sender_character_id
-recipient_character_id
-destination_planet_id
+display_name_key
+order_type          # MAIN / SIDE / REVISIT
+required_chapter
+unlock_conditions   # PLANET_UNLOCKED / PERMISSION_GRANTED / MODULE_AVAILABLE
+sender
+recipient
+destination_planet
+planet_id
+destination_id
 cargo_id
-reward_credits
+delivery_type       # LANDING / LOW_ALTITUDE_DROP
+credit_reward
+relation_rewards
+permission_rewards
+codex_rewards
+souvenir_rewards
+repeat_policy       # UNIQUE / REPEATABLE / ARCHIVED_ONLY
+is_express
+target_seconds
+grace_seconds
+minimum_reward_ratio
+relation_bonus_on_time
 required_module_ids
 recommended_module_ids
-delivery_method
 customer_history_keys
 story_requirements
 completion_flags
 ```
+
+主线与回访订单只能使用 `UNIQUE`。注册表验证重复订单 ID、已知章节/星球/角色/
+货物/模块、目的地一致性、交付类型、解锁条件、所有奖励引用及加急参数。
+`codex_reward_ids` 与 `souvenir_reward_ids` 当前只提供稳定 ID 引用目录，完整 M1
+内容 Resource 仍由 T-104 落地。
 
 ### 6.3 `CargoDefinition`
 
@@ -830,6 +878,9 @@ M0 赤砂星路线暂由场景局部 `AudioStreamPlayer` 播放程序合成的�
 - ID 注册与数据引用。
 - 订单状态机。
 - 报酬计算。
+- 一次一单、主线重试安全、支线失败/放弃与显式重接。
+- 加急计时暂停、超时报酬下限与准时关系奖励。
+- 完成奖励原子性、幂等账本及 active/completed 存档往返。
 - 飞行力计算、辅助重力、终端速度。
 - 碰撞分级。
 - 资源消耗，以及护盾充足、部分破盾和无护盾时的统一碰撞/环境伤害顺序。

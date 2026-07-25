@@ -16,6 +16,7 @@ static func validate(registry: GameDataRegistry) -> PackedStringArray:
 	_validate_cargo(registry, known_ids, errors)
 	_validate_modules(registry, known_ids, errors)
 	_validate_characters(registry, known_ids, errors)
+	_validate_reward_catalogs(registry, errors)
 	_validate_orders(registry, known_ids, errors)
 	return errors
 
@@ -240,23 +241,71 @@ static func _validate_orders(
 
 		_register_id("OrderDefinition", order.id, known_ids, errors)
 		_validate_text_key(order.id, "display_name_key", order.display_name_key, errors)
-		if order.order_type < OrderDefinition.OrderType.MAIN or order.order_type > OrderDefinition.OrderType.SIDE:
+		if (
+			order.order_type < OrderDefinition.OrderType.MAIN
+			or order.order_type > OrderDefinition.OrderType.REVISIT
+		):
 			errors.append("OrderDefinition '%s' order_type is invalid." % order.id)
-		if order.reward_credits < 0:
-			errors.append("OrderDefinition '%s' reward_credits cannot be negative." % order.id)
+		if (
+			order.repeat_policy < OrderDefinition.RepeatPolicy.UNIQUE
+			or order.repeat_policy > OrderDefinition.RepeatPolicy.ARCHIVED_ONLY
+		):
+			errors.append("OrderDefinition '%s' repeat_policy is invalid." % order.id)
+		elif (
+			order.is_mainline()
+			and order.repeat_policy != OrderDefinition.RepeatPolicy.UNIQUE
+		):
+			errors.append(
+				"OrderDefinition '%s' mainline orders must use UNIQUE repeat_policy."
+				% order.id
+			)
+		if order.credit_reward < 0:
+			errors.append("OrderDefinition '%s' credit_reward cannot be negative." % order.id)
 		if not is_finite(order.route_distance) or order.route_distance <= 0.0:
 			errors.append("OrderDefinition '%s' route_distance must be finite and greater than 0." % order.id)
 		if order.risk_level < 0 or order.risk_level > 5:
 			errors.append("OrderDefinition '%s' risk_level must be between 0 and 5." % order.id)
 		if (
-			order.delivery_method < OrderDefinition.DeliveryMethod.LANDING
-			or order.delivery_method > OrderDefinition.DeliveryMethod.DOCKING
+			order.delivery_type < OrderDefinition.DeliveryType.LANDING
+			or order.delivery_type > OrderDefinition.DeliveryType.LOW_ALTITUDE_DROP
 		):
-			errors.append("OrderDefinition '%s' delivery_method is invalid." % order.id)
+			errors.append("OrderDefinition '%s' delivery_type is invalid." % order.id)
+		if (
+			not order.required_chapter.is_empty()
+			and not M1ProgressRules.is_known_chapter(order.required_chapter)
+		):
+			errors.append(
+				"OrderDefinition '%s' references unknown chapter_id '%s'."
+				% [order.id, order.required_chapter]
+			)
+		if order.planet_id.is_empty():
+			errors.append("OrderDefinition '%s' planet_id is empty." % order.id)
+		elif registry.find_planet(order.planet_id) == null:
+			errors.append(
+				"OrderDefinition '%s' references unknown planet_id '%s'."
+				% [order.id, order.planet_id]
+			)
+		if order.destination_id.is_empty():
+			errors.append("OrderDefinition '%s' destination_id is empty." % order.id)
+		elif not _is_valid_definition_id(order.destination_id):
+			errors.append(
+				"OrderDefinition '%s' destination_id '%s' must use lower snake_case."
+				% [order.id, order.destination_id]
+			)
+		_validate_express_configuration(order, errors)
 
 		_validate_character_reference(registry, order, "sender", order.sender, errors)
 		_validate_character_reference(registry, order, "recipient", order.recipient, errors)
 		_validate_planet_reference(registry, order, order.destination_planet, errors)
+		if (
+			order.destination_planet != null
+			and not order.planet_id.is_empty()
+			and order.destination_planet.id != order.planet_id
+		):
+			errors.append(
+				"OrderDefinition '%s' planet_id does not match destination_planet."
+				% order.id
+			)
 		_validate_cargo_reference(registry, order, order.cargo, errors)
 		_validate_module_references(
 			registry,
@@ -294,6 +343,179 @@ static func _validate_orders(
 			order.completion_flags,
 			errors
 		)
+		_validate_order_unlock_conditions(registry, order, errors)
+		_validate_order_rewards(registry, order, errors)
+
+
+static func _validate_reward_catalogs(
+	registry: GameDataRegistry,
+	errors: PackedStringArray
+) -> void:
+	_validate_string_names("GameDataRegistry codex_reward_ids", registry.codex_reward_ids, errors)
+	for entry_id: StringName in registry.codex_reward_ids:
+		if not M1ProgressRules.is_valid_codex_entry_id(entry_id):
+			errors.append("Invalid registered codex reward ID '%s'." % entry_id)
+	_validate_string_names(
+		"GameDataRegistry souvenir_reward_ids",
+		registry.souvenir_reward_ids,
+		errors
+	)
+	for souvenir_id: StringName in registry.souvenir_reward_ids:
+		if not M1ProgressRules.is_valid_souvenir_id(souvenir_id):
+			errors.append("Invalid registered souvenir reward ID '%s'." % souvenir_id)
+
+
+static func _validate_express_configuration(
+	order: OrderDefinition,
+	errors: PackedStringArray
+) -> void:
+	if order.is_express:
+		if not is_finite(order.target_seconds) or order.target_seconds <= 0.0:
+			errors.append(
+				"OrderDefinition '%s' express target_seconds must be positive."
+				% order.id
+			)
+		if not is_finite(order.grace_seconds) or order.grace_seconds < 0.0:
+			errors.append(
+				"OrderDefinition '%s' express grace_seconds cannot be negative."
+				% order.id
+			)
+		if (
+			not is_finite(order.minimum_reward_ratio)
+			or order.minimum_reward_ratio < 0.0
+			or order.minimum_reward_ratio > 1.0
+		):
+			errors.append(
+				"OrderDefinition '%s' minimum_reward_ratio must be between 0 and 1."
+				% order.id
+			)
+		if order.relation_bonus_on_time < 0:
+			errors.append(
+				"OrderDefinition '%s' relation_bonus_on_time cannot be negative."
+				% order.id
+			)
+		return
+	if (
+		not is_zero_approx(order.target_seconds)
+		or not is_zero_approx(order.grace_seconds)
+		or not is_equal_approx(order.minimum_reward_ratio, 1.0)
+		or order.relation_bonus_on_time != 0
+	):
+		errors.append(
+			"OrderDefinition '%s' non-express timing fields must use neutral defaults."
+			% order.id
+		)
+
+
+static func _validate_order_unlock_conditions(
+	registry: GameDataRegistry,
+	order: OrderDefinition,
+	errors: PackedStringArray
+) -> void:
+	var seen_conditions: Dictionary[StringName, bool] = {}
+	for index: int in order.unlock_conditions.size():
+		var condition: OrderUnlockCondition = order.unlock_conditions[index]
+		if condition == null:
+			errors.append(
+				"OrderDefinition '%s' unlock_conditions contains a missing condition at index %d."
+				% [order.id, index]
+			)
+			continue
+		if condition.reference_id.is_empty():
+			errors.append(
+				"OrderDefinition '%s' unlock condition at index %d has an empty reference ID."
+				% [order.id, index]
+			)
+			continue
+		var condition_key: StringName = StringName(
+			"%d/%s" % [condition.condition_type, condition.reference_id]
+		)
+		if seen_conditions.has(condition_key):
+			errors.append(
+				"OrderDefinition '%s' has duplicate unlock condition '%s'."
+				% [order.id, condition_key]
+			)
+		else:
+			seen_conditions[condition_key] = true
+		match condition.condition_type:
+			OrderUnlockCondition.ConditionType.PLANET_UNLOCKED:
+				if (
+					not M1ProgressRules.is_known_planet(condition.reference_id)
+					or registry.find_planet(condition.reference_id) == null
+				):
+					errors.append(
+						"OrderDefinition '%s' unlock condition references unknown planet_id '%s'."
+						% [order.id, condition.reference_id]
+					)
+			OrderUnlockCondition.ConditionType.PERMISSION_GRANTED:
+				if not M1ProgressRules.is_known_permission(condition.reference_id):
+					errors.append(
+						"OrderDefinition '%s' unlock condition references unknown permission ID '%s'."
+						% [order.id, condition.reference_id]
+					)
+			OrderUnlockCondition.ConditionType.MODULE_AVAILABLE:
+				if registry.find_module(condition.reference_id) == null:
+					errors.append(
+						"OrderDefinition '%s' unlock condition references unknown module ID '%s'."
+						% [order.id, condition.reference_id]
+					)
+			_:
+				errors.append(
+					"OrderDefinition '%s' unlock condition type is invalid."
+					% order.id
+				)
+
+
+static func _validate_order_rewards(
+	registry: GameDataRegistry,
+	order: OrderDefinition,
+	errors: PackedStringArray
+) -> void:
+	for planet_id: StringName in order.relation_rewards:
+		var relation_delta: int = order.relation_rewards.get(planet_id, 0)
+		if registry.find_planet(planet_id) == null:
+			errors.append(
+				"OrderDefinition '%s' relation reward references unknown planet_id '%s'."
+				% [order.id, planet_id]
+			)
+		if relation_delta == 0:
+			errors.append(
+				"OrderDefinition '%s' relation reward for '%s' cannot be zero."
+				% [order.id, planet_id]
+			)
+	_validate_string_names(
+		"OrderDefinition '%s' permission_rewards" % order.id,
+		order.permission_rewards,
+		errors
+	)
+	for permission_id: StringName in order.permission_rewards:
+		if not M1ProgressRules.is_known_permission(permission_id):
+			errors.append(
+				"OrderDefinition '%s' references unknown permission reward ID '%s'."
+				% [order.id, permission_id]
+			)
+	_validate_string_names(
+		"OrderDefinition '%s' codex_rewards" % order.id,
+		order.codex_rewards,
+		errors
+	)
+	for entry_id: StringName in order.codex_rewards:
+		if not registry.has_codex_reward_id(entry_id):
+			errors.append(
+				"OrderDefinition '%s' references unknown codex reward ID '%s'."
+				% [order.id, entry_id]
+			)
+	_validate_string_names(
+		"OrderDefinition '%s' souvenir_rewards" % order.id,
+		order.souvenir_rewards,
+		errors
+	)
+	for souvenir_id: StringName in order.souvenir_rewards:
+		if not registry.has_souvenir_reward_id(souvenir_id):
+			errors.append(
+				"OrderDefinition '%s' references unknown souvenir reward ID '%s'."
+				% [order.id, souvenir_id]
+			)
 
 
 static func _register_id(

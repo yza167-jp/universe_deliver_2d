@@ -38,10 +38,22 @@
 ## 3. 订单模型
 
 - 一次仍只允许一份 active order。
-- OrderDefinition 增加 `MAIN / SIDE / REVISIT`、加急、关系/许可奖励、章节条件和重复策略。
-- 主线不可误放弃。
-- 支线可放弃、失败或部分成功。
+- `OrderDefinition` 增加 `MAIN / SIDE / REVISIT`、`LANDING /
+  LOW_ALTITUDE_DROP`、章节与解锁条件、加急参数、关系/许可/图鉴/纪念品奖励及
+  `UNIQUE / REPEATABLE / ARCHIVED_ONLY` 重复策略。
+- 持久状态统一为 `AVAILABLE / ACCEPTED / COMPLETED / FAILED / ABANDONED /
+  ARCHIVED`；只有 `ACCEPTED` 占用 active order 槽位，存档中也只允许一个
+  `ACCEPTED`。
+- 主线与回访订单不可误放弃；失败时保持 `ACCEPTED`，由既有检查点/重试流程继续，
+  不制造主线死档。
+- 支线可放弃、失败或以降低报酬的完成结果表达部分成功。`REPEATABLE` 只允许
+  `FAILED / ABANDONED → ACCEPTED` 的显式重接；任何 `COMPLETED` 订单都不能再次
+  接取或重复发奖。
+- `ARCHIVED_ONLY` 用于只记录历史而不进入 active order 的条目，不是可接任务。
 - 支线失败不撤销主线章节、模块或星球资格。
+- 接受条件统一消费 T-102 的章节、星球、许可和模块状态；订单完成通过
+  `GameStateModel` 的单一入口原子应用信用点、关系、许可、图鉴、纪念品和完成
+  标记，并写入奖励幂等账本。
 - 不建立随机刷新、每日任务或无限委托板。
 
 ## 4. 支线计时与报酬
@@ -57,9 +69,12 @@ relation_bonus_on_time
 
 规则：
 
-- 超时降低报酬/关系收益，不直接硬失败。
-- 对话、帮助面板和系统暂停按明确规则暂停计时。
-- 检查点重试不得重复增加奖励或异常重置计时。
+- 只有 active 的加急订单累计 `OrderRunState.elapsed_time`；非加急订单不累计。
+- `elapsed_time <= target_seconds` 时保留全额信用点及准时关系奖励；随后在
+  `grace_seconds` 内线性降至 `minimum_reward_ratio`，继续超时也不低于该下限，
+  不直接硬失败。
+- 对话、帮助面板和系统暂停均暂停计时。
+- 检查点重试保留同一计时；完成后由 `reward_applied_order_ids` 阻止重复增加奖励。
 - 非加急订单不显示倒计时压力。
 
 ## 5. 第二种正式交付：低空投放

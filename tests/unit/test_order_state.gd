@@ -13,7 +13,7 @@ func run() -> Array[String]:
 	game_state.order_status_changed.connect(_on_order_status_changed)
 
 	expect_true(
-		game_state.get_order_status(order.id) == GameStateModel.OrderStatus.NOT_ACCEPTED,
+		game_state.get_order_status(order.id) == GameStateModel.OrderStatus.AVAILABLE,
 		"Main order must begin as not accepted.",
 		failures
 	)
@@ -54,8 +54,11 @@ func run() -> Array[String]:
 		failures
 	)
 	expect_true(
-		not game_state.has_method("cancel_order") and not game_state.has_method("abandon_order"),
-		"Main-order state must not expose an accidental cancellation transition.",
+		not game_state.abandon_order(order)
+		and game_state.last_order_error
+		== GameStateModel.ORDER_ERROR_MAIN_CANNOT_ABANDON
+		and game_state.current_order_id == order.id,
+		"Main-order abandonment must be rejected without clearing the active order.",
 		failures
 	)
 
