@@ -1,0 +1,49 @@
+[gd_resource type="Resource" script_class="OrderDefinition" load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/definitions/order_definition.gd" id="1_order"]
+[ext_resource type="Script" path="res://scripts/data/definitions/order_unlock_condition.gd" id="2_condition"]
+[ext_resource type="Resource" path="res://data/characters/company_archive_service.tres" id="3_sender"]
+[ext_resource type="Resource" path="res://data/characters/white_noise_memory_owner.tres" id="4_recipient"]
+[ext_resource type="Resource" path="res://data/planets/white_noise.tres" id="5_planet"]
+[ext_resource type="Resource" path="res://data/cargo/returned_memory_case.tres" id="6_cargo"]
+[ext_resource type="Resource" path="res://data/modules/standard_drive.tres" id="7_drive"]
+[ext_resource type="Resource" path="res://data/modules/high_voltage_shielding.tres" id="8_high_voltage"]
+[ext_resource type="Resource" path="res://data/modules/shield_backup_power.tres" id="9_backup"]
+
+[sub_resource type="Resource" id="UnlockPlanet"]
+script = ExtResource("2_condition")
+condition_type = 0
+reference_id = &"planet_white_noise"
+
+[sub_resource type="Resource" id="UnlockPermission"]
+script = ExtResource("2_condition")
+condition_type = 1
+reference_id = &"permission_white_noise_archive_access"
+
+[resource]
+script = ExtResource("1_order")
+id = &"side_white_noise_returned_memory"
+display_name_key = &"SIDE_WHITE_NOISE_RETURNED_MEMORY_NAME_PROVISIONAL"
+order_type = 1
+required_chapter = &"chapter_m1_white_noise"
+unlock_conditions = [SubResource("UnlockPlanet"), SubResource("UnlockPermission")]
+sender = ExtResource("3_sender")
+recipient = ExtResource("4_recipient")
+destination_planet = ExtResource("5_planet")
+planet_id = &"planet_white_noise"
+destination_id = &"destination_white_noise_memory_return"
+cargo = ExtResource("6_cargo")
+delivery_type = 0
+credit_reward = 80
+relation_rewards = {
+&"planet_white_noise": 1
+}
+codex_rewards = Array[StringName]([&"codex_character_white_noise_memory_owner", &"codex_cargo_returned_memory_case"])
+repeat_policy = 0
+route_distance = 0.65
+risk_level = 2
+required_modules = [ExtResource("7_drive"), ExtResource("8_high_voltage")]
+recommended_modules = [ExtResource("9_backup")]
+customer_history_keys = Array[StringName]([&"SIDE_WHITE_NOISE_RETURNED_MEMORY_HISTORY_01", &"SIDE_WHITE_NOISE_RETURNED_MEMORY_HISTORY_02", &"SIDE_WHITE_NOISE_RETURNED_MEMORY_HISTORY_03"])
+story_requirements = Array[StringName]([&"story_m1_white_noise_archive_core_completed"])
+completion_flags = Array[StringName]([&"story_side_white_noise_returned_memory_completed"])

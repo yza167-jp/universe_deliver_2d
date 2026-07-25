@@ -1,0 +1,46 @@
+[gd_resource type="Resource" script_class="OrderDefinition" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/definitions/order_definition.gd" id="1_order"]
+[ext_resource type="Script" path="res://scripts/data/definitions/order_unlock_condition.gd" id="2_condition"]
+[ext_resource type="Resource" path="res://data/characters/company_dispatch.tres" id="3_sender"]
+[ext_resource type="Resource" path="res://data/characters/canopy_route_keeper.tres" id="4_recipient"]
+[ext_resource type="Resource" path="res://data/planets/canopy_world.tres" id="5_planet"]
+[ext_resource type="Resource" path="res://data/cargo/canopy_ecology_sample.tres" id="6_cargo"]
+[ext_resource type="Resource" path="res://data/modules/standard_drive.tres" id="7_drive"]
+[ext_resource type="Resource" path="res://data/modules/atmospheric_shield.tres" id="8_shield"]
+[ext_resource type="Resource" path="res://data/modules/biosignal_isolation.tres" id="9_isolation"]
+
+[sub_resource type="Resource" id="UnlockPlanet"]
+script = ExtResource("2_condition")
+condition_type = 0
+reference_id = &"planet_canopy_world"
+
+[resource]
+script = ExtResource("1_order")
+id = &"order_m1_canopy_ecology_cargo"
+display_name_key = &"ORDER_M1_CANOPY_ECOLOGY_CARGO_NAME_PROVISIONAL"
+order_type = 0
+required_chapter = &"chapter_m1_canopy_world"
+unlock_conditions = [SubResource("UnlockPlanet")]
+sender = ExtResource("3_sender")
+recipient = ExtResource("4_recipient")
+destination_planet = ExtResource("5_planet")
+planet_id = &"planet_canopy_world"
+destination_id = &"destination_canopy_core_platform"
+cargo = ExtResource("6_cargo")
+delivery_type = 0
+credit_reward = 200
+relation_rewards = {
+&"planet_canopy_world": 1
+}
+permission_rewards = Array[StringName]([&"permission_canopy_core_route"])
+codex_rewards = Array[StringName]([&"codex_planet_canopy_world", &"codex_character_canopy_route_keeper", &"codex_cargo_canopy_ecology_sample"])
+souvenir_rewards = Array[StringName]([&"souvenir_canopy_route_chime"])
+repeat_policy = 0
+route_distance = 1.15
+risk_level = 3
+required_modules = [ExtResource("7_drive"), ExtResource("8_shield")]
+recommended_modules = [ExtResource("9_isolation")]
+customer_history_keys = Array[StringName]([&"ORDER_M1_CANOPY_ECOLOGY_CARGO_HISTORY_01", &"ORDER_M1_CANOPY_ECOLOGY_CARGO_HISTORY_02", &"ORDER_M1_CANOPY_ECOLOGY_CARGO_HISTORY_03"])
+story_requirements = Array[StringName]([&"story_m1_white_noise_archive_core_completed"])
+completion_flags = Array[StringName]([&"story_m1_canopy_ecology_cargo_completed"])

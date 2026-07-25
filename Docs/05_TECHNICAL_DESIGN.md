@@ -331,11 +331,18 @@ display_name_key: StringName
 description_key: StringName
 gravity_scale: float
 flight_environment_profile: FlightEnvironmentProfile
+content_readiness: REGISTERED_ONLY / PLAYABLE
 required_story_flags: Array[StringName]
-scene_paths / route ids
+flight_scene_path
 art_palette_id: StringName
 music_theme_id: StringName
 ```
+
+`data/m0_data_registry.tres` 继续是冻结的 M0 运行时入口。
+`data/m1_data_registry.tres` 以 `registry_id = m1_four_planet_demo` 标识完整 Packet
+内容源，但在后续导航/订单切换任务完成前不会替换
+现有 M0 场景的数据源。未制作路线的星球必须显式使用 `REGISTERED_ONLY` 且不声明
+`flight_scene_path`；只有 `PLAYABLE` 星球可以引用存在的场景。
 
 ### 6.2 `OrderDefinition`
 
@@ -372,8 +379,8 @@ completion_flags
 
 主线与回访订单只能使用 `UNIQUE`。注册表验证重复订单 ID、已知章节/星球/角色/
 货物/模块、目的地一致性、交付类型、解锁条件、所有奖励引用及加急参数。
-`codex_reward_ids` 与 `souvenir_reward_ids` 当前只提供稳定 ID 引用目录，完整 M1
-内容 Resource 仍由 T-104 落地。
+M0 历史中使用的 `order_red_sand_cooling_core` 只通过注册表 alias 解析到实际
+`order_red_sand_m0`，不创建第二份可接订单 Resource。
 
 ### 6.3 `CargoDefinition`
 
@@ -402,6 +409,14 @@ capability_tags
 cost
 story_unlock_flags
 ```
+
+### 6.5 图鉴、纪念品与注册表
+
+`GameDataRegistry` 使用 `Array[CodexEntryDefinition]` 与
+`Array[SouvenirDefinition]` 作为奖励引用的唯一内容目录，不再维护平行的手写 ID
+数组。两类 Resource 均保存稳定 ID、本地化 Key、关联星球和锁定前隐藏规则；
+`CodexEntryDefinition` 额外声明星球、人物、货物、异常或纪念品类别。验证器同时
+检查跨类型重复 ID、关联星球、奖励引用和中英文文本。
 
 ### 6.5 ID 规则
 

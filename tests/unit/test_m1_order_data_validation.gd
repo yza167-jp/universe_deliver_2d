@@ -160,8 +160,18 @@ func _test_save_rejects_multiple_active_and_unknown_status(
 func _make_registry_with_extended_order() -> GameDataRegistry:
 	var source: GameDataRegistry = load(REGISTRY_PATH) as GameDataRegistry
 	var registry: GameDataRegistry = source.duplicate(true) as GameDataRegistry
-	registry.codex_reward_ids = [&"codex_test_order_reward"]
-	registry.souvenir_reward_ids = [&"souvenir_test_order_reward"]
+	var codex_entry: CodexEntryDefinition = CodexEntryDefinition.new()
+	codex_entry.id = &"codex_test_order_reward"
+	codex_entry.title_key = &"TEST_CODEX_TITLE"
+	codex_entry.description_key = &"TEST_CODEX_DESCRIPTION"
+	codex_entry.related_planet_id = M1ProgressRules.PLANET_RED_SAND
+	registry.codex_entries = [codex_entry]
+	var souvenir: SouvenirDefinition = SouvenirDefinition.new()
+	souvenir.id = &"souvenir_test_order_reward"
+	souvenir.display_name_key = &"TEST_SOUVENIR_NAME"
+	souvenir.description_key = &"TEST_SOUVENIR_DESCRIPTION"
+	souvenir.related_planet_id = M1ProgressRules.PLANET_RED_SAND
+	registry.souvenirs = [souvenir]
 	var order: OrderDefinition = registry.orders[0].duplicate(false) as OrderDefinition
 	order.id = &"side_test_valid_extended"
 	order.order_type = OrderDefinition.OrderType.SIDE

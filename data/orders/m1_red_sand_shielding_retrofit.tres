@@ -1,0 +1,44 @@
+[gd_resource type="Resource" script_class="OrderDefinition" load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/definitions/order_definition.gd" id="1_order"]
+[ext_resource type="Script" path="res://scripts/data/definitions/order_unlock_condition.gd" id="2_condition"]
+[ext_resource type="Resource" path="res://data/characters/company_dispatch.tres" id="3_sender"]
+[ext_resource type="Resource" path="res://data/characters/red_sand_recipient.tres" id="4_recipient"]
+[ext_resource type="Resource" path="res://data/planets/red_sand.tres" id="5_planet"]
+[ext_resource type="Resource" path="res://data/cargo/relay_pattern_shielding_materials.tres" id="6_cargo"]
+[ext_resource type="Resource" path="res://data/modules/standard_drive.tres" id="7_drive"]
+[ext_resource type="Resource" path="res://data/modules/atmospheric_shield.tres" id="8_shield"]
+[ext_resource type="Resource" path="res://data/modules/shield_backup_power.tres" id="9_backup"]
+
+[sub_resource type="Resource" id="UnlockPlanet"]
+script = ExtResource("2_condition")
+condition_type = 0
+reference_id = &"planet_red_sand"
+
+[resource]
+script = ExtResource("1_order")
+id = &"order_m1_red_sand_shielding_retrofit"
+display_name_key = &"ORDER_M1_RED_SAND_SHIELDING_RETROFIT_NAME_PROVISIONAL"
+order_type = 2
+required_chapter = &"chapter_m1_red_sand_revisit"
+unlock_conditions = [SubResource("UnlockPlanet")]
+sender = ExtResource("3_sender")
+recipient = ExtResource("4_recipient")
+destination_planet = ExtResource("5_planet")
+planet_id = &"planet_red_sand"
+destination_id = &"destination_red_sand_repair_yard"
+cargo = ExtResource("6_cargo")
+delivery_type = 0
+credit_reward = 140
+relation_rewards = {
+&"planet_red_sand": 1
+}
+codex_rewards = Array[StringName]([&"codex_cargo_relay_pattern_shielding_materials"])
+repeat_policy = 0
+route_distance = 1.0
+risk_level = 2
+required_modules = [ExtResource("7_drive"), ExtResource("8_shield")]
+recommended_modules = [ExtResource("9_backup")]
+customer_history_keys = Array[StringName]([&"ORDER_M1_RED_SAND_SHIELDING_RETROFIT_HISTORY_01", &"ORDER_M1_RED_SAND_SHIELDING_RETROFIT_HISTORY_02", &"ORDER_M1_RED_SAND_SHIELDING_RETROFIT_HISTORY_03"])
+story_requirements = Array[StringName]([&"story_red_sand_order_completed"])
+completion_flags = Array[StringName]([&"story_m1_red_sand_shielding_retrofit_completed"])

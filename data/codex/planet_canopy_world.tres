@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CodexEntryDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/definitions/codex_entry_definition.gd" id="1_codex"]
+
+[resource]
+script = ExtResource("1_codex")
+id = &"codex_planet_canopy_world"
+category = 0
+title_key = &"CODEX_PLANET_CANOPY_WORLD_TITLE_PROVISIONAL"
+description_key = &"CODEX_PLANET_CANOPY_WORLD_DESCRIPTION"
+related_planet_id = &"planet_canopy_world"
+hidden_when_locked = true

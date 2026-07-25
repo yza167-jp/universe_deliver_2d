@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CodexEntryDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/definitions/codex_entry_definition.gd" id="1_codex"]
+
+[resource]
+script = ExtResource("1_codex")
+id = &"codex_cargo_relay_pattern_shielding_materials"
+category = 2
+title_key = &"CODEX_CARGO_RELAY_PATTERN_SHIELDING_MATERIALS_TITLE_PROVISIONAL"
+description_key = &"CODEX_CARGO_RELAY_PATTERN_SHIELDING_MATERIALS_DESCRIPTION"
+related_planet_id = &"planet_red_sand"
+hidden_when_locked = true

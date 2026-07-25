@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CodexEntryDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/definitions/codex_entry_definition.gd" id="1_codex"]
+
+[resource]
+script = ExtResource("1_codex")
+id = &"codex_cargo_returned_memory_case"
+category = 2
+title_key = &"CODEX_CARGO_RETURNED_MEMORY_CASE_TITLE_PROVISIONAL"
+description_key = &"CODEX_CARGO_RETURNED_MEMORY_CASE_DESCRIPTION"
+related_planet_id = &"planet_white_noise"
+hidden_when_locked = true

@@ -1,0 +1,2 @@
+keys,zh_CN
+TEST_LOCALIZATION_ONLY_ZH,"只有中文"

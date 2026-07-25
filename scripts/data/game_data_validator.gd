@@ -2,6 +2,40 @@ class_name GameDataValidator
 extends RefCounted
 
 const DEFINITION_ID_PATTERN: String = "^[a-z][a-z0-9_]*$"
+const M1_REGISTRY_ID: StringName = &"m1_four_planet_demo"
+const M1_ACTUAL_M0_ORDER_ID: StringName = &"order_red_sand_m0"
+const M1_CANONICAL_M0_ORDER_ALIAS: StringName = &"order_red_sand_cooling_core"
+const M1_STRETCH_ORDER_ID: StringName = &"side_red_sand_unlisted_filters"
+const M1_HIGH_VOLTAGE_MODULE_ID: StringName = &"module_high_voltage_shielding"
+const M1_WHITE_NOISE_ORDER_ID: StringName = &"order_m1_white_noise_archive_core"
+const M1_CANOPY_SIDE_ORDER_ID: StringName = &"side_canopy_spore_drop"
+const M1_TIDAL_SIDE_ORDER_ID: StringName = &"side_tidal_beacon_before_eye"
+const M1_REQUIRED_PLANET_IDS: Array[StringName] = [
+	&"planet_red_sand",
+	&"planet_white_noise",
+	&"planet_canopy_world",
+	&"planet_tidal_archipelago",
+]
+const M1_NEW_PLANET_IDS: Array[StringName] = [
+	&"planet_white_noise",
+	&"planet_canopy_world",
+	&"planet_tidal_archipelago",
+]
+const M1_REQUIRED_ORDER_IDS: Array[StringName] = [
+	M1_ACTUAL_M0_ORDER_ID,
+	&"order_m1_red_sand_shielding_retrofit",
+	M1_WHITE_NOISE_ORDER_ID,
+	&"order_m1_canopy_ecology_cargo",
+	&"order_m1_tidal_weather_core",
+	M1_CANOPY_SIDE_ORDER_ID,
+	&"side_white_noise_returned_memory",
+	M1_TIDAL_SIDE_ORDER_ID,
+]
+const M1_REQUIRED_SIDE_ORDER_IDS: Array[StringName] = [
+	&"side_white_noise_returned_memory",
+	M1_CANOPY_SIDE_ORDER_ID,
+	M1_TIDAL_SIDE_ORDER_ID,
+]
 
 
 ## Validates registry-owned definitions and every cross-resource reference without mutating data.
@@ -12,12 +46,22 @@ static func validate(registry: GameDataRegistry) -> PackedStringArray:
 		return errors
 
 	var known_ids: Dictionary[StringName, String] = {}
+	if (
+		not registry.registry_id.is_empty()
+		and not _is_valid_definition_id(registry.registry_id)
+	):
+		errors.append(
+			"GameDataRegistry ID '%s' must use lower snake_case." % registry.registry_id
+		)
 	_validate_planets(registry, known_ids, errors)
 	_validate_cargo(registry, known_ids, errors)
 	_validate_modules(registry, known_ids, errors)
 	_validate_characters(registry, known_ids, errors)
-	_validate_reward_catalogs(registry, errors)
+	_validate_codex_entries(registry, known_ids, errors)
+	_validate_souvenirs(registry, known_ids, errors)
 	_validate_orders(registry, known_ids, errors)
+	_validate_order_aliases(registry, known_ids, errors)
+	_validate_m1_packet_contract(registry, errors)
 	return errors
 
 
@@ -37,13 +81,27 @@ static func _validate_planets(
 		_validate_text_key(planet.id, "description_key", planet.description_key, errors)
 		if not is_finite(planet.gravity_scale) or planet.gravity_scale <= 0.0:
 			errors.append("PlanetDefinition '%s' gravity_scale must be finite and greater than 0." % planet.id)
-		_validate_flight_environment_profile(planet, errors)
-		if planet.flight_scene_path.is_empty():
-			errors.append("PlanetDefinition '%s' flight_scene_path is empty." % planet.id)
-		elif not ResourceLoader.exists(planet.flight_scene_path):
+		_validate_flight_environment_profile(planet, known_ids, errors)
+		if (
+			planet.content_readiness < PlanetDefinition.ContentReadiness.REGISTERED_ONLY
+			or planet.content_readiness > PlanetDefinition.ContentReadiness.PLAYABLE
+		):
+			errors.append("PlanetDefinition '%s' content_readiness is invalid." % planet.id)
+		elif planet.is_playable():
+			if planet.flight_scene_path.is_empty():
+				errors.append(
+					"PlanetDefinition '%s' playable content requires a flight_scene_path."
+					% planet.id
+				)
+			elif not ResourceLoader.exists(planet.flight_scene_path):
+				errors.append(
+					"PlanetDefinition '%s' flight_scene_path does not exist: %s"
+					% [planet.id, planet.flight_scene_path]
+				)
+		elif not planet.flight_scene_path.is_empty():
 			errors.append(
-				"PlanetDefinition '%s' flight_scene_path does not exist: %s"
-				% [planet.id, planet.flight_scene_path]
+				"PlanetDefinition '%s' registered-only content must not declare a flight_scene_path."
+				% planet.id
 			)
 		_validate_string_names(
 			"PlanetDefinition '%s' required_story_flags" % planet.id,
@@ -54,6 +112,7 @@ static func _validate_planets(
 
 static func _validate_flight_environment_profile(
 	planet: PlanetDefinition,
+	known_ids: Dictionary[StringName, String],
 	errors: PackedStringArray
 ) -> void:
 	var profile: FlightEnvironmentProfile = planet.flight_environment_profile
@@ -62,12 +121,7 @@ static func _validate_flight_environment_profile(
 			"PlanetDefinition '%s' flight_environment_profile is missing." % planet.id
 		)
 		return
-	if profile.id.is_empty():
-		errors.append("PlanetDefinition '%s' environment profile has an empty ID." % planet.id)
-	elif not _is_valid_definition_id(profile.id):
-		errors.append(
-			"FlightEnvironmentProfile ID '%s' must use lower snake_case." % profile.id
-		)
+	_register_id("FlightEnvironmentProfile", profile.id, known_ids, errors)
 	_validate_text_key(profile.id, "display_name_key", profile.display_name_key, errors)
 	if not is_finite(profile.planet_gravity) or profile.planet_gravity < 0.0:
 		errors.append(
@@ -322,7 +376,13 @@ static func _validate_orders(
 			errors
 		)
 		for required_module: ShipModuleDefinition in order.required_modules:
-			if required_module != null and order.recommended_modules.has(required_module):
+			if (
+				required_module != null
+				and _order_module_list_has_id(
+					order.recommended_modules,
+					required_module.id
+				)
+			):
 				errors.append(
 					"OrderDefinition '%s' lists module '%s' as both required and recommended."
 					% [order.id, required_module.id]
@@ -347,22 +407,205 @@ static func _validate_orders(
 		_validate_order_rewards(registry, order, errors)
 
 
-static func _validate_reward_catalogs(
+static func _validate_codex_entries(
+	registry: GameDataRegistry,
+	known_ids: Dictionary[StringName, String],
+	errors: PackedStringArray
+) -> void:
+	for index: int in registry.codex_entries.size():
+		var entry: CodexEntryDefinition = registry.codex_entries[index]
+		if entry == null:
+			errors.append("CodexEntryDefinition at index %d is missing." % index)
+			continue
+		_register_id("CodexEntryDefinition", entry.id, known_ids, errors)
+		if not M1ProgressRules.is_valid_codex_entry_id(entry.id):
+			errors.append("Invalid registered codex reward ID '%s'." % entry.id)
+		if (
+			entry.category < CodexEntryDefinition.Category.PLANET
+			or entry.category > CodexEntryDefinition.Category.SOUVENIR
+		):
+			errors.append("CodexEntryDefinition '%s' category is invalid." % entry.id)
+		_validate_text_key(entry.id, "title_key", entry.title_key, errors)
+		_validate_text_key(entry.id, "description_key", entry.description_key, errors)
+		_validate_related_planet_id(
+			registry,
+			"CodexEntryDefinition",
+			entry.id,
+			entry.related_planet_id,
+			errors
+		)
+
+
+static func _validate_souvenirs(
+	registry: GameDataRegistry,
+	known_ids: Dictionary[StringName, String],
+	errors: PackedStringArray
+) -> void:
+	for index: int in registry.souvenirs.size():
+		var souvenir: SouvenirDefinition = registry.souvenirs[index]
+		if souvenir == null:
+			errors.append("SouvenirDefinition at index %d is missing." % index)
+			continue
+		_register_id("SouvenirDefinition", souvenir.id, known_ids, errors)
+		if not M1ProgressRules.is_valid_souvenir_id(souvenir.id):
+			errors.append("Invalid registered souvenir reward ID '%s'." % souvenir.id)
+		_validate_text_key(
+			souvenir.id,
+			"display_name_key",
+			souvenir.display_name_key,
+			errors
+		)
+		_validate_text_key(
+			souvenir.id,
+			"description_key",
+			souvenir.description_key,
+			errors
+		)
+		_validate_related_planet_id(
+			registry,
+			"SouvenirDefinition",
+			souvenir.id,
+			souvenir.related_planet_id,
+			errors
+		)
+
+
+static func _validate_order_aliases(
+	registry: GameDataRegistry,
+	known_ids: Dictionary[StringName, String],
+	errors: PackedStringArray
+) -> void:
+	for alias_id: StringName in registry.order_aliases:
+		var actual_id: StringName = registry.order_aliases.get(alias_id, &"")
+		if not _is_valid_definition_id(alias_id):
+			errors.append("Order alias ID '%s' must use lower snake_case." % alias_id)
+		if not _is_valid_definition_id(actual_id):
+			errors.append(
+				"Order alias '%s' target '%s' must use lower snake_case."
+				% [alias_id, actual_id]
+			)
+		if alias_id == actual_id:
+			errors.append("Order alias '%s' cannot target itself." % alias_id)
+		if known_ids.has(alias_id):
+			errors.append(
+				"Order alias '%s' duplicates a registered definition ID." % alias_id
+			)
+		var actual_order_count: int = 0
+		for order: OrderDefinition in registry.orders:
+			if order != null and order.id == actual_id:
+				actual_order_count += 1
+		if actual_order_count != 1:
+			errors.append(
+				"Order alias '%s' must target exactly one registered OrderDefinition '%s'."
+				% [alias_id, actual_id]
+			)
+
+
+static func _validate_related_planet_id(
+	registry: GameDataRegistry,
+	type_name: String,
+	definition_id: StringName,
+	planet_id: StringName,
+	errors: PackedStringArray
+) -> void:
+	if planet_id.is_empty():
+		errors.append("%s '%s' related_planet_id is empty." % [type_name, definition_id])
+	elif registry.find_planet(planet_id) == null:
+		errors.append(
+			"%s '%s' references unknown related_planet_id '%s'."
+			% [type_name, definition_id, planet_id]
+		)
+
+
+static func _validate_m1_packet_contract(
 	registry: GameDataRegistry,
 	errors: PackedStringArray
 ) -> void:
-	_validate_string_names("GameDataRegistry codex_reward_ids", registry.codex_reward_ids, errors)
-	for entry_id: StringName in registry.codex_reward_ids:
-		if not M1ProgressRules.is_valid_codex_entry_id(entry_id):
-			errors.append("Invalid registered codex reward ID '%s'." % entry_id)
-	_validate_string_names(
-		"GameDataRegistry souvenir_reward_ids",
-		registry.souvenir_reward_ids,
-		errors
-	)
-	for souvenir_id: StringName in registry.souvenir_reward_ids:
-		if not M1ProgressRules.is_valid_souvenir_id(souvenir_id):
-			errors.append("Invalid registered souvenir reward ID '%s'." % souvenir_id)
+	if not _contains_m1_packet_content(registry):
+		return
+	for planet_id: StringName in M1_REQUIRED_PLANET_IDS:
+		if registry.find_planet(planet_id) == null:
+			errors.append("M1 registry is missing required planet '%s'." % planet_id)
+	for planet_id: StringName in M1_NEW_PLANET_IDS:
+		var planet: PlanetDefinition = registry.find_planet(planet_id)
+		if planet == null:
+			continue
+		if planet.content_readiness != PlanetDefinition.ContentReadiness.REGISTERED_ONLY:
+			errors.append(
+				"M1 planet '%s' must remain REGISTERED_ONLY until its route task lands."
+				% planet_id
+			)
+		if not planet.flight_scene_path.is_empty():
+			errors.append(
+				"M1 planet '%s' must not borrow a playable flight scene." % planet_id
+			)
+	for order_id: StringName in M1_REQUIRED_ORDER_IDS:
+		if registry.find_order(order_id) == null:
+			errors.append("M1 registry is missing required order '%s'." % order_id)
+	if registry.find_order(M1_STRETCH_ORDER_ID) != null:
+		errors.append(
+			"M1 required registry must not include Stretch order '%s'."
+			% M1_STRETCH_ORDER_ID
+		)
+	if (
+		registry.order_aliases.get(M1_CANONICAL_M0_ORDER_ALIAS, &"")
+		!= M1_ACTUAL_M0_ORDER_ID
+	):
+		errors.append(
+			"M1 canonical M0 order alias must resolve '%s' to '%s'."
+			% [M1_CANONICAL_M0_ORDER_ALIAS, M1_ACTUAL_M0_ORDER_ID]
+		)
+	var actual_m0_order_count: int = 0
+	for order: OrderDefinition in registry.orders:
+		if order != null and order.id == M1_ACTUAL_M0_ORDER_ID:
+			actual_m0_order_count += 1
+	if actual_m0_order_count != 1:
+		errors.append("M1 registry must contain exactly one actual M0 order Resource.")
+	for side_order_id: StringName in M1_REQUIRED_SIDE_ORDER_IDS:
+		var side_order: OrderDefinition = registry.find_order(side_order_id)
+		if (
+			side_order != null
+			and side_order.repeat_policy == OrderDefinition.RepeatPolicy.ARCHIVED_ONLY
+		):
+			errors.append(
+				"M1 required side order '%s' cannot use ARCHIVED_ONLY." % side_order_id
+			)
+	var white_noise_order: OrderDefinition = registry.find_order(M1_WHITE_NOISE_ORDER_ID)
+	if (
+		white_noise_order != null
+		and not _order_module_list_has_id(
+			white_noise_order.required_modules,
+			M1_HIGH_VOLTAGE_MODULE_ID
+		)
+	):
+		errors.append(
+			"M1 White Noise main order must require '%s'."
+			% M1_HIGH_VOLTAGE_MODULE_ID
+		)
+	var canopy_side_order: OrderDefinition = registry.find_order(M1_CANOPY_SIDE_ORDER_ID)
+	if (
+		canopy_side_order != null
+		and canopy_side_order.delivery_type
+		!= OrderDefinition.DeliveryType.LOW_ALTITUDE_DROP
+	):
+		errors.append("M1 Canopy side order must use LOW_ALTITUDE_DROP.")
+	var tidal_side_order: OrderDefinition = registry.find_order(M1_TIDAL_SIDE_ORDER_ID)
+	if tidal_side_order != null and not tidal_side_order.is_express:
+		errors.append("M1 Tidal side order must be express.")
+
+
+static func _contains_m1_packet_content(registry: GameDataRegistry) -> bool:
+	return registry.registry_id == M1_REGISTRY_ID
+
+
+static func _order_module_list_has_id(
+	modules: Array[ShipModuleDefinition],
+	module_id: StringName
+) -> bool:
+	for module: ShipModuleDefinition in modules:
+		if module != null and module.id == module_id:
+			return true
+	return false
 
 
 static func _validate_express_configuration(

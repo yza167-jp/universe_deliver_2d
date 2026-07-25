@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CargoDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/definitions/cargo_definition.gd" id="1_cargo"]
+
+[resource]
+script = ExtResource("1_cargo")
+id = &"cargo_canopy_ecology_sample"
+display_name_key = &"CARGO_CANOPY_ECOLOGY_SAMPLE_NAME_PROVISIONAL"
+company_description_key = &"CARGO_CANOPY_ECOLOGY_SAMPLE_COMPANY_DESCRIPTION"
+story_description_key = &"CARGO_CANOPY_ECOLOGY_SAMPLE_STORY_DESCRIPTION"
+boost_policy = 1
+collision_tolerance = 0.6
+attraction_risk_tags = Array[StringName]([&"risk_biosignal_attraction", &"risk_ecological_contamination"])

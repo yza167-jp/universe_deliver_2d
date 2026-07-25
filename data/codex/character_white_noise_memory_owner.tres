@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CodexEntryDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/definitions/codex_entry_definition.gd" id="1_codex"]
+
+[resource]
+script = ExtResource("1_codex")
+id = &"codex_character_white_noise_memory_owner"
+category = 1
+title_key = &"CODEX_CHARACTER_WHITE_NOISE_MEMORY_OWNER_TITLE_PROVISIONAL"
+description_key = &"CODEX_CHARACTER_WHITE_NOISE_MEMORY_OWNER_DESCRIPTION"
+related_planet_id = &"planet_white_noise"
+hidden_when_locked = true

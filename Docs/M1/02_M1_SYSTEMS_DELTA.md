@@ -28,6 +28,10 @@
 ## 2. 多星球导航
 
 - 导航由 PlanetDefinition、章节、许可和模块共同决定。
+- M1 内容从独立 `m1_data_registry.tres` 读取；冻结的 M0 场景仍使用
+  `m0_data_registry.tres`，直到后续导航任务显式切换。
+- 星球注册与路线可玩性分离：白噪、穹林、群潮在各自路线任务完成前是
+  `REGISTERED_ONLY`，没有可选场景路径，也不借用赤砂路线。
 - 未解锁星球可以显示轮廓与解锁原因，但不能选择。
 - 主线顺序默认固定：赤砂回访 → 白噪 → 穹林 → 群潮。
 - 支线只在对应章节和关系条件满足时显示。
@@ -55,6 +59,10 @@
   `GameStateModel` 的单一入口原子应用信用点、关系、许可、图鉴、纪念品和完成
   标记，并写入奖励幂等账本。
 - 不建立随机刷新、每日任务或无限委托板。
+- 图鉴和纪念品奖励引用类型化 `CodexEntryDefinition` /
+  `SouvenirDefinition`，注册表不再用平行手写 ID 列表维护同一内容。
+- M0 文档 canonical ID `order_red_sand_cooling_core` 仅作为历史 alias 指向实际
+  `order_red_sand_m0`，不会生成第二份可接订单。
 
 ## 4. 支线计时与报酬
 

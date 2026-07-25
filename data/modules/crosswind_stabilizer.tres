@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ShipModuleDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/definitions/ship_module_definition.gd" id="1_module"]
+
+[resource]
+script = ExtResource("1_module")
+id = &"module_crosswind_stabilizer"
+display_name_key = &"MODULE_CROSSWIND_STABILIZER_NAME"
+description_key = &"MODULE_CROSSWIND_STABILIZER_DESCRIPTION"
+slot_type = 2
+stat_modifiers = {}
+capability_tags = Array[StringName]([&"capability_crosswind_stabilization"])
+cost = 0
+story_unlock_flags = Array[StringName]([&"story_m1_crosswind_stabilizer_available"])

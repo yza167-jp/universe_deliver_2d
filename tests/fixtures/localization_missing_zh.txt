@@ -1,0 +1,2 @@
+keys,en
+TEST_LOCALIZATION_ONLY_EN,"English only"

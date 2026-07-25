@@ -67,6 +67,22 @@ static func validate_registry(
 			character.display_name_key
 		)
 		keys_by_label["CharacterDefinition '%s' role_key" % character.id] = character.role_key
+	for entry: CodexEntryDefinition in registry.codex_entries:
+		if entry == null:
+			continue
+		keys_by_label["CodexEntryDefinition '%s' title_key" % entry.id] = entry.title_key
+		keys_by_label["CodexEntryDefinition '%s' description_key" % entry.id] = (
+			entry.description_key
+		)
+	for souvenir: SouvenirDefinition in registry.souvenirs:
+		if souvenir == null:
+			continue
+		keys_by_label["SouvenirDefinition '%s' display_name_key" % souvenir.id] = (
+			souvenir.display_name_key
+		)
+		keys_by_label["SouvenirDefinition '%s' description_key" % souvenir.id] = (
+			souvenir.description_key
+		)
 
 	return validate_keys(keys_by_label, catalog, required_locales)
 

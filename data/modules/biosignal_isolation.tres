@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ShipModuleDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/definitions/ship_module_definition.gd" id="1_module"]
+
+[resource]
+script = ExtResource("1_module")
+id = &"module_biosignal_isolation"
+display_name_key = &"MODULE_BIOSIGNAL_ISOLATION_NAME"
+description_key = &"MODULE_BIOSIGNAL_ISOLATION_DESCRIPTION"
+slot_type = 2
+stat_modifiers = {}
+capability_tags = Array[StringName]([&"capability_biosignal_isolation"])
+cost = 0
+story_unlock_flags = Array[StringName]([&"story_m1_biosignal_isolation_available"])

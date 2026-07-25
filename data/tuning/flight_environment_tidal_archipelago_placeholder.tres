@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="FlightEnvironmentProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/flight/flight_environment_profile.gd" id="1_profile"]
+
+[resource]
+script = ExtResource("1_profile")
+id = &"environment_tidal_archipelago_placeholder"
+display_name_key = &"ENVIRONMENT_TIDAL_ARCHIPELAGO_PLACEHOLDER_NAME"
+planet_gravity = 196.0
+target_gravity_blend = 1.0
+target_air_density = 1.0
+horizontal_drag = 0.3
+vertical_drag = 0.62
+terminal_fall_speed_safety = 320.0
+transition_rate = 0.6

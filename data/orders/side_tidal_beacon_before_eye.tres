@@ -1,0 +1,49 @@
+[gd_resource type="Resource" script_class="OrderDefinition" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/definitions/order_definition.gd" id="1_order"]
+[ext_resource type="Script" path="res://scripts/data/definitions/order_unlock_condition.gd" id="2_condition"]
+[ext_resource type="Resource" path="res://data/characters/company_weather_custodian.tres" id="3_sender"]
+[ext_resource type="Resource" path="res://data/characters/tidal_weather_keeper.tres" id="4_recipient"]
+[ext_resource type="Resource" path="res://data/planets/tidal_archipelago.tres" id="5_planet"]
+[ext_resource type="Resource" path="res://data/cargo/tidal_beacon_cells.tres" id="6_cargo"]
+[ext_resource type="Resource" path="res://data/modules/standard_drive.tres" id="7_drive"]
+[ext_resource type="Resource" path="res://data/modules/atmospheric_shield.tres" id="8_shield"]
+[ext_resource type="Resource" path="res://data/modules/crosswind_stabilizer.tres" id="9_stabilizer"]
+
+[sub_resource type="Resource" id="UnlockPlanet"]
+script = ExtResource("2_condition")
+condition_type = 0
+reference_id = &"planet_tidal_archipelago"
+
+[resource]
+script = ExtResource("1_order")
+id = &"side_tidal_beacon_before_eye"
+display_name_key = &"SIDE_TIDAL_BEACON_BEFORE_EYE_NAME_PROVISIONAL"
+order_type = 1
+required_chapter = &"chapter_m1_tidal_archipelago"
+unlock_conditions = [SubResource("UnlockPlanet")]
+sender = ExtResource("3_sender")
+recipient = ExtResource("4_recipient")
+destination_planet = ExtResource("5_planet")
+planet_id = &"planet_tidal_archipelago"
+destination_id = &"destination_tidal_beacon_station"
+cargo = ExtResource("6_cargo")
+delivery_type = 0
+credit_reward = 120
+relation_rewards = {
+&"planet_tidal_archipelago": 1
+}
+codex_rewards = Array[StringName]([&"codex_cargo_tidal_beacon_cells"])
+repeat_policy = 0
+is_express = true
+target_seconds = 120.0
+grace_seconds = 60.0
+minimum_reward_ratio = 0.5
+relation_bonus_on_time = 1
+route_distance = 0.7
+risk_level = 4
+required_modules = [ExtResource("7_drive"), ExtResource("8_shield")]
+recommended_modules = [ExtResource("9_stabilizer")]
+customer_history_keys = Array[StringName]([&"SIDE_TIDAL_BEACON_BEFORE_EYE_HISTORY_01", &"SIDE_TIDAL_BEACON_BEFORE_EYE_HISTORY_02", &"SIDE_TIDAL_BEACON_BEFORE_EYE_HISTORY_03"])
+story_requirements = Array[StringName]([&"story_m1_tidal_weather_core_completed"])
+completion_flags = Array[StringName]([&"story_side_tidal_beacon_before_eye_completed"])

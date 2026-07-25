@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PlanetDefinition" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/definitions/planet_definition.gd" id="1_planet"]
+[ext_resource type="Resource" path="res://data/tuning/flight_environment_canopy_world_placeholder.tres" id="2_environment"]
+
+[resource]
+script = ExtResource("1_planet")
+id = &"planet_canopy_world"
+display_name_key = &"PLANET_CANOPY_WORLD_NAME_PROVISIONAL"
+description_key = &"PLANET_CANOPY_WORLD_DESCRIPTION"
+gravity_scale = 0.83
+flight_environment_profile = ExtResource("2_environment")
+content_readiness = 0
+required_story_flags = Array[StringName]([&"story_m1_white_noise_archive_core_completed"])

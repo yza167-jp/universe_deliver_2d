@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="SouvenirDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/definitions/souvenir_definition.gd" id="1_souvenir"]
+
+[resource]
+script = ExtResource("1_souvenir")
+id = &"souvenir_white_noise_frost_index"
+display_name_key = &"SOUVENIR_WHITE_NOISE_FROST_INDEX_NAME_PROVISIONAL"
+description_key = &"SOUVENIR_WHITE_NOISE_FROST_INDEX_DESCRIPTION"
+related_planet_id = &"planet_white_noise"
+hidden_when_locked = true
