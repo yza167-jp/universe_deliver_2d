@@ -20,6 +20,7 @@ script = ExtResource("1_order")
 id = &"side_tidal_beacon_before_eye"
 display_name_key = &"SIDE_TIDAL_BEACON_BEFORE_EYE_NAME_PROVISIONAL"
 order_type = 1
+content_readiness = 0
 required_chapter = &"chapter_m1_tidal_archipelago"
 unlock_conditions = [SubResource("UnlockPlanet")]
 sender = ExtResource("3_sender")

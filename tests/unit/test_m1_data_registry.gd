@@ -158,6 +158,13 @@ func _test_m0_registry_is_frozen(
 		"M0 canonical history alias must resolve to the one actual accept-able order.",
 		failures
 	)
+	expect_true(
+		actual_order != null
+		and actual_order.content_readiness
+		== OrderDefinition.ContentReadiness.PLAYABLE,
+		"The one actual M0 order must remain playable in the M1 registry.",
+		failures
+	)
 	var actual_count: int = 0
 	for order: OrderDefinition in registry.orders:
 		if order != null and order.id == &"order_red_sand_m0":
@@ -372,6 +379,9 @@ func _test_order_contracts(
 		if order == null or order.id == &"order_red_sand_m0":
 			continue
 		expect_true(
+			order.content_readiness
+			== OrderDefinition.ContentReadiness.REGISTERED_ONLY
+			and
 			not order.required_chapter.is_empty()
 			and not order.unlock_conditions.is_empty()
 			and order.sender != null
@@ -507,6 +517,35 @@ func _test_negative_validation(
 
 	var white_order: OrderDefinition = source.find_order(
 		&"order_m1_white_noise_archive_core"
+	)
+	var original_order_readiness: int = white_order.content_readiness
+	white_order.content_readiness = OrderDefinition.ContentReadiness.PLAYABLE
+	var order_readiness_errors: PackedStringArray = GameDataValidator.validate(source)
+	white_order.content_readiness = (
+		original_order_readiness as OrderDefinition.ContentReadiness
+	)
+	expect_true(
+		_contains_error(
+			order_readiness_errors,
+			"must remain REGISTERED_ONLY"
+		),
+		"M1 validation must reject claiming an unbuilt order is playable.",
+		failures
+	)
+	white_order.content_readiness = 99 as OrderDefinition.ContentReadiness
+	var invalid_order_readiness_errors: PackedStringArray = (
+		GameDataValidator.validate(source)
+	)
+	white_order.content_readiness = (
+		original_order_readiness as OrderDefinition.ContentReadiness
+	)
+	expect_true(
+		_contains_error(
+			invalid_order_readiness_errors,
+			"content_readiness is invalid"
+		),
+		"Order validation must reject values outside the readiness enum.",
+		failures
 	)
 	var original_required_modules: Array[ShipModuleDefinition] = []
 	for module: ShipModuleDefinition in white_order.required_modules:

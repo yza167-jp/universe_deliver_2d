@@ -1,7 +1,7 @@
 [gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/order_terminal_ui.gd" id="1_ui"]
-[ext_resource type="Resource" path="res://data/orders/red_sand_m0.tres" id="2_order"]
+[ext_resource type="Resource" path="res://data/m1_data_registry.tres" id="2_registry"]
 
 [sub_resource type="StyleBoxFlat" id="StyleTerminal"]
 bg_color = Color(0.0313726, 0.0666667, 0.121569, 0.99)
@@ -57,7 +57,7 @@ grow_vertical = 2
 mouse_filter = 0
 theme = SubResource("ThemeOrder")
 script = ExtResource("1_ui")
-order_definition = ExtResource("2_order")
+data_registry = ExtResource("2_registry")
 
 [node name="Dimmer" type="ColorRect" parent="."]
 layout_mode = 1
@@ -74,9 +74,9 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 12.0
+offset_left = 8.0
 offset_top = 8.0
-offset_right = -12.0
+offset_right = -8.0
 offset_bottom = -8.0
 grow_horizontal = 2
 grow_vertical = 2
@@ -84,202 +84,256 @@ theme_override_styles/panel = SubResource("StyleTerminal")
 
 [node name="Margin" type="MarginContainer" parent="TerminalPanel"]
 layout_mode = 2
-theme_override_constants/margin_left = 12
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 12
-theme_override_constants/margin_bottom = 8
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 7
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 7
 
 [node name="Content" type="VBoxContainer" parent="TerminalPanel/Margin"]
 layout_mode = 2
 theme_override_constants/separation = 6
 
 [node name="Header" type="HBoxContainer" parent="TerminalPanel/Margin/Content"]
-custom_minimum_size = Vector2(0, 30)
+custom_minimum_size = Vector2(0, 28)
 layout_mode = 2
 
 [node name="TerminalTitleLabel" type="Label" parent="TerminalPanel/Margin/Content/Header"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 18
 text = "UI_ORDER_TERMINAL_TITLE"
 
 [node name="Spacer" type="Control" parent="TerminalPanel/Margin/Content/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="StatusBadgeLabel" type="Label" parent="TerminalPanel/Margin/Content/Header"]
+[node name="CatalogSummaryLabel" type="Label" parent="TerminalPanel/Margin/Content/Header"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(104, 28)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.905882, 0.87451, 0.784314, 1)
-theme_override_font_sizes/font_size = 14
-theme_override_styles/normal = SubResource("StyleBadge")
-text = "UI_ORDER_STATUS_NOT_ACCEPTED"
-horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.603922, 0.654902, 0.709804, 1)
+theme_override_font_sizes/font_size = 11
+text = "UI_ORDER_FEEDBACK_SELECT"
 vertical_alignment = 1
 
-[node name="BodyScroll" type="ScrollContainer" parent="TerminalPanel/Margin/Content"]
+[node name="Body" type="HBoxContainer" parent="TerminalPanel/Margin/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="DirectoryPanel" type="PanelContainer" parent="TerminalPanel/Margin/Content/Body"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(190, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleSection")
+
+[node name="Margin" type="MarginContainer" parent="TerminalPanel/Margin/Content/Body/DirectoryPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="Content" type="VBoxContainer" parent="TerminalPanel/Margin/Content/Body/DirectoryPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="DirectoryHeadingLabel" type="Label" parent="TerminalPanel/Margin/Content/Body/DirectoryPanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
+theme_override_font_sizes/font_size = 13
+text = "UI_ORDER_DIRECTORY_HEADING"
+
+[node name="DirectoryScroll" type="ScrollContainer" parent="TerminalPanel/Margin/Content/Body/DirectoryPanel/Margin/Content"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 2
 
-[node name="BodyContent" type="VBoxContainer" parent="TerminalPanel/Margin/Content/BodyScroll"]
+[node name="DirectoryList" type="VBoxContainer" parent="TerminalPanel/Margin/Content/Body/DirectoryPanel/Margin/Content/DirectoryScroll"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 8
+theme_override_constants/separation = 4
 
-[node name="PrimaryPanel" type="PanelContainer" parent="TerminalPanel/Margin/Content/BodyScroll/BodyContent"]
+[node name="DetailPanel" type="PanelContainer" parent="TerminalPanel/Margin/Content/Body"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("StyleSection")
 
-[node name="Margin" type="MarginContainer" parent="TerminalPanel/Margin/Content/BodyScroll/BodyContent/PrimaryPanel"]
+[node name="Margin" type="MarginContainer" parent="TerminalPanel/Margin/Content/Body/DetailPanel"]
 layout_mode = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 8
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 6
 
-[node name="Content" type="VBoxContainer" parent="TerminalPanel/Margin/Content/BodyScroll/BodyContent/PrimaryPanel/Margin"]
+[node name="Content" type="VBoxContainer" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin"]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="OrderNameLabel" type="Label" parent="TerminalPanel/Margin/Content/BodyScroll/BodyContent/PrimaryPanel/Margin/Content"]
+[node name="SummaryRow" type="HBoxContainer" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OrderNameLabel" type="Label" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content/SummaryRow"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
-theme_override_font_sizes/font_size = 20
-text = "ORDER_RED_SAND_M0_NAME"
+theme_override_font_sizes/font_size = 18
+text = "UI_ORDER_VALUE_UNAVAILABLE"
 autowrap_mode = 2
 max_lines_visible = 2
 text_overrun_behavior = 3
 
-[node name="PartiesLabel" type="Label" parent="TerminalPanel/Margin/Content/BodyScroll/BodyContent/PrimaryPanel/Margin/Content"]
+[node name="StatusBadgeLabel" type="Label" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content/SummaryRow"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(82, 26)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
-theme_override_font_sizes/font_size = 14
-text = "UI_ORDER_PARTIES_FORMAT"
-autowrap_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.87451, 0.784314, 1)
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBadge")
+text = "UI_ORDER_STATUS_UNAVAILABLE"
+horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="RouteLabel" type="Label" parent="TerminalPanel/Margin/Content/BodyScroll/BodyContent/PrimaryPanel/Margin/Content"]
+[node name="TypeLabel" type="Label" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.603922, 0.654902, 0.709804, 1)
-theme_override_font_sizes/font_size = 14
-text = "UI_ORDER_ROUTE_FORMAT"
+theme_override_font_sizes/font_size = 11
+text = "UI_ORDER_TYPE_MAIN"
+
+[node name="BodyScroll" type="ScrollContainer" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="DetailContent" type="VBoxContainer" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content/BodyScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="PartiesLabel" type="Label" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content/BodyScroll/DetailContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 12
+text = "UI_ORDER_VALUE_UNAVAILABLE"
 autowrap_mode = 2
 
-[node name="RewardLabel" type="Label" parent="TerminalPanel/Margin/Content/BodyScroll/BodyContent/PrimaryPanel/Margin/Content"]
+[node name="RouteLabel" type="Label" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content/BodyScroll/DetailContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.654902, 0.709804, 1)
+theme_override_font_sizes/font_size = 12
+text = "UI_ORDER_VALUE_UNAVAILABLE"
+autowrap_mode = 2
+
+[node name="RewardLabel" type="Label" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content/BodyScroll/DetailContent"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.905882, 0.87451, 0.784314, 1)
-theme_override_font_sizes/font_size = 16
-text = "UI_ORDER_REWARD_FORMAT"
+theme_override_font_sizes/font_size = 14
+text = "UI_ORDER_VALUE_UNAVAILABLE"
 
-[node name="RequiredHeadingLabel" type="Label" parent="TerminalPanel/Margin/Content/BodyScroll/BodyContent/PrimaryPanel/Margin/Content"]
+[node name="RelationRewardLabel" type="Label" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content/BodyScroll/DetailContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 12
+text = "UI_ORDER_NO_RELATION_REWARD"
+autowrap_mode = 2
+
+[node name="RequiredHeadingLabel" type="Label" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content/BodyScroll/DetailContent"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 13
 text = "UI_ORDER_REQUIRED_MODULES_HEADING"
 
-[node name="RequiredModulesLabel" type="Label" parent="TerminalPanel/Margin/Content/BodyScroll/BodyContent/PrimaryPanel/Margin/Content"]
+[node name="RequiredModulesLabel" type="Label" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content/BodyScroll/DetailContent"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
-theme_override_font_sizes/font_size = 14
-text = "MODULE_STANDARD_DRIVE_NAME"
+theme_override_font_sizes/font_size = 12
+text = "UI_ORDER_VALUE_UNAVAILABLE"
 autowrap_mode = 2
 
-[node name="DetailsPanel" type="PanelContainer" parent="TerminalPanel/Margin/Content/BodyScroll/BodyContent"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_styles/panel = SubResource("StyleSection")
-
-[node name="Margin" type="MarginContainer" parent="TerminalPanel/Margin/Content/BodyScroll/BodyContent/DetailsPanel"]
-layout_mode = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 8
-
-[node name="Content" type="VBoxContainer" parent="TerminalPanel/Margin/Content/BodyScroll/BodyContent/DetailsPanel/Margin"]
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="EnvironmentHeadingLabel" type="Label" parent="TerminalPanel/Margin/Content/BodyScroll/BodyContent/DetailsPanel/Margin/Content"]
+[node name="RecommendedHeadingLabel" type="Label" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content/BodyScroll/DetailContent"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 13
+text = "UI_ORDER_RECOMMENDED_MODULES_HEADING"
+
+[node name="RecommendedModulesLabel" type="Label" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content/BodyScroll/DetailContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 12
+text = "UI_ORDER_VALUE_UNAVAILABLE"
+autowrap_mode = 2
+
+[node name="EnvironmentHeadingLabel" type="Label" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content/BodyScroll/DetailContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
+theme_override_font_sizes/font_size = 13
 text = "UI_ORDER_ENVIRONMENT_HEADING"
 
-[node name="EnvironmentLabel" type="Label" parent="TerminalPanel/Margin/Content/BodyScroll/BodyContent/DetailsPanel/Margin/Content"]
+[node name="EnvironmentLabel" type="Label" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content/BodyScroll/DetailContent"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
-theme_override_font_sizes/font_size = 13
-text = "PLANET_RED_SAND_DESCRIPTION"
+theme_override_font_sizes/font_size = 12
+text = "UI_ORDER_VALUE_UNAVAILABLE"
 autowrap_mode = 2
 
-[node name="CargoHeadingLabel" type="Label" parent="TerminalPanel/Margin/Content/BodyScroll/BodyContent/DetailsPanel/Margin/Content"]
+[node name="CargoHeadingLabel" type="Label" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content/BodyScroll/DetailContent"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 13
 text = "UI_ORDER_CARGO_HEADING"
 
-[node name="CargoNameLabel" type="Label" parent="TerminalPanel/Margin/Content/BodyScroll/BodyContent/DetailsPanel/Margin/Content"]
+[node name="CargoNameLabel" type="Label" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content/BodyScroll/DetailContent"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
-theme_override_font_sizes/font_size = 14
-text = "CARGO_RED_SAND_M0_NAME"
+theme_override_font_sizes/font_size = 12
+text = "UI_ORDER_VALUE_UNAVAILABLE"
 
-[node name="CargoDescriptionLabel" type="Label" parent="TerminalPanel/Margin/Content/BodyScroll/BodyContent/DetailsPanel/Margin/Content"]
+[node name="CargoDescriptionLabel" type="Label" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content/BodyScroll/DetailContent"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
-theme_override_font_sizes/font_size = 13
-text = "CARGO_RED_SAND_M0_COMPANY_DESCRIPTION"
+theme_override_font_sizes/font_size = 12
+text = "UI_ORDER_VALUE_UNAVAILABLE"
 autowrap_mode = 2
 
-[node name="HistoryHeadingLabel" type="Label" parent="TerminalPanel/Margin/Content/BodyScroll/BodyContent/DetailsPanel/Margin/Content"]
+[node name="HistoryHeadingLabel" type="Label" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content/BodyScroll/DetailContent"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 13
 text = "UI_ORDER_CUSTOMER_HISTORY_HEADING"
 
-[node name="CustomerHistoryLabel" type="Label" parent="TerminalPanel/Margin/Content/BodyScroll/BodyContent/DetailsPanel/Margin/Content"]
+[node name="CustomerHistoryLabel" type="Label" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content/BodyScroll/DetailContent"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
-theme_override_font_sizes/font_size = 13
-text = "ORDER_RED_SAND_M0_CUSTOMER_HISTORY_01"
-autowrap_mode = 2
-
-[node name="FutureHeadingLabel" type="Label" parent="TerminalPanel/Margin/Content/BodyScroll/BodyContent/DetailsPanel/Margin/Content"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
-theme_override_font_sizes/font_size = 14
-text = "UI_ORDER_FUTURE_HEADING"
-
-[node name="FutureOrderLabel" type="Label" parent="TerminalPanel/Margin/Content/BodyScroll/BodyContent/DetailsPanel/Margin/Content"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.603922, 0.654902, 0.709804, 1)
-theme_override_font_sizes/font_size = 13
-text = "UI_ORDER_FUTURE_PLACEHOLDER"
+theme_override_font_sizes/font_size = 12
+text = "UI_ORDER_VALUE_UNAVAILABLE"
 autowrap_mode = 2
 
 [node name="Footer" type="HBoxContainer" parent="TerminalPanel/Margin/Content"]
-custom_minimum_size = Vector2(0, 36)
+custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
 theme_override_constants/separation = 6
 
@@ -288,21 +342,23 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.905882, 0.87451, 0.784314, 1)
-theme_override_font_sizes/font_size = 13
-text = "UI_ORDER_FEEDBACK_READY"
+theme_override_font_sizes/font_size = 12
+text = "UI_ORDER_FEEDBACK_SELECT"
 vertical_alignment = 1
 autowrap_mode = 2
+max_lines_visible = 2
+text_overrun_behavior = 3
 
 [node name="AcceptButton" type="Button" parent="TerminalPanel/Margin/Content/Footer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(144, 34)
+custom_minimum_size = Vector2(124, 34)
 layout_mode = 2
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 14
 text = "UI_ORDER_ACCEPT"
 
 [node name="CloseButton" type="Button" parent="TerminalPanel/Margin/Content/Footer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(84, 34)
+custom_minimum_size = Vector2(74, 34)
 layout_mode = 2
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 13
 text = "UI_ORDER_CLOSE"

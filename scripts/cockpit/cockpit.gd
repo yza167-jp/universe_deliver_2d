@@ -87,6 +87,8 @@ const MUTED_TEXT: Color = Color("9aa7b5")
 @onready var _device_panel: PanelContainer = %DevicePanel
 @onready var _device_panel_title: Label = %DevicePanelTitle
 @onready var _device_panel_body: Label = %DevicePanelBody
+@onready var _navigation_scroll: ScrollContainer = %NavigationScroll
+@onready var _navigation_panel: CockpitNavigationPanel = %NavigationPanel
 @onready var _device_action_button: Button = %DeviceActionButton
 @onready var _device_close_button: Button = %DeviceCloseButton
 @onready var _travel_controller: TravelSequenceController = %TravelSequenceController
@@ -125,6 +127,7 @@ func _ready() -> void:
 		push_error("Cockpit could not initialize its hotspots, panels, or dialogue UI.")
 		return
 	_active_order = _resolve_active_order()
+	_navigation_panel.configure(data_registry, _game_state)
 	_travel_controller.configure(_game_state, _active_order)
 	_connect_runtime_signals()
 	_configure_travel_audio()
@@ -235,7 +238,27 @@ func get_device_panel_title() -> String:
 
 
 func get_device_panel_body() -> String:
+	if (
+		_open_panel_id == &"navigation_screen"
+		and _navigation_panel != null
+	):
+		return _navigation_panel.get_summary_text()
 	return "" if _device_panel_body == null else _device_panel_body.text
+
+
+func get_navigation_panel() -> CockpitNavigationPanel:
+	return _navigation_panel
+
+
+func set_data_registry(registry: GameDataRegistry) -> void:
+	data_registry = registry
+	if not is_node_ready():
+		return
+	_navigation_panel.configure(data_registry, _game_state)
+	_active_order = _resolve_active_order()
+	_travel_controller.configure(_game_state, _active_order)
+	if _open_panel_id == &"navigation_screen":
+		_populate_device_panel(_open_panel_id)
 
 
 func get_notification_text() -> String:
@@ -460,6 +483,8 @@ func _resolve_required_ui() -> bool:
 		and _device_panel != null
 		and _device_panel_title != null
 		and _device_panel_body != null
+		and _navigation_scroll != null
+		and _navigation_panel != null
 		and _device_action_button != null
 		and _device_close_button != null
 		and _travel_controller != null
@@ -478,6 +503,49 @@ func _connect_runtime_signals() -> void:
 		and not _game_state.runtime_state_reset.is_connected(_on_runtime_state_reset)
 	):
 		_game_state.runtime_state_reset.connect(_on_runtime_state_reset)
+	if (
+		_game_state != null
+		and not _game_state.runtime_state_restored.is_connected(
+			_on_runtime_state_reset
+		)
+	):
+		_game_state.runtime_state_restored.connect(_on_runtime_state_reset)
+	if (
+		_game_state != null
+		and not _game_state.order_status_changed.is_connected(
+			_on_catalog_order_status_changed
+		)
+	):
+		_game_state.order_status_changed.connect(
+			_on_catalog_order_status_changed
+		)
+	if (
+		_game_state != null
+		and not _game_state.ship_configuration_changed.is_connected(
+			_on_catalog_state_changed
+		)
+	):
+		_game_state.ship_configuration_changed.connect(
+			_on_catalog_state_changed
+		)
+	if (
+		_game_state != null
+		and not _game_state.departure_readiness_changed.is_connected(
+			_on_catalog_departure_changed
+		)
+	):
+		_game_state.departure_readiness_changed.connect(
+			_on_catalog_departure_changed
+		)
+	if (
+		_game_state != null
+		and not _game_state.travel_state_changed.is_connected(
+			_on_catalog_travel_state_changed
+		)
+	):
+		_game_state.travel_state_changed.connect(
+			_on_catalog_travel_state_changed
+		)
 	if not _device_action_button.pressed.is_connected(_on_device_action_pressed):
 		_device_action_button.pressed.connect(_on_device_action_pressed)
 	if not _device_close_button.pressed.is_connected(close_active_modal):
@@ -509,6 +577,8 @@ func _localize_content() -> void:
 		if button != null:
 			button.text = _get_hotspot_button_text(hotspot_id)
 			button.tooltip_text = ""
+	if _navigation_panel != null:
+		_navigation_panel.refresh()
 	_refresh_focus_prompt()
 	if not _open_panel_id.is_empty():
 		_populate_device_panel(_open_panel_id)
@@ -593,10 +663,13 @@ func _open_device_panel(hotspot_id: StringName) -> bool:
 
 func _populate_device_panel(hotspot_id: StringName) -> void:
 	_device_action_button.visible = hotspot_id == &"navigation_screen"
+	_navigation_scroll.visible = hotspot_id == &"navigation_screen"
+	_device_panel_body.visible = hotspot_id != &"navigation_screen"
 	match hotspot_id:
 		&"navigation_screen":
 			_device_panel_title.text = tr("UI_COCKPIT_NAV_PANEL_TITLE")
-			_device_panel_body.text = _build_navigation_panel_text()
+			_navigation_panel.configure(data_registry, _game_state)
+			_navigation_panel.refresh()
 			_refresh_navigation_action()
 		&"company_terminal":
 			_device_panel_title.text = tr("UI_COCKPIT_COMPANY_PANEL_TITLE")
@@ -604,35 +677,6 @@ func _populate_device_panel(hotspot_id: StringName) -> void:
 		&"cargo_indicator":
 			_device_panel_title.text = tr("UI_COCKPIT_CARGO_PANEL_TITLE")
 			_device_panel_body.text = _build_cargo_panel_text()
-
-
-func _build_navigation_panel_text() -> String:
-	if _game_state == null or data_registry == null or _game_state.current_order_id.is_empty():
-		return "\n".join([
-			tr("UI_COCKPIT_NAV_NO_ORDER"),
-			tr("UI_COCKPIT_NAV_DESTINATION_UNSET"),
-			tr("UI_COCKPIT_NAV_ROUTE_NO_ORDER"),
-		])
-	var order: OrderDefinition = _resolve_active_order()
-	var planet: PlanetDefinition = data_registry.find_planet(_game_state.destination_id)
-	var order_name: String = tr("UI_COCKPIT_VALUE_UNAVAILABLE")
-	var planet_name: String = tr("UI_COCKPIT_VALUE_UNAVAILABLE")
-	if order != null:
-		order_name = tr(String(order.display_name_key))
-	if planet != null:
-		planet_name = tr(String(planet.display_name_key))
-	var route_status: String = tr("UI_COCKPIT_NAV_ROUTE_PENDING")
-	if order != null:
-		var travel_error: StringName = _game_state.get_travel_start_error(
-			order,
-			order.destination_planet.id
-		)
-		route_status = tr(String(_get_travel_route_status_key(travel_error)))
-	return "\n".join([
-		tr("UI_COCKPIT_NAV_ORDER_FORMAT") % order_name,
-		tr("UI_COCKPIT_NAV_DESTINATION_FORMAT") % planet_name,
-		route_status,
-	])
 
 
 func _build_company_panel_text() -> String:
@@ -678,16 +722,10 @@ func _build_cargo_panel_text() -> String:
 
 
 func _refresh_navigation_action() -> void:
-	_active_order = _resolve_active_order()
+	_navigation_panel.refresh()
+	_active_order = _navigation_panel.get_active_order()
 	_device_action_button.text = tr("UI_COCKPIT_NAV_CONFIRM_AND_DEPART")
-	if _game_state == null or _active_order == null:
-		_device_action_button.disabled = true
-		return
-	var destination: StringName = _active_order.destination_planet.id
-	_device_action_button.disabled = not _game_state.get_travel_start_error(
-		_active_order,
-		destination
-	).is_empty()
+	_device_action_button.disabled = not _navigation_panel.is_departure_enabled()
 
 
 func _on_device_action_pressed() -> void:
@@ -734,7 +772,36 @@ func _on_runtime_state_reset() -> void:
 	_active_order = _resolve_active_order()
 	_travel_main_dialogue_pending = false
 	_travel_controller.configure(_game_state, _active_order)
+	_navigation_panel.configure(data_registry, _game_state)
 	_refresh_travel_display()
+
+
+func _on_catalog_order_status_changed(
+	_order_id: StringName,
+	_status: GameStateModel.OrderStatus
+) -> void:
+	_on_catalog_state_changed()
+
+
+func _on_catalog_departure_changed(_confirmed: bool) -> void:
+	_on_catalog_state_changed()
+
+
+func _on_catalog_travel_state_changed(
+	_state: GameStateModel.TravelState,
+	_destination_id: StringName
+) -> void:
+	_on_catalog_state_changed()
+
+
+func _on_catalog_state_changed() -> void:
+	if _navigation_panel == null:
+		return
+	_navigation_panel.configure(data_registry, _game_state)
+	_active_order = _resolve_active_order()
+	if _open_panel_id == &"navigation_screen":
+		_navigation_panel.refresh()
+		_refresh_navigation_action()
 
 
 func _queue_travel_main_dialogue_if_needed(phase: GameStateModel.TravelState) -> void:

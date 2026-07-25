@@ -14,6 +14,9 @@
   `order_red_sand_m0`。
 - Stretch `side_red_sand_unlisted_filters` 与 `cargo_red_sand_water_filters` 不进入
   必做注册表。
+- M0 首单为 `PLAYABLE`。本页列出的 7 份 M1 回访、主线与必做支线当前均为
+  `REGISTERED_ONLY`：可供目录、依赖和内容开发引用，但在对应剧情与路线任务完成
+  前不能接取或出发。内容落地任务必须显式将对应订单与星球切换为 `PLAYABLE`。
 
 ## 星球与环境占位
 
@@ -71,15 +74,15 @@
 
 ## 订单与暂定数值
 
-| Order ID | Type / Delivery | Credit | Route | Risk | Module rule |
-|---|---|---:|---:|---:|---|
-| `order_m1_red_sand_shielding_retrofit` | Revisit / Landing | 140 | 1.00 | 2 | M0 drive + atmosphere required |
-| `order_m1_white_noise_archive_core` | Main / Landing | 180 | 1.25 | 4 | high-voltage shielding required |
-| `order_m1_canopy_ecology_cargo` | Main / Landing | 200 | 1.15 | 3 | biosignal isolation recommended |
-| `order_m1_tidal_weather_core` | Main / Landing | 240 | 1.30 | 4 | crosswind stabilizer recommended |
-| `side_white_noise_returned_memory` | Side / Landing | 80 | 0.65 | 2 | archive permission required |
-| `side_canopy_spore_drop` | Side / Low-altitude drop | 90 | 0.55 | 3 | biosignal isolation recommended |
-| `side_tidal_beacon_before_eye` | Side / Landing / Express | 120 | 0.70 | 4 | crosswind stabilizer recommended |
+| Order ID | Type / Delivery | Credit | Route | Risk | Module rule | Readiness |
+|---|---|---:|---:|---:|---|---|
+| `order_m1_red_sand_shielding_retrofit` | Revisit / Landing | 140 | 1.00 | 2 | M0 drive + atmosphere required | `REGISTERED_ONLY` |
+| `order_m1_white_noise_archive_core` | Main / Landing | 180 | 1.25 | 4 | high-voltage shielding required | `REGISTERED_ONLY` |
+| `order_m1_canopy_ecology_cargo` | Main / Landing | 200 | 1.15 | 3 | biosignal isolation recommended | `REGISTERED_ONLY` |
+| `order_m1_tidal_weather_core` | Main / Landing | 240 | 1.30 | 4 | crosswind stabilizer recommended | `REGISTERED_ONLY` |
+| `side_white_noise_returned_memory` | Side / Landing | 80 | 0.65 | 2 | archive permission required | `REGISTERED_ONLY` |
+| `side_canopy_spore_drop` | Side / Low-altitude drop | 90 | 0.55 | 3 | biosignal isolation recommended | `REGISTERED_ONLY` |
+| `side_tidal_beacon_before_eye` | Side / Landing / Express | 120 | 0.70 | 4 | crosswind stabilizer recommended | `REGISTERED_ONLY` |
 
 群潮支线的暂定加急参数为：目标 `120 s`、宽限 `60 s`、最低信用点比例 `0.50`、
 准时关系加成 `+1`。其余六单为非加急。全部 M1 主线、回访与三份必做支线均为

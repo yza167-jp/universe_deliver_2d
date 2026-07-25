@@ -20,6 +20,7 @@ script = ExtResource("1_order")
 id = &"order_m1_tidal_weather_core"
 display_name_key = &"ORDER_M1_TIDAL_WEATHER_CORE_NAME_PROVISIONAL"
 order_type = 0
+content_readiness = 0
 required_chapter = &"chapter_m1_tidal_archipelago"
 unlock_conditions = [SubResource("UnlockPlanet")]
 sender = ExtResource("3_sender")

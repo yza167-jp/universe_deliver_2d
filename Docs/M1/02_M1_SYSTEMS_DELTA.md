@@ -28,8 +28,10 @@
 ## 2. 多星球导航
 
 - 导航由 PlanetDefinition、章节、许可和模块共同决定。
-- M1 内容从独立 `m1_data_registry.tres` 读取；冻结的 M0 场景仍使用
-  `m0_data_registry.tres`，直到后续导航任务显式切换。
+- 正常订单终端与驾驶舱导航从独立 `m1_data_registry.tres` 读取完整目录；
+  `m0_data_registry.tres` 只保留为冻结回归夹具和显式兼容注入，不再是正常场景入口。
+- `M1CatalogModel` 以无状态投影统一生成订单目录、星球目录、锁定原因和模块状态；
+  UI 只保存当前选中项，不复制章节、解锁、订单或航线真相。
 - 星球注册与路线可玩性分离：白噪、穹林、群潮在各自路线任务完成前是
   `REGISTERED_ONLY`，没有可选场景路径，也不借用赤砂路线。
 - 未解锁星球可以显示轮廓与解锁原因，但不能选择。
@@ -45,6 +47,9 @@
 - `OrderDefinition` 增加 `MAIN / SIDE / REVISIT`、`LANDING /
   LOW_ALTITUDE_DROP`、章节与解锁条件、加急参数、关系/许可/图鉴/纪念品奖励及
   `UNIQUE / REPEATABLE / ARCHIVED_ONLY` 重复策略。
+- 订单也使用 `REGISTERED_ONLY / PLAYABLE` 内容就绪状态。Packet 中尚未落地剧情
+  与路线的 M1 订单可以进入开发目录，但不能接取、确认配置或开始旅行；玩家看到
+  稳定的本地化获取路径，不看到内部 ID。
 - 持久状态统一为 `AVAILABLE / ACCEPTED / COMPLETED / FAILED / ABANDONED /
   ARCHIVED`；只有 `ACCEPTED` 占用 active order 槽位，存档中也只允许一个
   `ACCEPTED`。
@@ -58,6 +63,8 @@
 - 接受条件统一消费 T-102 的章节、星球、许可和模块状态；订单完成通过
   `GameStateModel` 的单一入口原子应用信用点、关系、许可、图鉴、纪念品和完成
   标记，并写入奖励幂等账本。
+- 订单终端按“当前主线 / 可选支线 / 下一步线索 / 历史”分层：active order 固定
+  置顶，同一时刻最多一个当前主线，未发现的支线不泄露名称，历史只做紧凑记录。
 - 不建立随机刷新、每日任务或无限委托板。
 - 图鉴和纪念品奖励引用类型化 `CodexEntryDefinition` /
   `SouvenirDefinition`，注册表不再用平行手写 ID 列表维护同一内容。

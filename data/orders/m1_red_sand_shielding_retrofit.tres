@@ -20,6 +20,7 @@ script = ExtResource("1_order")
 id = &"order_m1_red_sand_shielding_retrofit"
 display_name_key = &"ORDER_M1_RED_SAND_SHIELDING_RETROFIT_NAME_PROVISIONAL"
 order_type = 2
+content_readiness = 0
 required_chapter = &"chapter_m1_red_sand_revisit"
 unlock_conditions = [SubResource("UnlockPlanet")]
 sender = ExtResource("3_sender")

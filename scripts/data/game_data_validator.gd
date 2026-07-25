@@ -301,6 +301,13 @@ static func _validate_orders(
 		):
 			errors.append("OrderDefinition '%s' order_type is invalid." % order.id)
 		if (
+			order.content_readiness < OrderDefinition.ContentReadiness.REGISTERED_ONLY
+			or order.content_readiness > OrderDefinition.ContentReadiness.PLAYABLE
+		):
+			errors.append(
+				"OrderDefinition '%s' content_readiness is invalid." % order.id
+			)
+		if (
 			order.repeat_policy < OrderDefinition.RepeatPolicy.UNIQUE
 			or order.repeat_policy > OrderDefinition.RepeatPolicy.ARCHIVED_ONLY
 		):
@@ -540,8 +547,27 @@ static func _validate_m1_packet_contract(
 				"M1 planet '%s' must not borrow a playable flight scene." % planet_id
 			)
 	for order_id: StringName in M1_REQUIRED_ORDER_IDS:
-		if registry.find_order(order_id) == null:
+		var order: OrderDefinition = registry.find_order(order_id)
+		if order == null:
 			errors.append("M1 registry is missing required order '%s'." % order_id)
+			continue
+		if (
+			order_id == M1_ACTUAL_M0_ORDER_ID
+			and order.content_readiness
+			!= OrderDefinition.ContentReadiness.PLAYABLE
+		):
+			errors.append(
+				"M1 actual M0 order '%s' must remain PLAYABLE." % order_id
+			)
+		elif (
+			order_id != M1_ACTUAL_M0_ORDER_ID
+			and order.content_readiness
+			!= OrderDefinition.ContentReadiness.REGISTERED_ONLY
+		):
+			errors.append(
+				"M1 order '%s' must remain REGISTERED_ONLY until its route task lands."
+				% order_id
+			)
 	if registry.find_order(M1_STRETCH_ORDER_ID) != null:
 		errors.append(
 			"M1 required registry must not include Stretch order '%s'."

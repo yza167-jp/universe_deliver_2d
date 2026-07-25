@@ -18,9 +18,16 @@ enum RepeatPolicy {
 	ARCHIVED_ONLY,
 }
 
+enum ContentReadiness {
+	REGISTERED_ONLY,
+	PLAYABLE,
+}
+
 @export var id: StringName = &""
 @export var display_name_key: StringName = &""
 @export var order_type: OrderType = OrderType.MAIN
+## Registered-only orders are valid catalog entries but cannot be accepted or flown.
+@export var content_readiness: ContentReadiness = ContentReadiness.PLAYABLE
 @export var required_chapter: StringName = &""
 @export var unlock_conditions: Array[OrderUnlockCondition] = []
 @export var sender: CharacterDefinition
@@ -52,3 +59,7 @@ enum RepeatPolicy {
 
 func is_mainline() -> bool:
 	return order_type in [OrderType.MAIN, OrderType.REVISIT]
+
+
+func is_playable() -> bool:
+	return content_readiness == ContentReadiness.PLAYABLE

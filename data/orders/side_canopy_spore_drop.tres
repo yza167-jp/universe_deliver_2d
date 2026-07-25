@@ -20,6 +20,7 @@ script = ExtResource("1_order")
 id = &"side_canopy_spore_drop"
 display_name_key = &"SIDE_CANOPY_SPORE_DROP_NAME_PROVISIONAL"
 order_type = 1
+content_readiness = 0
 required_chapter = &"chapter_m1_canopy_world"
 unlock_conditions = [SubResource("UnlockPlanet")]
 sender = ExtResource("3_sender")

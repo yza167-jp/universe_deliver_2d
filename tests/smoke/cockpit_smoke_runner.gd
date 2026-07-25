@@ -37,6 +37,7 @@ func _run_smoke() -> void:
 	if _cockpit == null:
 		_finish_smoke()
 		return
+	_cockpit.data_registry = _registry
 	root.add_child(_cockpit)
 	_cockpit.hotspot_activated.connect(_on_hotspot_activated)
 	await process_frame

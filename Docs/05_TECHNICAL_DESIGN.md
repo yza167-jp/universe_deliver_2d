@@ -312,6 +312,26 @@ current_value)`。只有 `changed = true` 时才发出一次 `persistent_state_c
 加急计时暂停、准时判断和报酬比例。超时在宽限窗口中线性从 `1.0` 降至配置的
 `minimum_reward_ratio`，不把超时直接解释为硬失败。
 
+订单的“数据已登记”和“内容可游玩”是不同合同。`OrderDefinition.content_readiness`
+为 `REGISTERED_ONLY` 时，目录可以只读展示开发线索，但
+`GameStateModel.get_order_acceptance_error()`、配置确认和旅行开始会再次检查订单、
+目的星球与真实场景路径，拒绝接取或出发。UI 禁用按钮只是反馈层，不能代替这些
+运行时守卫。
+
+### 5.6 M1 目录与导航投影
+
+`M1CatalogModel` 是无状态查询层，以 `M1DataRegistry` 和 `GameStateModel` 为输入，
+生成订单目录与星球目录。订单目录固定分为当前主线、可选支线、下一步线索和历史；
+active order 置顶，同一时刻最多一个当前主线，未发现的可选内容不显示真实名称。
+`M1CatalogHintResolver` 将章节、星球、许可、模块、内容就绪和航线缺失原因转换为
+稳定的本地化提示，玩家界面不直接显示内部 ID。
+
+订单终端是“左侧紧凑目录 + 右侧单项详情 + 固定操作区”；焦点与鼠标只改变当前
+选中项，只有显式接取动作才调用 `GameStateModel.accept_order()`。驾驶舱的
+`CockpitNavigationPanel` 使用同一目录投影，只显示当前订单目的地、准入门槛和
+唯一权威旅行入口，不建立自由星图或第二份导航状态。正常场景读取
+`m1_data_registry.tres`；`m0_data_registry.tres` 仅用于显式回归夹具。
+
 ## 6. 数据定义
 
 使用自定义 Resource（`.tres`）作为 M0 首选，因为：
@@ -340,9 +360,9 @@ music_theme_id: StringName
 
 `data/m0_data_registry.tres` 继续是冻结的 M0 运行时入口。
 `data/m1_data_registry.tres` 以 `registry_id = m1_four_planet_demo` 标识完整 Packet
-内容源，但在后续导航/订单切换任务完成前不会替换
-现有 M0 场景的数据源。未制作路线的星球必须显式使用 `REGISTERED_ONLY` 且不声明
-`flight_scene_path`；只有 `PLAYABLE` 星球可以引用存在的场景。
+内容源，并从 T-105 起成为正常订单终端与驾驶舱导航的数据源。冻结的 M0 注册表
+只保留为显式测试/兼容夹具。未制作路线的星球必须显式使用 `REGISTERED_ONLY` 且
+不声明 `flight_scene_path`；只有 `PLAYABLE` 星球可以引用存在的场景。
 
 ### 6.2 `OrderDefinition`
 
@@ -359,6 +379,7 @@ planet_id
 destination_id
 cargo_id
 delivery_type       # LANDING / LOW_ALTITUDE_DROP
+content_readiness   # REGISTERED_ONLY / PLAYABLE
 credit_reward
 relation_rewards
 permission_rewards
@@ -381,6 +402,10 @@ completion_flags
 货物/模块、目的地一致性、交付类型、解锁条件、所有奖励引用及加急参数。
 M0 历史中使用的 `order_red_sand_cooling_core` 只通过注册表 alias 解析到实际
 `order_red_sand_m0`，不创建第二份可接订单 Resource。
+
+M0 首单必须为 `PLAYABLE`；尚未落地剧情或路线的 M1 订单必须显式为
+`REGISTERED_ONLY`。注册表验证该数据合同，运行时仍独立检查目的星球和场景路径，
+避免错误数据把占位内容变成可接或可出发订单。
 
 ### 6.3 `CargoDefinition`
 

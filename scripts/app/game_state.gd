@@ -44,12 +44,18 @@ const ORDER_ERROR_INVALID_TIMING: StringName = &"invalid_order_timing"
 const ORDER_ERROR_MAIN_CANNOT_ABANDON: StringName = &"main_order_cannot_abandon"
 const ORDER_ERROR_MAIN_RETRY_REQUIRED: StringName = &"main_order_retry_required"
 const ORDER_ERROR_RETRY_NOT_ALLOWED: StringName = &"retry_not_allowed"
+const ORDER_ERROR_REGISTERED_ONLY: StringName = &"registered_only"
+const ORDER_ERROR_PLANET_REGISTERED_ONLY: StringName = &"planet_registered_only"
+const ORDER_ERROR_MISSING_ROUTE: StringName = &"missing_route"
 
 const LOADOUT_ERROR_MISSING_DATA: StringName = &"missing_data"
 const LOADOUT_ERROR_ORDER_NOT_ACCEPTED: StringName = &"order_not_accepted"
 const LOADOUT_ERROR_MISSING_REQUIRED_MODULES: StringName = &"missing_required_modules"
 const LOADOUT_ERROR_INVALID_MODULE: StringName = &"invalid_module"
 const LOADOUT_ERROR_MODULE_NOT_EQUIPPED: StringName = &"module_not_equipped"
+const LOADOUT_ERROR_ORDER_REGISTERED_ONLY: StringName = &"registered_only"
+const LOADOUT_ERROR_PLANET_REGISTERED_ONLY: StringName = &"planet_registered_only"
+const LOADOUT_ERROR_MISSING_ROUTE: StringName = &"missing_route"
 
 const TRAVEL_ERROR_MISSING_DATA: StringName = &"missing_data"
 const TRAVEL_ERROR_ORDER_NOT_ACTIVE: StringName = &"order_not_active"
@@ -58,6 +64,9 @@ const TRAVEL_ERROR_DESTINATION_NOT_ALLOWED: StringName = &"destination_not_allow
 const TRAVEL_ERROR_ALREADY_STARTED: StringName = &"already_started"
 const TRAVEL_ERROR_ALREADY_COMPLETED: StringName = &"already_completed"
 const TRAVEL_ERROR_INVALID_TRANSITION: StringName = &"invalid_transition"
+const TRAVEL_ERROR_ORDER_REGISTERED_ONLY: StringName = &"registered_only"
+const TRAVEL_ERROR_PLANET_REGISTERED_ONLY: StringName = &"planet_registered_only"
+const TRAVEL_ERROR_MISSING_ROUTE: StringName = &"missing_route"
 
 var current_order_id: StringName = &""
 var destination_id: StringName = &""
@@ -475,6 +484,9 @@ func get_order_acceptance_error(order: OrderDefinition) -> StringName:
 				return ORDER_ERROR_RETRY_NOT_ALLOWED
 	if not current_order_id.is_empty():
 		return ORDER_ERROR_ACTIVE_ORDER
+	var content_error: StringName = _get_order_content_readiness_error(order)
+	if not content_error.is_empty():
+		return content_error
 	var unlock_error: StringName = M1OrderRules.get_unlock_error(
 		order,
 		main_story_chapter,
@@ -853,6 +865,9 @@ func get_departure_confirmation_error(order: OrderDefinition) -> StringName:
 		return LOADOUT_ERROR_MISSING_DATA
 	if current_order_id != order.id:
 		return LOADOUT_ERROR_ORDER_NOT_ACCEPTED
+	var content_error: StringName = _get_order_content_readiness_error(order)
+	if not content_error.is_empty():
+		return content_error
 	if not get_missing_required_modules(order).is_empty():
 		return LOADOUT_ERROR_MISSING_REQUIRED_MODULES
 	return &""
@@ -892,13 +907,16 @@ func get_travel_start_error(
 		return TRAVEL_ERROR_MISSING_DATA
 	if current_order_id != order.id:
 		return TRAVEL_ERROR_ORDER_NOT_ACTIVE
-	if not departure_confirmed:
-		return TRAVEL_ERROR_DEPARTURE_NOT_CONFIRMED
 	if (
 		requested_destination_id != order.destination_planet.id
 		or destination_id != order.destination_planet.id
 	):
 		return TRAVEL_ERROR_DESTINATION_NOT_ALLOWED
+	var content_error: StringName = _get_order_content_readiness_error(order)
+	if not content_error.is_empty():
+		return content_error
+	if not departure_confirmed:
+		return TRAVEL_ERROR_DEPARTURE_NOT_CONFIRMED
 	if travel_state == TravelState.COMPLETED:
 		return TRAVEL_ERROR_ALREADY_COMPLETED
 	if travel_state in [TravelState.DEPARTURE, TravelState.CRUISE, TravelState.APPROACH]:
@@ -939,6 +957,26 @@ func begin_travel(order: OrderDefinition, requested_destination_id: StringName) 
 	last_travel_error = &""
 	_set_travel_state(TravelState.DEPARTURE)
 	return true
+
+
+func _get_order_content_readiness_error(
+	order: OrderDefinition
+) -> StringName:
+	if order == null:
+		return ORDER_ERROR_MISSING_DATA
+	if not order.is_playable():
+		return ORDER_ERROR_REGISTERED_ONLY
+	var planet: PlanetDefinition = order.destination_planet
+	if planet == null:
+		return ORDER_ERROR_MISSING_DATA
+	if not planet.is_playable():
+		return ORDER_ERROR_PLANET_REGISTERED_ONLY
+	if (
+		planet.flight_scene_path.is_empty()
+		or not ResourceLoader.exists(planet.flight_scene_path)
+	):
+		return ORDER_ERROR_MISSING_ROUTE
+	return &""
 
 
 func advance_travel_state(next_state: TravelState) -> bool:

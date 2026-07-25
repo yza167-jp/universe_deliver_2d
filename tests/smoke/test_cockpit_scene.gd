@@ -30,6 +30,9 @@ func run() -> Array[String]:
 	var device_action: Button = cockpit.get_node_or_null(
 		"ModalLayer/DevicePanel/Margin/Content/Actions/DeviceActionButton"
 	) as Button
+	var navigation_panel: CockpitNavigationPanel = cockpit.get_node_or_null(
+		"ModalLayer/DevicePanel/Margin/Content/NavigationScroll/NavigationPanel"
+	) as CockpitNavigationPanel
 	var travel_controller: TravelSequenceController = cockpit.get_node_or_null(
 		"TravelSequenceController"
 	) as TravelSequenceController
@@ -60,6 +63,11 @@ func run() -> Array[String]:
 	expect_true(modal_layer != null, "Cockpit must contain a modal input blocker.", failures)
 	expect_true(device_panel != null, "Cockpit must contain its reusable device panel.", failures)
 	expect_true(device_action != null, "Navigation panel must expose destination confirmation.", failures)
+	expect_true(
+		navigation_panel != null,
+		"Cockpit navigation must use its own catalog presentation component.",
+		failures
+	)
 	expect_true(
 		travel_controller != null,
 		"Cockpit must own a local travel sequence controller.",
@@ -98,7 +106,12 @@ func run() -> Array[String]:
 			"Radio feedback must remain input-passive.",
 			failures
 		)
-	expect_true(cockpit.data_registry != null, "Cockpit must expose M0 order and cargo data.", failures)
+	expect_true(
+		cockpit.data_registry != null
+		and cockpit.data_registry.registry_id == &"m1_four_planet_demo",
+		"Normal cockpit scenes must consume the M1 registry while preserving M0 data.",
+		failures
+	)
 	expect_true(cockpit.lao_pi_dialogue != null, "Cockpit must provide Lao Pi's dialogue sequence.", failures)
 	expect_true(
 		cockpit.travel_main_dialogue != null,
