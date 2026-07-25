@@ -199,6 +199,24 @@ func get_station_state_presenter() -> StationStatePresenter:
 	return get_node_or_null("StationStatePresenter") as StationStatePresenter
 
 
+func get_archive_terminal_controller() -> StationArchiveTerminalController:
+	return get_node_or_null(
+		"StationArchiveTerminalController"
+	) as StationArchiveTerminalController
+
+
+func get_archive_terminal_ui() -> CodexBrowserUI:
+	return get_node_or_null(
+		"ArchiveTerminalUILayer/CodexBrowserUI"
+	) as CodexBrowserUI
+
+
+func get_archive_terminal_interactable() -> Interactable2D:
+	return get_node_or_null(
+		"Interactables/ArchiveTerminal"
+	) as Interactable2D
+
+
 func get_interactables() -> Array[Interactable2D]:
 	var interactables: Array[Interactable2D] = []
 	var interaction_root: Node = get_node_or_null("Interactables")

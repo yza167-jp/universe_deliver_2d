@@ -14,6 +14,17 @@ const RED_SAND_CODEX_ENTRY_ID: StringName = &"codex_planet_red_sand"
 const IYA_CODEX_ENTRY_ID: StringName = &"codex_character_iya"
 const RELAY_PLAQUE_CODEX_ENTRY_ID: StringName = &"codex_souvenir_old_relay_plaque"
 const RELAY_PLAQUE_SOUVENIR_ID: StringName = &"souvenir_old_relay_plaque"
+const RED_SAND_REVISIT_ORDER_ID: StringName = (
+	&"order_m1_red_sand_shielding_retrofit"
+)
+const RED_SAND_REVISIT_COMPLETION_FLAG: StringName = (
+	&"story_m1_red_sand_shielding_retrofit_completed"
+)
+const RED_SAND_REVISIT_CARGO_CODEX_ENTRY_ID: StringName = (
+	&"codex_cargo_relay_pattern_shielding_materials"
+)
+const RELAY_ECHO_CODEX_ENTRY_ID: StringName = &"codex_anomaly_relay_echo"
+const WHITE_NOISE_CODEX_ENTRY_ID: StringName = &"codex_planet_white_noise"
 const RED_SAND_ARRIVAL_COMPLETED_FLAG: StringName = (
 	&"story_red_sand_arrival_main_dialogue_completed"
 )
@@ -107,6 +118,7 @@ static func capture(game_state: GameStateModel) -> GameProgressData:
 	progress.demo_ending_flags = _copy_variant_map(game_state.demo_ending_flags)
 	progress.last_stable_station_state = game_state.last_stable_station_state
 	progress._apply_completed_m0_compatibility()
+	progress._apply_red_sand_revisit_content_compatibility()
 	progress._apply_station_state_compatibility()
 	progress._apply_order_state_compatibility()
 	progress._validate_consistency()
@@ -282,6 +294,7 @@ func _read_dictionary(source: Dictionary) -> void:
 		_read_schema_v2_fields(payload)
 	if not validation_error.is_empty():
 		return
+	_apply_red_sand_revisit_content_compatibility()
 	_apply_station_state_compatibility()
 	_apply_order_state_compatibility()
 	_validate_consistency()
@@ -412,6 +425,21 @@ func _apply_completed_m0_compatibility() -> void:
 	station_state_level = maxi(station_state_level, 1)
 	if last_stable_station_state.is_empty():
 		last_stable_station_state = FIRST_DELIVERY_STATION_STATE_ID
+
+
+func _apply_red_sand_revisit_content_compatibility() -> void:
+	var revisit_completed: bool = (
+		completed_order_ids.get(RED_SAND_REVISIT_ORDER_ID, false)
+		or story_flags.get(RED_SAND_REVISIT_COMPLETION_FLAG, false)
+	)
+	if not revisit_completed:
+		return
+	_append_unique_id(
+		codex_entry_ids,
+		RED_SAND_REVISIT_CARGO_CODEX_ENTRY_ID
+	)
+	_append_unique_id(codex_entry_ids, RELAY_ECHO_CODEX_ENTRY_ID)
+	_append_unique_id(codex_entry_ids, WHITE_NOISE_CODEX_ENTRY_ID)
 
 
 func _apply_order_state_compatibility() -> void:

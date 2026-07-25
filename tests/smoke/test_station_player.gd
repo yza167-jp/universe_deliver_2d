@@ -38,8 +38,8 @@ func run() -> Array[String]:
 
 	var interactables: Array[Interactable2D] = station.get_interactables()
 	expect_true(
-		interactables.size() == station.get_required_feature_ids().size(),
-		"Every required station feature must have one interactable component.",
+		interactables.size() >= station.get_required_feature_ids().size(),
+		"Every required station feature must retain an interactable component.",
 		failures
 	)
 	var seen_ids: Dictionary[StringName, bool] = {}
@@ -65,6 +65,20 @@ func run() -> Array[String]:
 			"Station interactables must expose a detection shape: %s" % interactable.name,
 			failures
 		)
+	for feature_id: StringName in station.get_required_feature_ids():
+		expect_true(
+			seen_ids.has(feature_id),
+			"Required station feature lost its interactable: %s" % feature_id,
+			failures
+		)
+	var archive_terminal: Interactable2D = (
+		station.get_archive_terminal_interactable()
+	)
+	expect_true(
+		archive_terminal != null and not archive_terminal.interaction_enabled,
+		"The archive-terminal interactable must exist but remain locked in New Game.",
+		failures
+	)
 	station.free()
 	return failures
 

@@ -103,6 +103,10 @@ run_godot_checked \
   "Red Sand revisit short route, branch settlement, station growth, and Continue" \
   --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t112_red_sand_revisit_flow_smoke_runner.gd
 
+run_godot_checked \
+  "Archive terminal catalog, modal focus, Lao Pi briefing, and Continue" \
+  --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t113_archive_terminal_smoke_runner.gd
+
 for scenario_id in \
   red_sand_revisit \
   white_noise_catalog \

@@ -113,8 +113,8 @@ GODOT_BIN="/Applications/Godot.app/Contents/MacOS/Godot" \
 ```
 
 该脚本按子系统分别报告：类型化 M1 合同、v1→v2 迁移、多星球订单/导航、图鉴/
-纪念品/站点、低空投放、加急订单、M1 调试场景及 M0 完整闭环。它同时属于
-`./scripts/check_project.sh` 的必跑项，失败时保留具体子系统名称。
+纪念品/站点、档案终端、低空投放、加急订单、M1 调试场景及 M0 完整闭环。它
+同时属于 `./scripts/check_project.sh` 的必跑项，失败时保留具体子系统名称。
 
 开发构建可用以下入口直达内容：
 

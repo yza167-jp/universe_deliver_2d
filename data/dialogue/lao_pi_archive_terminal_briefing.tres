@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_sequence.gd" id="1_sequence"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_line.gd" id="2_line"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_effect.gd" id="3_effect"]
+[ext_resource type="Resource" path="res://data/characters/lao_pi.tres" id="4_lao_pi"]
+
+[sub_resource type="Resource" id="EffectBriefingCompleted"]
+script = ExtResource("3_effect")
+effect_id = &"story_m1_archive_terminal_briefing_completed"
+
+[sub_resource type="Resource" id="LineArchivePattern"]
+script = ExtResource("2_line")
+id = &"archive_pattern"
+speaker = ExtResource("4_lao_pi")
+text_key = &"DIALOGUE_M1_ARCHIVE_LAO_PI_PATTERN"
+portrait_expression = &"concerned"
+next_line_id = &"archive_white_noise"
+
+[sub_resource type="Resource" id="LineWhiteNoise"]
+script = ExtResource("2_line")
+id = &"archive_white_noise"
+speaker = ExtResource("4_lao_pi")
+text_key = &"DIALOGUE_M1_ARCHIVE_LAO_PI_WHITE_NOISE"
+portrait_expression = &"thoughtful"
+next_line_id = &"archive_boundary"
+
+[sub_resource type="Resource" id="LineBoundary"]
+script = ExtResource("2_line")
+id = &"archive_boundary"
+speaker = ExtResource("4_lao_pi")
+text_key = &"DIALOGUE_M1_ARCHIVE_LAO_PI_BOUNDARY"
+portrait_expression = &"friendly"
+effects = [SubResource("EffectBriefingCompleted")]
+
+[resource]
+script = ExtResource("1_sequence")
+id = &"dialogue_lao_pi_archive_terminal_briefing"
+start_line_id = &"archive_pattern"
+lines = [SubResource("LineArchivePattern"), SubResource("LineWhiteNoise"), SubResource("LineBoundary")]

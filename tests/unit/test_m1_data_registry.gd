@@ -99,7 +99,7 @@ func _test_valid_registry_and_counts(
 		failures
 	)
 	expect_true(
-		registry.codex_entries.size() == 19 and registry.souvenirs.size() == 4,
+		registry.codex_entries.size() == 20 and registry.souvenirs.size() == 4,
 		"M1 registry must use typed codex and souvenir catalogs.",
 		failures
 	)

@@ -11,6 +11,7 @@ const SEQUENCE_PATHS: PackedStringArray = [
 	"res://data/dialogue/lao_pi_order_accepted.tres",
 	"res://data/dialogue/lao_pi_active_order_daily.tres",
 	"res://data/dialogue/lao_pi_first_delivery_return.tres",
+	"res://data/dialogue/lao_pi_archive_terminal_briefing.tres",
 ]
 
 var _flow_events: Array[StringName] = []

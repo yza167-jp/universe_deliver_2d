@@ -2,6 +2,9 @@ class_name StationStatePresenter
 extends Node
 
 @onready var _archive_terminal_root: Node2D = %ArchiveTerminalStateRoot
+@onready var _archive_terminal_label: Label = (
+	_archive_terminal_root.get_node("ArchiveTerminalLabel") as Label
+)
 @onready var _ecology_corner_root: Node2D = %EcologyCornerStateRoot
 @onready var _relay_observatory_root: Node2D = %RelayObservatoryStateRoot
 
@@ -11,7 +14,13 @@ var _game_state: GameStateModel
 
 func _ready() -> void:
 	_bind_game_state()
+	_localize_state_labels()
 	refresh_state_roots()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready():
+		_localize_state_labels()
 
 
 func _exit_tree() -> void:
@@ -93,3 +102,8 @@ func _set_root_visible(root: Node2D, state_id: StringName) -> void:
 	if root == null:
 		return
 	root.visible = _game_state != null and _game_state.has_station_state(state_id)
+
+
+func _localize_state_labels() -> void:
+	if _archive_terminal_label != null:
+		_archive_terminal_label.text = tr("UI_STATION_ARCHIVE_TERMINAL")

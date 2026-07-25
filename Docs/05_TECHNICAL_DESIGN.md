@@ -390,10 +390,19 @@ active order 置顶，同一时刻最多一个当前主线，未发现的可选�
 GameState。隐藏锁定条目不进入图鉴，允许出现的锁定位与全部未获得纪念品槽只使用
 通用未知文本。对应的图鉴纪念品与物理纪念品通过稳定 ID 关联，在图鉴中去重。
 
-`CodexBrowserUI` 是独立可复用的 640×360 灰盒组件，本阶段不挂入正常快递站；
-T-113 才能通过档案终端开放。`SouvenirWallUI` 由现有墙面交互打开，并通过
-`StationModalCoordinator` 获取世界输入锁；鼠标与键盘共用选择函数，关闭时恢复
-打开前焦点、玩家控制和场景提示。
+`CodexBrowserUI` 是独立可复用的 640×360 灰盒组件。T-113 通过
+`StationArchiveTerminalController` 将其正式挂入快递站：只有精确
+`station_state_archive_terminal` 存在时才启用交互，浏览器仍直接读取同一
+`GameStateModel` 图鉴集合，不建立第二份档案状态。终端和 `SouvenirWallUI`
+都通过 `StationModalCoordinator` 获取世界输入锁；鼠标与键盘共用选择函数，
+关闭时恢复打开前焦点、玩家控制和场景提示。状态被移除或运行时重置时，终端会
+同步禁用并关闭仍在显示的浏览器。
+
+完成赤砂回访后，档案可投影已知的白噪星和旧铭牌异常回波，但这只代表“玩家已知”，
+不写入白噪星导航解锁。老皮的一次性档案简报由独立 `DialogueSequence` 和完成
+标记驱动，取消对话不会伪造完成。为兼容 T-113 之前已经完成回访的 schema v2
+存档，读取时只在正式回访完成事实存在时幂等补齐新增档案记录；存档 schema 保持
+v2，出发许可仍由后续权威资格规则计算。
 
 `StationStateRules` 只登记三个精确 `station_state_*` ID 及其摘要等级。
 `GameStateModel.unlock_station_state()` 是唯一普通写入口：非法 ID 拒绝、重复 ID
@@ -1078,6 +1087,8 @@ M0 赤砂星路线暂由场景局部 `AudioStreamPlayer` 播放程序合成的�
   观察文字的提示隐藏、移动保留、手动关闭、重复触发阻止和最终来源关闭后的恢复。
 - 图鉴分类与锁定去剧透、多槽纪念品顺序、鼠标/键盘同一路径、站点精确 ID 根节点、
   `station_state_level` 单调摘要及加载不重放事件。
+- 档案终端的精确状态启用、已知记录投影、640×360 模态布局、键鼠分类切换、老皮
+  白噪简报、焦点恢复，以及旧 schema v2 回访存档的新增记录兼容。
 - Delivery Lab 的键鼠共用 action、核心/外圈/漏投可见反馈、重复输入防重、
   检查点恢复飞船与货物，以及不改写活动订单/信用点。
 - 雷暴真实积分路线固定覆盖 `W` 普通最大前速且无 Boost 时命中、锁定后 Boost 前冲躲开、急刹进入
@@ -1170,8 +1181,8 @@ Delivery Lab 与 Flight Lab。持久 UI 只显示 scenario、章节、订单、�
 
 保存迁移等验证继续使用测试专用临时路径。`scripts/check_m1_foundation.sh` 作为
 可独立运行的聚合入口，逐项标记 v2 迁移、多星球系统、目录导航、收藏与站点、
-低空投放、加急订单、赤砂回访闭环、六个 M1 调试启动和 M0 完整闭环；该入口由
-`scripts/check_project.sh` 调用。
+低空投放、加急订单、赤砂回访闭环、档案终端、六个 M1 调试启动和 M0 完整闭环；
+该入口由 `scripts/check_project.sh` 调用。
 
 ## 18. 依赖策略
 

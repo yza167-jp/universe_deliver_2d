@@ -19,6 +19,9 @@ const FLOW_WAIT_FOR_LAO_PI: StringName = &"station_tutorial_wait_for_lao_pi"
 const FLOW_WAIT_FOR_ORDER_TERMINAL: StringName = &"station_tutorial_wait_for_order_terminal"
 const FLOW_COMPLETE: StringName = &"station_tutorial_completed"
 const MODAL_DIALOGUE: StringName = &"station_dialogue"
+const ARCHIVE_BRIEFING_COMPLETION_FLAG: StringName = (
+	&"story_m1_archive_terminal_briefing_completed"
+)
 const DIALOGUE_UI_SCENE: PackedScene = preload("res://scenes/narrative/dialogue_ui.tscn")
 
 @export_range(8.0, 160.0, 1.0) var required_movement_distance: float = 32.0
@@ -30,6 +33,7 @@ const DIALOGUE_UI_SCENE: PackedScene = preload("res://scenes/narrative/dialogue_
 @export var order_accepted_sequence: DialogueSequence
 @export var active_order_daily_sequence: DialogueSequence
 @export var return_sequence: DialogueSequence
+@export var archive_terminal_sequence: DialogueSequence
 
 var _stage: Stage = Stage.BOOTSTRAP
 var _progress: StationTutorialProgress
@@ -177,6 +181,8 @@ func _on_lao_pi_interacted(_actor: Node) -> void:
 		var context_sequence: DialogueSequence = daily_sequence
 		if _has_pending_return_dialogue():
 			context_sequence = return_sequence
+		elif _has_pending_archive_briefing():
+			context_sequence = archive_terminal_sequence
 		elif _game_state != null and not _game_state.current_order_id.is_empty():
 			context_sequence = active_order_daily_sequence
 		_start_dialogue(context_sequence)
@@ -286,6 +292,7 @@ func _is_station_context_dialogue(sequence_id: StringName) -> bool:
 		order_accepted_sequence,
 		active_order_daily_sequence,
 		return_sequence,
+		archive_terminal_sequence,
 	]:
 		if sequence != null and sequence_id == sequence.id:
 			return true
@@ -302,6 +309,19 @@ func _has_pending_return_dialogue() -> bool:
 		_game_state != null
 		and return_sequence != null
 		and _game_state.has_story_flag(M0ProgressIds.STORY_RETURN_DIALOGUE_PENDING)
+	)
+
+
+func _has_pending_archive_briefing() -> bool:
+	return (
+		_game_state != null
+		and archive_terminal_sequence != null
+		and _game_state.has_station_state(
+			StationStateRules.ARCHIVE_TERMINAL_ID
+		)
+		and not _game_state.has_story_flag(
+			ARCHIVE_BRIEFING_COMPLETION_FLAG
+		)
 	)
 
 
