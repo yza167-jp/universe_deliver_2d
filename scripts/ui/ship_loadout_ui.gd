@@ -50,6 +50,9 @@ signal departure_confirmed(order_id: StringName)
 @onready var _close_button: Button = %CloseButton
 @onready var _laser_mount_visual: ColorRect = %LaserMountVisual
 @onready var _shield_backup_power_visual: ColorRect = %ShieldBackupPowerVisual
+@onready var _high_voltage_shielding_visual: Line2D = (
+	%HighVoltageShieldingVisual
+)
 
 var game_state_override: GameStateModel
 var _game_state: GameStateModel
@@ -168,6 +171,10 @@ func get_status_text() -> String:
 	return "" if _status_badge_label == null else _status_badge_label.text
 
 
+func get_order_definition_id() -> StringName:
+	return &"" if order_definition == null else order_definition.id
+
+
 func get_feedback_text() -> String:
 	return "" if _feedback_label == null else _feedback_label.text
 
@@ -214,6 +221,13 @@ func is_shield_backup_power_visual_visible() -> bool:
 	)
 
 
+func is_high_voltage_shielding_visual_visible() -> bool:
+	return (
+		_high_voltage_shielding_visual != null
+		and _high_voltage_shielding_visual.visible
+	)
+
+
 func get_shield_backup_power_status_text() -> String:
 	return (
 		""
@@ -230,7 +244,7 @@ func get_panel_rect() -> Rect2:
 func _initialize_controls() -> bool:
 	if _controls_initialized:
 		return true
-	var required_controls: Array[Control] = [
+	var required_controls: Array[Node] = [
 		_title_label,
 		_ship_name_label,
 		_ship_subtitle_label,
@@ -275,8 +289,9 @@ func _initialize_controls() -> bool:
 		_close_button,
 		_laser_mount_visual,
 		_shield_backup_power_visual,
+		_high_voltage_shielding_visual,
 	]
-	for control: Control in required_controls:
+	for control: Node in required_controls:
 		if control == null:
 			return false
 	_power_toggle_button.pressed.connect(
@@ -408,6 +423,12 @@ func _refresh_content() -> void:
 			ShipLoadoutRules.SHIELD_BACKUP_POWER_MODULE_ID
 		)
 	)
+	_high_voltage_shielding_visual.visible = (
+		_game_state != null
+		and _game_state.is_ship_module_equipped(
+			ShipLoadoutRules.HIGH_VOLTAGE_SHIELDING_MODULE_ID
+		)
+	)
 
 
 func _localize_static_labels() -> void:
@@ -424,7 +445,11 @@ func _localize_static_labels() -> void:
 	_utility_heading_label.text = tr("UI_LOADOUT_SLOT_UTILITY")
 	_backup_power_heading_label.text = tr("UI_LOADOUT_SLOT_SHIELD_BACKUP_POWER")
 	_requirements_heading_label.text = tr("UI_LOADOUT_REQUIREMENTS_HEADING")
-	_standard_issue_label.text = tr("UI_LOADOUT_STANDARD_ISSUE_NOTE")
+	_standard_issue_label.text = tr(
+		"UI_LOADOUT_STORY_MODULE_NOTE"
+		if _order_has_story_module()
+		else "UI_LOADOUT_STANDARD_ISSUE_NOTE"
+	)
 	_close_button.text = tr("UI_LOADOUT_CLOSE")
 
 
@@ -470,29 +495,42 @@ func _refresh_module(
 	toggle_button: Button
 ) -> void:
 	if module == null:
-		name_label.text = tr("UI_LOADOUT_VALUE_UNAVAILABLE")
-		description_label.text = tr("UI_LOADOUT_VALUE_UNAVAILABLE")
-		status_label.text = tr("UI_LOADOUT_STATUS_UNAVAILABLE")
+		name_label.text = tr("UI_LOADOUT_VALUE_NOT_LISTED")
+		description_label.text = tr("UI_LOADOUT_VALUE_NOT_LISTED")
+		status_label.text = tr("UI_LOADOUT_STATE_NOT_LISTED")
 		toggle_button.text = tr("UI_LOADOUT_INSTALL")
 		toggle_button.disabled = true
 		return
 	var installed: bool = (
 		_game_state != null and _game_state.is_ship_module_equipped(module.id)
 	)
+	var owned: bool = (
+		_game_state != null and _game_state.has_ship_module(module.id)
+	)
 	name_label.text = tr(String(module.display_name_key))
 	description_label.text = tr(String(module.description_key))
 	name_label.tooltip_text = description_label.text
 	var role_text: String = tr("UI_LOADOUT_ROLE_RECOMMENDED")
 	if order_definition.required_modules.has(module):
-		role_text = tr("UI_LOADOUT_ROLE_REQUIRED")
+		role_text = tr(
+			"UI_LOADOUT_ROLE_REQUIRED_STORY"
+			if not module.story_unlock_flags.is_empty()
+			else "UI_LOADOUT_ROLE_REQUIRED"
+		)
 	var state_text: String = tr("UI_LOADOUT_STATE_EMPTY")
 	if installed:
 		state_text = tr("UI_LOADOUT_STATE_INSTALLED")
+	elif not owned:
+		state_text = tr("UI_LOADOUT_STATE_NOT_OBTAINED")
 	status_label.text = tr("UI_LOADOUT_SLOT_STATUS_FORMAT") % [role_text, state_text]
-	toggle_button.text = tr(
-		"UI_LOADOUT_UNINSTALL" if installed else "UI_LOADOUT_INSTALL"
-	)
-	toggle_button.disabled = _game_state == null
+	if not owned:
+		toggle_button.text = tr("UI_LOADOUT_NOT_OBTAINED")
+		toggle_button.disabled = true
+	else:
+		toggle_button.text = tr(
+			"UI_LOADOUT_UNINSTALL" if installed else "UI_LOADOUT_INSTALL"
+		)
+		toggle_button.disabled = _game_state == null
 
 
 func _refresh_requirements() -> void:
@@ -556,13 +594,22 @@ func _refresh_departure_state() -> void:
 		order_definition
 	)
 	if not missing_modules.is_empty():
-		var missing_names: PackedStringArray = []
+		var not_obtained_names: PackedStringArray = []
+		var not_installed_names: PackedStringArray = []
 		for module: ShipModuleDefinition in missing_modules:
-			missing_names.append(_translate_module_name(module))
+			if _game_state.has_ship_module(module.id):
+				not_installed_names.append(_translate_module_name(module))
+			else:
+				not_obtained_names.append(_translate_module_name(module))
 		_status_badge_label.text = tr("UI_LOADOUT_STATUS_INCOMPLETE")
-		_feedback_label.text = tr("UI_LOADOUT_FEEDBACK_MISSING_REQUIRED_FORMAT") % tr(
-			"UI_LOADOUT_LIST_SEPARATOR"
-		).join(missing_names)
+		if not not_obtained_names.is_empty():
+			_feedback_label.text = tr(
+				"UI_LOADOUT_FEEDBACK_NOT_OBTAINED_FORMAT"
+			) % tr("UI_LOADOUT_LIST_SEPARATOR").join(not_obtained_names)
+		else:
+			_feedback_label.text = tr(
+				"UI_LOADOUT_FEEDBACK_MISSING_REQUIRED_FORMAT"
+			) % tr("UI_LOADOUT_LIST_SEPARATOR").join(not_installed_names)
 		_confirm_button.disabled = true
 		return
 	_apply_departure_state(
@@ -579,24 +626,33 @@ func _apply_departure_state(status_key: String, feedback_key: String, disabled: 
 
 
 func _has_complete_loadout_data() -> bool:
-	if order_definition == null or order_definition.id.is_empty():
-		return false
-	for slot_type: ShipModuleDefinition.SlotType in [
-		ShipModuleDefinition.SlotType.POWER,
-		ShipModuleDefinition.SlotType.DEFENSE,
-		ShipModuleDefinition.SlotType.UTILITY,
-	]:
-		if ShipLoadoutRules.get_module_for_slot(order_definition, slot_type) == null:
-			return false
 	if (
-		ShipLoadoutRules.get_module_by_id(
-			order_definition,
-			ShipLoadoutRules.SHIELD_BACKUP_POWER_MODULE_ID
-		)
-		== null
+		order_definition == null
+		or order_definition.id.is_empty()
+		or order_definition.cargo == null
+		or order_definition.destination_planet == null
 	):
 		return false
+	for module: ShipModuleDefinition in order_definition.required_modules:
+		if (
+			module == null
+			or module.id.is_empty()
+			or ShipLoadoutRules.get_configuration_slot_id(module).is_empty()
+		):
+			return false
 	return true
+
+
+func _order_has_story_module() -> bool:
+	for module: ShipModuleDefinition in ShipLoadoutRules.get_order_modules(
+		order_definition
+	):
+		if (
+			module != null
+			and not ShipLoadoutRules.BASE_OWNED_MODULE_IDS.has(module.id)
+		):
+			return true
+	return false
 
 
 func _translate_module_name(module: ShipModuleDefinition) -> String:

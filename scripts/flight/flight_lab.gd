@@ -53,6 +53,7 @@ func _ready() -> void:
 	flight_ship.set_shield_backup_power_enabled(
 		_resolve_shield_backup_power_enabled_from_loadout()
 	)
+	_configure_high_voltage_shielding_from_loadout()
 	debug_hud.bind_ship(flight_ship)
 	debug_hud.bind_entry_style_tracker(_entry_style_tracker, flight_ship.tuning)
 	debug_hud.bind_course(_course)
@@ -549,6 +550,22 @@ func _resolve_shield_backup_power_enabled_from_loadout() -> bool:
 		game_state.ship_configuration,
 		data_registry.modules,
 		ShipLoadoutRules.SHIELD_REGENERATION_CAPABILITY
+	)
+
+
+func _configure_high_voltage_shielding_from_loadout() -> void:
+	if flight_ship == null:
+		return
+	var game_state: GameStateModel = _resolve_game_state()
+	if game_state == null or data_registry == null:
+		flight_ship.configure_high_voltage_shielding(
+			ShipLoadoutRules.create_default_configuration(),
+			[]
+		)
+		return
+	flight_ship.configure_high_voltage_shielding(
+		game_state.ship_configuration,
+		data_registry.modules
 	)
 
 

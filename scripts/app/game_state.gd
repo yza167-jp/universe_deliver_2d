@@ -53,6 +53,7 @@ const LOADOUT_ERROR_MISSING_DATA: StringName = &"missing_data"
 const LOADOUT_ERROR_ORDER_NOT_ACCEPTED: StringName = &"order_not_accepted"
 const LOADOUT_ERROR_MISSING_REQUIRED_MODULES: StringName = &"missing_required_modules"
 const LOADOUT_ERROR_INVALID_MODULE: StringName = &"invalid_module"
+const LOADOUT_ERROR_MODULE_NOT_OWNED: StringName = &"module_not_owned"
 const LOADOUT_ERROR_MODULE_NOT_EQUIPPED: StringName = &"module_not_equipped"
 const LOADOUT_ERROR_ORDER_REGISTERED_ONLY: StringName = &"registered_only"
 const LOADOUT_ERROR_PLANET_REGISTERED_ONLY: StringName = &"planet_registered_only"
@@ -899,6 +900,9 @@ func equip_ship_module(module: ShipModuleDefinition) -> bool:
 	if slot_id.is_empty() or not ShipLoadoutRules.is_valid_slot_id(slot_id):
 		last_loadout_error = LOADOUT_ERROR_INVALID_MODULE
 		return false
+	if not has_ship_module(module.id):
+		last_loadout_error = LOADOUT_ERROR_MODULE_NOT_OWNED
+		return false
 	if ship_configuration.get(slot_id, &"") == module.id:
 		return true
 	ship_configuration[slot_id] = module.id
@@ -929,6 +933,10 @@ func unequip_ship_module(module: ShipModuleDefinition) -> bool:
 
 func is_ship_module_equipped(module_id: StringName) -> bool:
 	return ShipLoadoutRules.is_module_equipped(ship_configuration, module_id)
+
+
+func has_ship_module(module_id: StringName) -> bool:
+	return ShipLoadoutRules.is_module_owned(module_id, ship_upgrade_ids)
 
 
 func has_ship_capability(

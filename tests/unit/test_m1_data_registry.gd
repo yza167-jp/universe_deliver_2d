@@ -235,12 +235,34 @@ func _test_packet_resources(
 	}
 	for module_id: StringName in expected_capabilities:
 		var module: ShipModuleDefinition = registry.find_module(module_id)
+		var has_expected_stats: bool = module != null and (
+			(
+				is_equal_approx(
+					module.stat_modifiers.get(
+						FlightElectromagneticProtectionModel
+						.HIGH_VOLTAGE_DAMAGE_MULTIPLIER_STAT,
+						-1.0
+					),
+					0.6
+				)
+				and is_equal_approx(
+					module.stat_modifiers.get(
+						FlightElectromagneticProtectionModel
+						.ELECTROMAGNETIC_INTERFERENCE_MULTIPLIER_STAT,
+						-1.0
+					),
+					0.45
+				)
+			)
+			if module_id == ShipLoadoutRules.HIGH_VOLTAGE_SHIELDING_MODULE_ID
+			else module.stat_modifiers.is_empty()
+		)
 		expect_true(
 			module != null
 			and module.capability_tags.has(expected_capabilities[module_id])
-			and module.stat_modifiers.is_empty()
+			and has_expected_stats
 			and module.cost == 0,
-			"M1 module '%s' must be a no-effect Packet placeholder with its capability tag."
+			"M1 module '%s' must retain its declared capability and bounded stats."
 			% module_id,
 			failures
 		)

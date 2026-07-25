@@ -38,8 +38,11 @@
 | `module_biosignal_isolation` | Utility | `capability_biosignal_isolation` | `story_m1_biosignal_isolation_available` |
 | `module_crosswind_stabilizer` | Utility | `capability_crosswind_stabilization` | `story_m1_crosswind_stabilizer_available` |
 
-本任务只声明能力标签，不实现关卡效果。屏蔽罩是白噪主线硬门槛；隔离舱与横风
-稳定器在对应主线只作为推荐模块。
+T-111 已实现屏蔽罩能力读取：安装时
+`high_voltage_damage_multiplier = 0.60`、
+`electromagnetic_interference_multiplier = 0.45`；未安装时两项均回退为 `1.00`。
+这是可调工作基线，不是额外护盾资源。隔离舱与横风稳定器在对应主线仍只作为
+推荐模块，其具体关卡效果留给各自行星任务。
 
 ## 角色
 

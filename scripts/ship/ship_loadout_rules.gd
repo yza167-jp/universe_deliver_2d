@@ -13,8 +13,21 @@ const DEFAULT_POWER_MODULE_ID: StringName = &"module_standard_drive"
 const DEFAULT_DEFENSE_MODULE_ID: StringName = &"module_atmospheric_shield"
 const LASER_MODULE_ID: StringName = &"module_asteroid_laser"
 const SHIELD_BACKUP_POWER_MODULE_ID: StringName = &"module_shield_backup_power"
+const HIGH_VOLTAGE_SHIELDING_MODULE_ID: StringName = (
+	&"module_high_voltage_shielding"
+)
 const ASTEROID_BREAK_CAPABILITY: StringName = &"capability_break_asteroids"
 const SHIELD_REGENERATION_CAPABILITY: StringName = &"capability_regenerate_shield"
+const HIGH_VOLTAGE_SHIELDING_CAPABILITY: StringName = (
+	&"capability_high_voltage_shielding"
+)
+
+const BASE_OWNED_MODULE_IDS: Array[StringName] = [
+	DEFAULT_POWER_MODULE_ID,
+	DEFAULT_DEFENSE_MODULE_ID,
+	LASER_MODULE_ID,
+	SHIELD_BACKUP_POWER_MODULE_ID,
+]
 
 const BASE_HULL: int = 100
 const BASE_SHIELD: int = 100
@@ -74,6 +87,19 @@ static func is_module_equipped(
 	return false
 
 
+static func is_module_owned(
+	module_id: StringName,
+	ship_upgrade_ids: Array[StringName]
+) -> bool:
+	return (
+		not module_id.is_empty()
+		and (
+			BASE_OWNED_MODULE_IDS.has(module_id)
+			or ship_upgrade_ids.has(module_id)
+		)
+	)
+
+
 static func get_order_modules(order: OrderDefinition) -> Array[ShipModuleDefinition]:
 	var modules: Array[ShipModuleDefinition] = []
 	if order == null:
@@ -131,13 +157,28 @@ static func has_capability(
 	module_catalog: Array[ShipModuleDefinition],
 	capability_tag: StringName
 ) -> bool:
+	return (
+		get_equipped_module_with_capability(
+			configuration,
+			module_catalog,
+			capability_tag
+		)
+		!= null
+	)
+
+
+static func get_equipped_module_with_capability(
+	configuration: Dictionary[StringName, StringName],
+	module_catalog: Array[ShipModuleDefinition],
+	capability_tag: StringName
+) -> ShipModuleDefinition:
 	if capability_tag.is_empty():
-		return false
+		return null
 	for module: ShipModuleDefinition in module_catalog:
 		if (
 			module != null
 			and is_module_equipped(configuration, module.id)
 			and module.capability_tags.has(capability_tag)
 		):
-			return true
-	return false
+			return module
+	return null

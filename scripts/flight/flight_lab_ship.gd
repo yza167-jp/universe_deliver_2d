@@ -36,6 +36,8 @@ const FEEDBACK_AUDIO_SAMPLE_RATE: int = 11025
 const ENGINE_LOOP_SECONDS: float = 1.0
 const BOOST_SOUND_SECONDS: float = 0.32
 const COLLISION_SOUND_SECONDS: float = 0.2
+const HIGH_VOLTAGE_OUTLINE_COLOR: Color = Color(0.42, 0.93, 1.0, 0.88)
+const HIGH_VOLTAGE_OUTLINE_WIDTH: float = 1.5
 
 @export var stable_start_position: Vector2 = Vector2(320.0, 190.0)
 @export var tuning: FlightTuning = FlightTuning.new()
@@ -97,6 +99,13 @@ var effective_throttle_input: float = 0.0
 var effective_boost_input: float = 0.0
 var effective_reverse_input: float = 0.0
 var _shield_backup_power_enabled: bool = false
+var _high_voltage_shielding_enabled: bool = false
+var _high_voltage_damage_multiplier: float = (
+	FlightElectromagneticProtectionModel.DEFAULT_MULTIPLIER
+)
+var _electromagnetic_interference_multiplier: float = (
+	FlightElectromagneticProtectionModel.DEFAULT_MULTIPLIER
+)
 
 @onready var _engine_glow: Polygon2D = $EngineGlow
 @onready var _boost_glow: Polygon2D = $BoostGlow
@@ -141,6 +150,35 @@ func _ready() -> void:
 		_laser_weapon.fire_rejected.connect(_on_laser_fire_rejected)
 	if not _laser_weapon.target_hit.is_connected(_on_laser_target_hit):
 		_laser_weapon.target_hit.connect(_on_laser_target_hit)
+
+
+func _draw() -> void:
+	if not _high_voltage_shielding_enabled:
+		return
+	var upper_arc: PackedVector2Array = PackedVector2Array([
+		Vector2(-28.0, -8.0),
+		Vector2(-18.0, -15.0),
+		Vector2(5.0, -17.0),
+		Vector2(28.0, -9.0),
+	])
+	var lower_arc: PackedVector2Array = PackedVector2Array([
+		Vector2(-28.0, 8.0),
+		Vector2(-18.0, 15.0),
+		Vector2(5.0, 17.0),
+		Vector2(28.0, 9.0),
+	])
+	draw_polyline(
+		upper_arc,
+		HIGH_VOLTAGE_OUTLINE_COLOR,
+		HIGH_VOLTAGE_OUTLINE_WIDTH,
+		false
+	)
+	draw_polyline(
+		lower_arc,
+		HIGH_VOLTAGE_OUTLINE_COLOR,
+		HIGH_VOLTAGE_OUTLINE_WIDTH,
+		false
+	)
 
 
 func _notification(what: int) -> void:
@@ -502,6 +540,24 @@ func apply_environment_damage(
 	return true
 
 
+func apply_high_voltage_damage(
+	damage: float,
+	hazard_cargo_damage: float,
+	reason_key: StringName
+) -> bool:
+	return apply_environment_damage(
+		FlightElectromagneticProtectionModel.scale_high_voltage_damage(
+			damage,
+			_high_voltage_damage_multiplier
+		),
+		FlightElectromagneticProtectionModel.scale_high_voltage_damage(
+			hazard_cargo_damage,
+			_high_voltage_damage_multiplier
+		),
+		reason_key
+	)
+
+
 func get_last_damage_result() -> FlightDamageResult:
 	return _last_damage_result
 
@@ -585,6 +641,48 @@ func set_shield_backup_power_enabled(enabled: bool) -> void:
 
 func is_shield_backup_power_enabled() -> bool:
 	return _shield_backup_power_enabled
+
+
+func configure_high_voltage_shielding(
+	configuration: Dictionary[StringName, StringName],
+	module_catalog: Array[ShipModuleDefinition]
+) -> void:
+	_high_voltage_shielding_enabled = (
+		FlightElectromagneticProtectionModel.has_high_voltage_shielding(
+			configuration,
+			module_catalog
+		)
+	)
+	_high_voltage_damage_multiplier = (
+		FlightElectromagneticProtectionModel.get_high_voltage_damage_multiplier(
+			configuration,
+			module_catalog
+		)
+	)
+	_electromagnetic_interference_multiplier = (
+		FlightElectromagneticProtectionModel
+		.get_electromagnetic_interference_multiplier(
+			configuration,
+			module_catalog
+		)
+	)
+	queue_redraw()
+
+
+func is_high_voltage_shielding_enabled() -> bool:
+	return _high_voltage_shielding_enabled
+
+
+func is_high_voltage_shielding_visual_visible() -> bool:
+	return _high_voltage_shielding_enabled
+
+
+func get_high_voltage_damage_multiplier() -> float:
+	return _high_voltage_damage_multiplier
+
+
+func get_electromagnetic_interference_multiplier() -> float:
+	return _electromagnetic_interference_multiplier
 
 
 func get_shield_regeneration_rate() -> float:

@@ -245,7 +245,7 @@ func validate_definition(
 			continue
 		if (
 			not definition.available_module_ids.has(module_id)
-			and not M1CatalogModel.BASE_OWNED_MODULE_IDS.has(module_id)
+			and not ShipLoadoutRules.BASE_OWNED_MODULE_IDS.has(module_id)
 		):
 			errors.append("Equipped module is not available: %s." % module_id)
 		var slot_id: StringName = ShipLoadoutRules.get_configuration_slot_id(module)

@@ -270,6 +270,26 @@ computed_stats
 激光炮的兼容挂点，并新增 `shield_backup_power` 作为第二功能挂点；旧 v1 存档
 缺少后者时按空槽读取，不需要改变 schema。
 
+T-111 起，模块“所有权”和“已安装”是两个独立状态：
+
+- 公司基础配发模块由 `ShipLoadoutRules.BASE_OWNED_MODULE_IDS` 集中声明。
+- 剧情模块所有权只读取 schema v2 的 `ship_upgrade_ids`；未获得模块不能通过
+  `GameStateModel.equip_ship_module()` 写入配置。
+- `ship_configuration` 只保存槽位到稳定模块 ID；配置变更继续使既有出发确认失效。
+- 站点工作台在打开时从 M1 订单终端注册表解析当前 active order，不再固定展示
+  M0 赤砂订单；没有 active order 时保留 M0 配置作为安全回退。
+
+`FlightElectromagneticProtectionModel` 是无状态能力读取层。它从已安装模块的
+`capability_high_voltage_shielding` 找到唯一生效模块，再读取
+`high_voltage_damage_multiplier` 与
+`electromagnetic_interference_multiplier`。未安装或目录缺失时均返回 `1.0`。
+`FlightLabShip.apply_high_voltage_damage()` 只缩放对应危险，再调用既有普通
+护盾/船体/货物伤害入口；普通碰撞和普通环境伤害不读取这两个乘数。
+
+飞船脚本用一圈轻量青色像素轮廓表现已安装状态，配置预览使用同一安装真相。
+Flight Lab 和赤砂路线只负责把当前配置及模块目录注入飞船；未来白噪危险组件
+消费上述纯逻辑接口，不在关卡脚本复制模块 ID 或数值。
+
 ### 5.4 M1 多星球进度运行时合同
 
 `GameStateModel` 是章节、解锁、关系、许可、图鉴、纪念品和回访状态的唯一运行时

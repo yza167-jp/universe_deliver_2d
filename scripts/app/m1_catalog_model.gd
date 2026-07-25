@@ -10,12 +10,6 @@ enum ModuleInstallState {
 }
 
 const M0_ORDER_ID: StringName = &"order_red_sand_m0"
-const BASE_OWNED_MODULE_IDS: Array[StringName] = [
-	ShipLoadoutRules.DEFAULT_POWER_MODULE_ID,
-	ShipLoadoutRules.DEFAULT_DEFENSE_MODULE_ID,
-	ShipLoadoutRules.LASER_MODULE_ID,
-	ShipLoadoutRules.SHIELD_BACKUP_POWER_MODULE_ID,
-]
 
 
 static func build_order_catalog(
@@ -122,10 +116,7 @@ static func get_module_install_state(
 		return ModuleInstallState.NOT_OBTAINED
 	if game_state.is_ship_module_equipped(module.id):
 		return ModuleInstallState.INSTALLED
-	if (
-		BASE_OWNED_MODULE_IDS.has(module.id)
-		or game_state.ship_upgrade_ids.has(module.id)
-	):
+	if game_state.has_ship_module(module.id):
 		return ModuleInstallState.OWNED_NOT_INSTALLED
 	return ModuleInstallState.NOT_OBTAINED
 

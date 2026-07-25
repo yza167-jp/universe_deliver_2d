@@ -95,6 +95,10 @@ run_godot_checked \
   "Red Sand revisit post-M0 packet, dialogue, route outline, and isolated preview" \
   --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t110_red_sand_revisit_smoke_runner.gd
 
+run_godot_checked \
+  "High-voltage shielding ownership, installation, capability, visual, and save contract" \
+  --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t111_high_voltage_shielding_smoke_runner.gd
+
 for scenario_id in \
   red_sand_revisit \
   white_noise_catalog \
