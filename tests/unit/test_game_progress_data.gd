@@ -6,6 +6,7 @@ func run() -> Array[String]:
 	_test_v2_round_trip(failures)
 	_test_v2_missing_fields_use_safe_defaults(failures)
 	_test_completed_v1_migration(failures)
+	_test_completed_v2_compatibility_backfill(failures)
 	_test_incomplete_v1_migration(failures)
 	_test_schema_zero_chains_through_v1(failures)
 	_test_collections_and_dictionaries_are_validated(failures)
@@ -263,8 +264,16 @@ func _test_completed_v1_migration(failures: Array[String]) -> void:
 			GameProgressData.CANONICAL_RED_SAND_ORDER_ID,
 			false
 		)
+		and migrated.story_flags.get(
+			GameProgressData.RED_SAND_ORDER_COMPLETION_FLAG,
+			false
+		)
+		and migrated.story_flags.get(
+			M0ProgressIds.STORY_STATION_TUTORIAL_COMPLETED,
+			false
+		)
 		and migrated.credits == 137,
-		"Migration must retain the M0 completion and add its canonical alias without changing credits.",
+		"Migration must retain the M0 completion fact and aliases without changing credits.",
 		failures
 	)
 	expect_true(
@@ -317,8 +326,42 @@ func _test_completed_v1_migration(failures: Array[String]) -> void:
 		) == 1
 		and loaded_again.souvenir_ids.count(
 			GameProgressData.RELAY_PLAQUE_SOUVENIR_ID
-		) == 1,
+		) == 1
+		and loaded_again.story_flags.get(
+			GameProgressData.RED_SAND_ORDER_COMPLETION_FLAG,
+			false
+		),
 		"Reloading v2 must not migrate or award completion records again.",
+		failures
+	)
+
+
+func _test_completed_v2_compatibility_backfill(
+	failures: Array[String]
+) -> void:
+	var stale_v2_source: Dictionary = _make_completed_v1_save()
+	stale_v2_source["schema_version"] = GameProgressData.CURRENT_SCHEMA_VERSION
+	var loaded: GameProgressData = GameProgressData.from_dictionary(
+		stale_v2_source
+	)
+	expect_true(loaded.is_valid(), loaded.validation_error, failures)
+	expect_true(
+		not loaded.was_migrated()
+		and loaded.main_story_chapter
+		== GameProgressData.RED_SAND_REVISIT_CHAPTER_ID
+		and loaded.completed_order_ids.get(
+			GameProgressData.CANONICAL_RED_SAND_ORDER_ID,
+			false
+		)
+		and loaded.story_flags.get(
+			GameProgressData.RED_SAND_ORDER_COMPLETION_FLAG,
+			false
+		)
+		and loaded.story_flags.get(
+			M0ProgressIds.STORY_STATION_TUTORIAL_COMPLETED,
+			false
+		),
+		"An older schema v2 M0 completion must backfill the exact revisit prerequisite.",
 		failures
 	)
 

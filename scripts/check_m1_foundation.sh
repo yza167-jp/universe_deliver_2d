@@ -112,6 +112,7 @@ run_godot_checked \
   --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t114_white_noise_preparation_smoke_runner.gd
 
 for scenario_id in \
+  gate_e \
   red_sand_revisit \
   white_noise_catalog \
   canopy_catalog \

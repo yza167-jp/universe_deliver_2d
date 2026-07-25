@@ -10,6 +10,7 @@ const DELIVERY_LAB_SCENE_PATH: String = "res://scenes/flight/delivery_lab.tscn"
 const RED_SAND_ROUTE_SCENE_PATH: String = (
 	"res://scenes/flight/flight_level.tscn"
 )
+const STATION_SCENE_PATH: String = "res://scenes/station/station_hub.tscn"
 
 const SCENARIO_RED_SAND_REVISIT: StringName = &"red_sand_revisit"
 const SCENARIO_WHITE_NOISE_CATALOG: StringName = &"white_noise_catalog"
@@ -17,6 +18,7 @@ const SCENARIO_CANOPY_CATALOG: StringName = &"canopy_catalog"
 const SCENARIO_TIDAL_CATALOG: StringName = &"tidal_catalog"
 const SCENARIO_LOW_ALTITUDE_DROP: StringName = &"low_altitude_drop"
 const SCENARIO_EXPRESS_ORDER: StringName = &"express_order"
+const SCENARIO_GATE_E: StringName = &"gate_e"
 
 const SCENARIO_IDS: Array[StringName] = [
 	SCENARIO_RED_SAND_REVISIT,
@@ -25,9 +27,11 @@ const SCENARIO_IDS: Array[StringName] = [
 	SCENARIO_TIDAL_CATALOG,
 	SCENARIO_LOW_ALTITUDE_DROP,
 	SCENARIO_EXPRESS_ORDER,
+	SCENARIO_GATE_E,
 ]
 
 const ORDER_M0: StringName = &"order_red_sand_m0"
+const ORDER_M0_CANONICAL: StringName = &"order_red_sand_cooling_core"
 const ORDER_RED_SAND_REVISIT: StringName = (
 	&"order_m1_red_sand_shielding_retrofit"
 )
@@ -123,6 +127,7 @@ func build_initial_progress(
 	progress.unlocked_planet_ids = definition.unlocked_planet_ids.duplicate()
 	progress.planet_permission_ids = definition.permission_ids.duplicate()
 	progress.planet_relation_values = definition.relation_values.duplicate()
+	progress.credits = definition.starting_credits
 	progress.ship_upgrade_ids = definition.available_module_ids.duplicate()
 	progress.story_flags[STORY_M0_ARRIVAL] = true
 	for flag_id: StringName in definition.story_flag_ids:
@@ -136,6 +141,12 @@ func build_initial_progress(
 	progress.station_upgrade_ids[
 		M0ProgressIds.STATION_UPGRADE_FIRST_DELIVERY_DISPLAY
 	] = true
+	progress.codex_entry_ids = [
+		M0ProgressIds.CODEX_PLANET_RED_SAND,
+		M0ProgressIds.CODEX_CHARACTER_IYA,
+		M0ProgressIds.CODEX_RELAY_PLAQUE,
+	]
+	progress.souvenir_ids = [M0ProgressIds.SOUVENIR_RELAY_PLAQUE]
 	progress.station_state_level = StationStateRules.M0_FIRST_DELIVERY_LEVEL
 	progress.last_stable_station_state = &"station_after_first_delivery"
 	progress.ship_configuration = ShipLoadoutRules.create_default_configuration()
@@ -271,6 +282,8 @@ func validate_definition(
 			or relation_value > M1ProgressRules.RELATION_MAXIMUM
 		):
 			errors.append("Invalid relation value for %s." % planet_id)
+	if definition.starting_credits < 0:
+		errors.append("Scenario starting credits cannot be negative.")
 
 	_validate_unique_ids(
 		definition.completed_order_ids,
@@ -326,6 +339,8 @@ func _create_definition(
 			return _build_low_altitude_drop()
 		SCENARIO_EXPRESS_ORDER:
 			return _build_express_order()
+		SCENARIO_GATE_E:
+			return _build_gate_e()
 	return null
 
 
@@ -337,9 +352,10 @@ func _build_red_sand_revisit() -> M1DebugScenarioDefinition:
 		M1ProgressRules.PLANET_RED_SAND,
 		ORDER_RED_SAND_REVISIT
 	)
-	definition.completed_order_ids = [ORDER_M0]
+	definition.completed_order_ids = [ORDER_M0, ORDER_M0_CANONICAL]
 	definition.story_flag_ids = [STORY_M0_COMPLETED]
 	definition.relation_values = {M1ProgressRules.PLANET_RED_SAND: 1}
+	definition.starting_credits = 100
 	definition.revisit_states = {
 		M1ProgressRules.PLANET_RED_SAND:
 		M1ProgressRules.REVISIT_RED_SAND_AVAILABLE,
@@ -482,6 +498,33 @@ func _build_express_order() -> M1DebugScenarioDefinition:
 	definition.fixture_source_order_id = ORDER_TIDAL_EXPRESS
 	definition.target_stage = SceneRouterService.Stage.FLIGHT
 	definition.target_scene_path = FLIGHT_LAB_SCENE_PATH
+	definition.preview_only = false
+	return definition
+
+
+func _build_gate_e() -> M1DebugScenarioDefinition:
+	var definition: M1DebugScenarioDefinition = _base_catalog_definition(
+		SCENARIO_GATE_E,
+		M1ProgressRules.CHAPTER_M1_RED_SAND_REVISIT,
+		[M1ProgressRules.PLANET_RED_SAND],
+		M1ProgressRules.PLANET_RED_SAND,
+		ORDER_RED_SAND_REVISIT
+	)
+	definition.completed_order_ids = [ORDER_M0, ORDER_M0_CANONICAL]
+	definition.story_flag_ids = [
+		STORY_M0_COMPLETED,
+		StationTutorialController.COMPLETION_FLAG,
+		M0ProgressIds.STORY_FIRST_DELIVERY_SETTLED,
+		M0ProgressIds.STORY_RETURN_DIALOGUE_COMPLETED,
+	]
+	definition.relation_values = {M1ProgressRules.PLANET_RED_SAND: 1}
+	definition.starting_credits = 100
+	definition.revisit_states = {
+		M1ProgressRules.PLANET_RED_SAND:
+		M1ProgressRules.REVISIT_RED_SAND_AVAILABLE,
+	}
+	definition.target_stage = SceneRouterService.Stage.STATION
+	definition.target_scene_path = STATION_SCENE_PATH
 	definition.preview_only = false
 	return definition
 

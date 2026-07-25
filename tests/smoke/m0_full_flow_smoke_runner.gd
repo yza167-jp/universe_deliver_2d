@@ -147,6 +147,9 @@ func _run_smoke() -> void:
 		)
 		and _game_state.main_story_chapter
 		== GameProgressData.RED_SAND_REVISIT_CHAPTER_ID
+		and _game_state.has_story_flag(
+			GameProgressData.RED_SAND_ORDER_COMPLETION_FLAG
+		)
 		and _game_state.unlocked_planet_ids
 		== [GameProgressData.RED_SAND_PLANET_ID]
 		and _game_state.souvenir_ids
@@ -160,8 +163,11 @@ func _run_smoke() -> void:
 		_check(
 			departure != null
 			and departure.get_flow_state()
-			== StationDepartureController.FlowState.FIRST_DELIVERY_COMPLETE,
-			"Continued station reopened the completed first order."
+			== StationDepartureController.FlowState.WAIT_FOR_ORDER
+			and departure.get_objective_text().contains(
+				"赤砂星屏蔽改装回访"
+			),
+			"Continued station did not bridge the completed first order into its revisit."
 		)
 
 	var expected_history: PackedInt32Array = PackedInt32Array([

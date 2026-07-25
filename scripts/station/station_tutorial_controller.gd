@@ -13,7 +13,7 @@ enum Stage {
 	COMPLETE,
 }
 
-const COMPLETION_FLAG: StringName = &"story_station_tutorial_completed"
+const COMPLETION_FLAG: StringName = M0ProgressIds.STORY_STATION_TUTORIAL_COMPLETED
 const FLOW_WAIT_FOR_MOVE: StringName = &"station_tutorial_wait_for_move"
 const FLOW_WAIT_FOR_LAO_PI: StringName = &"station_tutorial_wait_for_lao_pi"
 const FLOW_WAIT_FOR_ORDER_TERMINAL: StringName = &"station_tutorial_wait_for_order_terminal"

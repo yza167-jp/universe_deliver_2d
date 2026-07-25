@@ -108,6 +108,7 @@ UI_TUTORIAL_OBJECTIVE_MOVE,"当前：在大厅走动","Objective: Walk around th
 UI_TUTORIAL_OBJECTIVE_TALK_TO_LAO_PI,"当前：靠近老皮并互动","Objective: Approach and talk to Lao Pi"
 UI_TUTORIAL_OBJECTIVE_ORDER_TERMINAL,"当前：查看订单终端","Objective: Inspect the order terminal"
 UI_STATION_OBJECTIVE_ACCEPT_ORDER,"下一步：在订单终端接取赤砂星订单","Next: Accept the Red Sand order at the terminal"
+UI_STATION_OBJECTIVE_ACCEPT_RED_SAND_REVISIT,"下一步：在订单终端接取赤砂星屏蔽改装回访","Next: Accept the Red Sand shielding retrofit revisit at the terminal"
 UI_STATION_OBJECTIVE_CONFIGURE_SHIP,"下一步：在模块工作台确认飞船配置","Next: Confirm the ship loadout at the workbench"
 UI_STATION_OBJECTIVE_ENTER_COCKPIT,"下一步：前往驾驶舱入口与老皮会合","Next: Meet Lao Pi at the cockpit entrance"
 UI_STATION_OBJECTIVE_FIRST_DELIVERY_COMPLETE,"首单已归档：和老皮聊聊，或查看纪念墙上的旧中继铭牌","First delivery archived: talk to Lao Pi or inspect the old relay plaque"

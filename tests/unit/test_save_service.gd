@@ -228,6 +228,10 @@ func _test_v1_migration_waits_for_safe_save(failures: Array[String]) -> void:
 			GameProgressData.CANONICAL_RED_SAND_ORDER_ID,
 			false
 		)
+		and game_state.story_flags.get(
+			GameProgressData.RED_SAND_ORDER_COMPLETION_FLAG,
+			false
+		)
 		and game_state.main_story_chapter
 		== GameProgressData.RED_SAND_REVISIT_CHAPTER_ID
 		and game_state.souvenir_ids
@@ -272,6 +276,10 @@ func _test_v1_migration_waits_for_safe_save(failures: Array[String]) -> void:
 		and game_state.souvenir_ids.count(
 			GameProgressData.RELAY_PLAQUE_SOUVENIR_ID
 		) == 1
+		and game_state.story_flags.get(
+			GameProgressData.RED_SAND_ORDER_COMPLETION_FLAG,
+			false
+		)
 		and not game_state.unlocked_planet_ids.has(&"planet_white_noise")
 		and not game_state.ship_upgrade_ids.has(&"module_high_voltage_shielding"),
 		"Reloading committed v2 must not duplicate rewards or unlock White Noise.",

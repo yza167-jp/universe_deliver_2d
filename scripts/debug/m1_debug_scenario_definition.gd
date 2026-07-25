@@ -14,6 +14,7 @@ var available_module_ids: Array[StringName] = []
 var equipped_module_ids: Array[StringName] = []
 var permission_ids: Array[StringName] = []
 var relation_values: Dictionary[StringName, int] = {}
+var starting_credits: int = 0
 var completed_order_ids: Array[StringName] = []
 var story_flag_ids: Array[StringName] = []
 var revisit_states: Dictionary[StringName, StringName] = {}
@@ -35,6 +36,7 @@ func to_canonical_dictionary() -> Dictionary[String, Variant]:
 		"equipped_module_ids": _sorted_strings(equipped_module_ids),
 		"permission_ids": _sorted_strings(permission_ids),
 		"relation_values": _sorted_integer_map(relation_values),
+		"starting_credits": starting_credits,
 		"completed_order_ids": _sorted_strings(completed_order_ids),
 		"story_flag_ids": _sorted_strings(story_flag_ids),
 		"revisit_states": _sorted_string_name_map(revisit_states),

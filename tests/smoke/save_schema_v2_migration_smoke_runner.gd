@@ -5,6 +5,7 @@ const TEST_SAVE_PATH: String = "user://t101_migration_smoke.json"
 const TEST_TEMP_PATH: String = "user://t101_migration_smoke.tmp"
 const TEST_BACKUP_PATH: String = "user://t101_migration_smoke.backup.json"
 const TEST_REJECTED_PATH: String = "user://t101_migration_smoke.invalid.json"
+const REGISTRY_PATH: String = "res://data/m1_data_registry.tres"
 
 var _failures: PackedStringArray = []
 var _original_locale: String = ""
@@ -12,6 +13,7 @@ var _game_state: GameStateModel
 var _scene_router: SceneRouterService
 var _save_service: SaveServiceModel
 var _app: UniverseDeliverApp
+var _registry: GameDataRegistry
 
 
 func _initialize() -> void:
@@ -24,10 +26,17 @@ func _run_smoke() -> void:
 	_game_state = root.get_node_or_null("GameState") as GameStateModel
 	_scene_router = root.get_node_or_null("SceneRouter") as SceneRouterService
 	_save_service = root.get_node_or_null("SaveService") as SaveServiceModel
+	_registry = load(REGISTRY_PATH) as GameDataRegistry
 	_check(_game_state != null, "GameState autoload is unavailable.")
 	_check(_scene_router != null, "SceneRouter autoload is unavailable.")
 	_check(_save_service != null, "SaveService autoload is unavailable.")
-	if _game_state == null or _scene_router == null or _save_service == null:
+	_check(_registry != null, "M1 data registry is unavailable.")
+	if (
+		_game_state == null
+		or _scene_router == null
+		or _save_service == null
+		or _registry == null
+	):
 		await _cleanup()
 		_finish()
 		return
@@ -80,6 +89,9 @@ func _run_completed_v1_continue() -> void:
 		)
 		and _game_state.main_story_chapter
 		== GameProgressData.RED_SAND_REVISIT_CHAPTER_ID
+		and _game_state.has_story_flag(
+			GameProgressData.RED_SAND_ORDER_COMPLETION_FLAG
+		)
 		and _game_state.souvenir_ids
 		== [GameProgressData.RELAY_PLAQUE_SOUVENIR_ID],
 		"Completed v1 did not restore its M0 result and M1 revisit bridge."
@@ -95,9 +107,29 @@ func _run_completed_v1_continue() -> void:
 	_check(station != null, "Completed v1 did not instantiate StationHub.")
 	if station != null:
 		var return_state: StationReturnStateController = station.get_return_state_controller()
+		var departure: StationDepartureController = (
+			station.get_departure_controller()
+		)
+		var revisit_order: OrderDefinition = _registry.find_order(
+			GameProgressData.RED_SAND_REVISIT_ORDER_ID
+		)
 		_check(
 			return_state != null and return_state.is_first_delivery_display_visible(),
 			"Completed v1 lost the old relay plaque station display."
+		)
+		_check(
+			revisit_order != null
+			and _game_state.can_accept_order(revisit_order),
+			"Completed v1 did not unlock the normal Red Sand revisit acceptance path."
+		)
+		_check(
+			departure != null
+			and departure.get_flow_state()
+			== StationDepartureController.FlowState.WAIT_FOR_ORDER
+			and departure.get_objective_text().contains(
+				"赤砂星屏蔽改装回访"
+			),
+			"Completed v1 station did not point the player toward the Red Sand revisit."
 		)
 	var committed_root: Dictionary = _read_json_object(TEST_SAVE_PATH)
 	_check(
@@ -124,8 +156,18 @@ func _run_completed_v1_continue() -> void:
 		) == 1
 		and _game_state.souvenir_ids.count(
 			GameProgressData.RELAY_PLAQUE_SOUVENIR_ID
-		) == 1,
+		) == 1
+		and _game_state.has_story_flag(
+			GameProgressData.RED_SAND_ORDER_COMPLETION_FLAG
+		),
 		"Repeated Continue duplicated migrated progress or rewards."
+	)
+	var revisit_order: OrderDefinition = _registry.find_order(
+		GameProgressData.RED_SAND_REVISIT_ORDER_ID
+	)
+	_check(
+		revisit_order != null and _game_state.can_accept_order(revisit_order),
+		"Repeated v2 Continue lost the Red Sand revisit acceptance path."
 	)
 	await _release_app()
 

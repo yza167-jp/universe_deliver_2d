@@ -5,6 +5,9 @@ const CURRENT_SCHEMA_VERSION: int = 2
 const DEFAULT_SETTINGS_REFERENCE: StringName = &"local_settings"
 const LEGACY_RED_SAND_ORDER_ID: StringName = &"order_red_sand_m0"
 const CANONICAL_RED_SAND_ORDER_ID: StringName = &"order_red_sand_cooling_core"
+const RED_SAND_ORDER_COMPLETION_FLAG: StringName = (
+	&"story_red_sand_order_completed"
+)
 const RED_SAND_PLANET_ID: StringName = M1ProgressRules.PLANET_RED_SAND
 const RED_SAND_REVISIT_CHAPTER_ID: StringName = (
 	M1ProgressRules.CHAPTER_M1_RED_SAND_REVISIT
@@ -299,6 +302,7 @@ func _read_dictionary(source: Dictionary) -> void:
 		_read_schema_v2_fields(payload)
 	if not validation_error.is_empty():
 		return
+	_apply_completed_m0_compatibility()
 	_apply_red_sand_revisit_content_compatibility()
 	_apply_station_state_compatibility()
 	_apply_order_state_compatibility()
@@ -424,6 +428,8 @@ func _apply_completed_m0_compatibility() -> void:
 		return
 	completed_order_ids[LEGACY_RED_SAND_ORDER_ID] = true
 	completed_order_ids[CANONICAL_RED_SAND_ORDER_ID] = true
+	story_flags[M0ProgressIds.STORY_STATION_TUTORIAL_COMPLETED] = true
+	story_flags[RED_SAND_ORDER_COMPLETION_FLAG] = true
 	if main_story_chapter.is_empty():
 		main_story_chapter = RED_SAND_REVISIT_CHAPTER_ID
 	_append_unique_id(unlocked_planet_ids, RED_SAND_PLANET_ID)

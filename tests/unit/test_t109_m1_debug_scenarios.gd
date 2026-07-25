@@ -34,8 +34,9 @@ func _test_scenario_catalog(
 			M1DebugScenarioCatalog.SCENARIO_TIDAL_CATALOG,
 			M1DebugScenarioCatalog.SCENARIO_LOW_ALTITUDE_DROP,
 			M1DebugScenarioCatalog.SCENARIO_EXPRESS_ORDER,
+			M1DebugScenarioCatalog.SCENARIO_GATE_E,
 		],
-		"T-109 must expose the six contracted M1 scenarios in stable order.",
+		"The M1 debug catalog must expose its seven scenarios in stable order.",
 		failures
 	)
 	for scenario_id: StringName in scenario_ids:
@@ -215,8 +216,10 @@ func _test_registered_only_guards(
 			and focused_order.content_readiness
 			== (
 				OrderDefinition.ContentReadiness.PLAYABLE
-				if scenario_id
-				== M1DebugScenarioCatalog.SCENARIO_RED_SAND_REVISIT
+				if scenario_id in [
+					M1DebugScenarioCatalog.SCENARIO_RED_SAND_REVISIT,
+					M1DebugScenarioCatalog.SCENARIO_GATE_E,
+				]
 				else OrderDefinition.ContentReadiness.REGISTERED_ONLY
 			)
 			and focused_planet != null
@@ -236,10 +239,10 @@ func _test_registered_only_guards(
 		var state: GameStateModel = GameStateModel.new()
 		if progress != null:
 			progress.apply_to(state)
-		if (
-			scenario_id
-			== M1DebugScenarioCatalog.SCENARIO_RED_SAND_REVISIT
-		):
+		if scenario_id in [
+			M1DebugScenarioCatalog.SCENARIO_RED_SAND_REVISIT,
+			M1DebugScenarioCatalog.SCENARIO_GATE_E,
+		]:
 			expect_true(
 				focused_order != null and state.accept_order(focused_order),
 				"The implemented revisit scenario must pass authoritative acceptance.",

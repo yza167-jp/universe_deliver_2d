@@ -178,6 +178,8 @@ func _exercise_scenario(
 		"Scenario %s reset did not restore its exact initial snapshot."
 		% scenario_id
 	)
+	await process_frame
+	await process_frame
 	_check(
 		_controller.start_scenario(scenario_id)
 		and _controller.get_initial_state_signature() == initial_signature,
@@ -218,6 +220,43 @@ func _check_target_scene(
 				"Preview scenario %s did not focus a locked registered order."
 				% scenario_id
 			)
+	elif scenario_id == M1DebugScenarioCatalog.SCENARIO_GATE_E:
+		var revisit_order: OrderDefinition = _registry.find_order(
+			M1DebugScenarioCatalog.ORDER_RED_SAND_REVISIT
+		)
+		_check(
+			active_scene is StationHub
+			and _game_state.current_order_id.is_empty()
+			and _game_state.main_story_chapter
+			== M1ProgressRules.CHAPTER_M1_RED_SAND_REVISIT
+			and _game_state.has_completed_order(
+				M1DebugScenarioCatalog.ORDER_M0
+			)
+			and _game_state.has_completed_order(
+				M1DebugScenarioCatalog.ORDER_M0_CANONICAL
+			)
+			and _game_state.has_story_flag(
+				StationTutorialController.COMPLETION_FLAG
+			)
+			and _game_state.has_codex_entry(
+				M0ProgressIds.CODEX_PLANET_RED_SAND
+			)
+			and _game_state.has_souvenir(
+				M0ProgressIds.SOUVENIR_RELAY_PLAQUE
+			)
+			and _game_state.get_revisit_state(
+				M1ProgressRules.PLANET_RED_SAND
+			) == M1ProgressRules.REVISIT_RED_SAND_AVAILABLE
+			and revisit_order != null
+			and _game_state.can_accept_order(revisit_order)
+			and not _game_state.is_planet_unlocked(
+				M1ProgressRules.PLANET_WHITE_NOISE
+			)
+			and not _game_state.has_ship_module(
+				M1ProgressRules.MODULE_HIGH_VOLTAGE_SHIELDING
+			),
+			"Gate E did not open the isolated post-M0 station before revisit acceptance."
+		)
 	elif scenario_id == M1DebugScenarioCatalog.SCENARIO_LOW_ALTITUDE_DROP:
 		_check(
 			active_scene is DeliveryLab
@@ -277,7 +316,7 @@ func _finish() -> void:
 	TranslationServer.set_locale(_original_locale)
 	if _failures.is_empty():
 		print(
-			"[t109-m1-debug] PASS: six deterministic scenarios, exact reset, "
+			"[t109-m1-debug] PASS: seven deterministic scenarios, exact reset, "
 			+ "catalog/lab targets, compact status, save isolation, and "
 			+ "registered-only guards."
 		)

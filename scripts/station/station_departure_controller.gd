@@ -61,6 +61,8 @@ func get_flow_state() -> FlowState:
 	if _game_state == null:
 		return FlowState.WAIT_FOR_ORDER
 	if _game_state.current_order_id.is_empty():
+		if _is_red_sand_revisit_available():
+			return FlowState.WAIT_FOR_ORDER
 		if _game_state.has_story_flag(M0ProgressIds.STORY_FIRST_DELIVERY_SETTLED):
 			return FlowState.FIRST_DELIVERY_COMPLETE
 		return FlowState.WAIT_FOR_ORDER
@@ -292,7 +294,11 @@ func _refresh_route_guidance() -> void:
 	var cockpit_label_color: Color = COCKPIT_LABEL_DEFAULT_COLOR
 	match get_flow_state():
 		FlowState.WAIT_FOR_ORDER:
-			objective_key = "UI_STATION_OBJECTIVE_ACCEPT_ORDER"
+			objective_key = (
+				"UI_STATION_OBJECTIVE_ACCEPT_RED_SAND_REVISIT"
+				if _is_red_sand_revisit_available()
+				else "UI_STATION_OBJECTIVE_ACCEPT_ORDER"
+			)
 			prompt_key = &"UI_INTERACTION_COCKPIT_ENTRY_LOCKED_ORDER"
 		FlowState.WAIT_FOR_LOADOUT:
 			objective_key = "UI_STATION_OBJECTIVE_CONFIGURE_SHIP"
@@ -312,6 +318,23 @@ func _refresh_route_guidance() -> void:
 	_cockpit_entry.prompt_key = prompt_key
 	_cockpit_entry_label.text = tr(cockpit_label_key)
 	_cockpit_entry_label.add_theme_color_override("font_color", cockpit_label_color)
+
+
+func _is_red_sand_revisit_available() -> bool:
+	return (
+		_game_state != null
+		and _game_state.main_story_chapter
+		== M1ProgressRules.CHAPTER_M1_RED_SAND_REVISIT
+		and _game_state.has_completed_order(
+			GameProgressData.LEGACY_RED_SAND_ORDER_ID
+		)
+		and _game_state.has_story_flag(
+			GameProgressData.RED_SAND_ORDER_COMPLETION_FLAG
+		)
+		and not _game_state.has_completed_order(
+			M1ProgressRules.ORDER_RED_SAND_SHIELDING_RETROFIT
+		)
+	)
 
 
 func _localize_departure_panel() -> void:

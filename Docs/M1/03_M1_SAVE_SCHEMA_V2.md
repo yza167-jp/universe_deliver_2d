@@ -153,6 +153,8 @@ v1 完成档迁移时保留 `order_red_sand_m0`，同时补入
 main_story_chapter = chapter_m1_red_sand_revisit
 unlocked_planet_ids includes planet_red_sand
 completed_order_ids preserves order_red_sand_cooling_core
+story_flags includes story_station_tutorial_completed
+story_flags includes story_red_sand_order_completed
 codex_entry_ids includes existing Red Sand / Iya / relay plaque entries when corresponding flags exist
 souvenir_ids includes souvenir_old_relay_plaque when station upgrade exists
 station_state_level >= 1
@@ -162,6 +164,10 @@ last_stable_station_state = station_after_first_delivery
 当前 M0 首单结算也在同一次持久化变更中补齐上述三条图鉴与一件纪念品；冻结的
 `m0_data_registry.tres` 和首单 Resource 仍保持原 M0 奖励合同。迁移、当前结算与
 再次保存都使用去重写入，不会生成第二份铭牌。
+
+首单完成订单是教程已通过与赤砂回访可用的权威历史事实。若 v1 或较早的
+schema v2 完成档缺少上述两个 `story_flags`，读取时会幂等补齐，使继续游戏直接
+回到可接取回访的稳定大厅；该兼容步骤不发放信用点、模块、关系或白噪星资格。
 
 白噪星不能因迁移直接解锁；必须完成赤砂回访并取得屏蔽罩。
 

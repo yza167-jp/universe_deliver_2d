@@ -1,6 +1,9 @@
 class_name M0ProgressIds
 extends RefCounted
 
+const STORY_STATION_TUTORIAL_COMPLETED: StringName = (
+	&"story_station_tutorial_completed"
+)
 const STORY_FIRST_DELIVERY_SETTLED: StringName = (
 	&"story_red_sand_first_delivery_settled"
 )
