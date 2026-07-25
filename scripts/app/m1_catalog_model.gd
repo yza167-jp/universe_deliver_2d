@@ -10,6 +10,11 @@ enum ModuleInstallState {
 }
 
 const M0_ORDER_ID: StringName = &"order_red_sand_m0"
+const RED_SAND_REVISIT_ORDER_ID: StringName = (
+	M1ProgressRules.ORDER_RED_SAND_SHIELDING_RETROFIT
+)
+const WHITE_NOISE_ORDER_ID: StringName = &"order_m1_white_noise_archive_core"
+const WHITE_NOISE_CODEX_ID: StringName = &"codex_planet_white_noise"
 
 
 static func build_order_catalog(
@@ -33,6 +38,8 @@ static func build_order_catalog(
 			game_state,
 			current_mainline_id
 		)
+	elif current_mainline_id == RED_SAND_REVISIT_ORDER_ID:
+		next_clue_id = WHITE_NOISE_ORDER_ID
 	for order: OrderDefinition in registry.orders:
 		if order == null:
 			continue
@@ -103,6 +110,11 @@ static func build_navigation_catalog(
 			game_state
 		)
 		entry.is_name_disclosed = entry.is_discovered
+		if planet.id == M1ProgressRules.PLANET_WHITE_NOISE:
+			entry.preparation_status = build_destination_preparation_status(
+				registry.find_order(WHITE_NOISE_ORDER_ID),
+				game_state
+			)
 		_populate_planet_lock(entry, active_order, game_state)
 		entries.append(entry)
 	return entries
@@ -130,6 +142,93 @@ static func get_module_state_key(state: ModuleInstallState) -> StringName:
 	return &"UI_CATALOG_MODULE_NOT_OBTAINED"
 
 
+static func build_destination_preparation_status(
+	order: OrderDefinition,
+	game_state: GameStateModel
+) -> M1DestinationPreparationStatus:
+	if (
+		order == null
+		or game_state == null
+		or order.id != WHITE_NOISE_ORDER_ID
+		or order.destination_planet == null
+		or order.planet_id != M1ProgressRules.PLANET_WHITE_NOISE
+	):
+		return null
+	var status: M1DestinationPreparationStatus = (
+		M1DestinationPreparationStatus.new()
+	)
+	status.order = order
+	status.planet = order.destination_planet
+	status.is_visible = (
+		game_state.has_completed_order(M0_ORDER_ID)
+		or game_state.has_reached_main_story_chapter(
+			M1ProgressRules.CHAPTER_M1_RED_SAND_REVISIT
+		)
+		or game_state.has_codex_entry(WHITE_NOISE_CODEX_ID)
+		or game_state.is_planet_unlocked(M1ProgressRules.PLANET_WHITE_NOISE)
+	)
+	status.is_navigation_unlocked = game_state.is_planet_unlocked(
+		M1ProgressRules.PLANET_WHITE_NOISE
+	)
+	status.is_formal_route_available = (
+		order.is_playable()
+		and _is_planet_route_playable(order.destination_planet)
+	)
+	status.qualification_reason = game_state.get_planet_qualification_reason(
+		M1ProgressRules.PLANET_WHITE_NOISE
+	)
+	var shielding: ShipModuleDefinition = _find_required_module(
+		order,
+		M1ProgressRules.MODULE_HIGH_VOLTAGE_SHIELDING
+	)
+	status.required_module_state = get_module_install_state(
+		shielding,
+		game_state
+	)
+	if status.qualification_reason in [
+		M1ProgressRules.REASON_REQUIRED_CHAPTER,
+		M1ProgressRules.REASON_REQUIRED_PLANET,
+		M1ProgressRules.REASON_REQUIRED_STORY_FLAG,
+		M1ProgressRules.REASON_REQUIRED_COMPLETED_ORDER,
+	]:
+		status.state = (
+			M1DestinationPreparationStatus.State.PREVIOUS_MAIN_REQUIRED
+		)
+		status.hint_key = &"UI_M1_WHITE_NOISE_PREP_PREVIOUS_MAIN"
+		return status
+	if (
+		status.qualification_reason == M1ProgressRules.REASON_REQUIRED_MODULE
+		or status.required_module_state == ModuleInstallState.NOT_OBTAINED
+	):
+		status.state = (
+			M1DestinationPreparationStatus.State.MODULE_NOT_OBTAINED
+		)
+		status.hint_key = &"UI_M1_WHITE_NOISE_PREP_MODULE_NOT_OBTAINED"
+		return status
+	if not status.qualification_reason.is_empty():
+		status.state = (
+			M1DestinationPreparationStatus.State.PREVIOUS_MAIN_REQUIRED
+		)
+		status.hint_key = &"UI_M1_WHITE_NOISE_PREP_PREVIOUS_MAIN"
+		return status
+	if status.required_module_state == ModuleInstallState.OWNED_NOT_INSTALLED:
+		status.state = (
+			M1DestinationPreparationStatus.State.MODULE_NOT_INSTALLED
+		)
+		status.hint_key = &"UI_M1_WHITE_NOISE_PREP_MODULE_NOT_INSTALLED"
+		return status
+	status.is_route_qualified = status.qualification_reason.is_empty()
+	if not status.is_formal_route_available:
+		status.state = (
+			M1DestinationPreparationStatus.State.QUALIFIED_ROUTE_PENDING
+		)
+		status.hint_key = &"UI_M1_WHITE_NOISE_PREP_ROUTE_PENDING"
+		return status
+	status.state = M1DestinationPreparationStatus.State.READY
+	status.hint_key = &"UI_M1_WHITE_NOISE_PREP_READY"
+	return status
+
+
 static func _build_order_entry(
 	order: OrderDefinition,
 	game_state: GameStateModel,
@@ -150,6 +249,10 @@ static func _build_order_entry(
 	)
 	entry.required_modules = order.required_modules.duplicate()
 	entry.recommended_modules = order.recommended_modules.duplicate()
+	entry.preparation_status = build_destination_preparation_status(
+		order,
+		game_state
+	)
 
 	if entry.status == GameStateModel.OrderStatus.ACCEPTED:
 		entry.display_category = M1OrderCatalogEntry.DisplayCategory.CURRENT_ACCEPTED
@@ -181,6 +284,13 @@ static func _build_order_entry(
 			order.id == M0_ORDER_ID
 			or entry.status == GameStateModel.OrderStatus.ACCEPTED
 			or game_state.is_planet_unlocked(order.planet_id)
+			or (
+				entry.preparation_status != null
+				and entry.preparation_status.is_visible
+				and game_state.has_reached_main_story_chapter(
+					order.required_chapter
+				)
+			)
 		)
 	)
 	var acceptance_error: StringName = game_state.get_order_acceptance_error(order)
@@ -207,6 +317,12 @@ static func _build_order_entry(
 			acceptance_error,
 			reference_id
 		)
+	if (
+		entry.preparation_status != null
+		and entry.preparation_status.is_visible
+		and not entry.preparation_status.hint_key.is_empty()
+	):
+		entry.lock_hint_key = entry.preparation_status.hint_key
 	return entry
 
 
@@ -379,3 +495,15 @@ static func _is_planet_route_playable(planet: PlanetDefinition) -> bool:
 		and not planet.flight_scene_path.is_empty()
 		and ResourceLoader.exists(planet.flight_scene_path)
 	)
+
+
+static func _find_required_module(
+	order: OrderDefinition,
+	module_id: StringName
+) -> ShipModuleDefinition:
+	if order == null:
+		return null
+	for module: ShipModuleDefinition in order.required_modules:
+		if module != null and module.id == module_id:
+			return module
+	return null

@@ -99,6 +99,18 @@ func _test_m1_runtime_round_trip_without_reward_replay(
 	game_state.ship_upgrade_ids = [
 		M1ProgressRules.MODULE_HIGH_VOLTAGE_SHIELDING,
 	]
+	game_state.story_flags[
+		M1ProgressRules.STORY_RED_SAND_SHIELDING_RETROFIT_COMPLETED
+	] = true
+	game_state.completed_order_ids[
+		M1ProgressRules.ORDER_RED_SAND_SHIELDING_RETROFIT
+	] = true
+	game_state.order_states[
+		M1ProgressRules.ORDER_RED_SAND_SHIELDING_RETROFIT
+	] = GameStateModel.OrderStatus.COMPLETED
+	game_state.reward_applied_order_ids.append(
+		M1ProgressRules.ORDER_RED_SAND_SHIELDING_RETROFIT
+	)
 	expect_true(
 		game_state.advance_main_story_chapter(
 			M1ProgressRules.CHAPTER_M1_WHITE_NOISE

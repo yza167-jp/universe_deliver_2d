@@ -386,10 +386,13 @@ func _complete_results_and_return() -> bool:
 		== _contract.completed_state_id
 		and _game_state.main_story_chapter
 		== M1ProgressRules.CHAPTER_M1_WHITE_NOISE
+		and _game_state.is_planet_unlocked(
+			M1ProgressRules.PLANET_WHITE_NOISE
+		)
 		and codex_entry != null
 		and codex_entry.description_key
 		== CodexCatalogModel.RED_SAND_LOCAL_DESCRIPTION_KEY,
-		"T-112 Results did not atomically apply choice, relation, module, archive, revisit, chapter, and codex rewards."
+		"T-112 Results did not atomically apply choice, relation, module, archive, revisit, chapter, White Noise navigation, and codex rewards."
 	)
 	_check(
 		results.get_station_change_text().contains("档案")

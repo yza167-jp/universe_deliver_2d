@@ -44,6 +44,7 @@ enum ContentReadiness {
 @export var codex_rewards: Array[StringName] = []
 @export var souvenir_rewards: Array[StringName] = []
 @export var ship_upgrade_rewards: Array[StringName] = []
+@export var planet_unlock_rewards: Array[StringName] = []
 @export var station_state_rewards: Array[StringName] = []
 @export var chapter_reward: StringName = &""
 @export var revisit_state_rewards: Dictionary[StringName, StringName] = {}

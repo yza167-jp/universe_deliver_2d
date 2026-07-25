@@ -577,6 +577,13 @@ theme_override_font_sizes/font_size = 11
 text = "UI_COCKPIT_NAV_CONTENT_FORMAT"
 autowrap_mode = 2
 
+[node name="NavigationEnvironmentLabel" type="Label" parent="ModalLayer/DevicePanel/Margin/Content/NavigationScroll/NavigationPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
+theme_override_font_sizes/font_size = 11
+autowrap_mode = 2
+
 [node name="NavigationRequiredModulesLabel" type="Label" parent="ModalLayer/DevicePanel/Margin/Content/NavigationScroll/NavigationPanel"]
 unique_name_in_owner = true
 layout_mode = 2

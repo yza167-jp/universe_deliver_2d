@@ -27,6 +27,7 @@ var destination_playable: bool = false
 var is_name_disclosed: bool = false
 var required_modules: Array[ShipModuleDefinition] = []
 var recommended_modules: Array[ShipModuleDefinition] = []
+var preparation_status: M1DestinationPreparationStatus
 
 
 func is_history() -> bool:

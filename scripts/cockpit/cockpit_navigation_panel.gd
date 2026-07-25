@@ -5,6 +5,7 @@ extends VBoxContainer
 @onready var _destination_label: Label = %NavigationDestinationLabel
 @onready var _unlock_label: Label = %NavigationUnlockLabel
 @onready var _content_label: Label = %NavigationContentLabel
+@onready var _environment_label: Label = %NavigationEnvironmentLabel
 @onready var _required_modules_label: Label = %NavigationRequiredModulesLabel
 @onready var _configuration_label: Label = %NavigationConfigurationLabel
 @onready var _route_label: Label = %NavigationRouteLabel
@@ -13,6 +14,8 @@ extends VBoxContainer
 var _registry: GameDataRegistry
 var _game_state: GameStateModel
 var _active_order: OrderDefinition
+var _display_order: OrderDefinition
+var _preparation_status: M1DestinationPreparationStatus
 var _current_planet_entry: M1PlanetCatalogEntry
 var _departure_enabled: bool = false
 
@@ -31,17 +34,41 @@ func refresh() -> void:
 	if not is_node_ready():
 		return
 	_active_order = null
+	_display_order = null
+	_preparation_status = null
 	_current_planet_entry = null
 	_departure_enabled = false
 	if _registry != null and _game_state != null:
 		_active_order = _registry.find_order(_game_state.current_order_id)
-		for entry: M1PlanetCatalogEntry in M1CatalogModel.build_navigation_catalog(
+		var entries: Array[M1PlanetCatalogEntry] = (
+			M1CatalogModel.build_navigation_catalog(
 			_registry,
 			_game_state
-		):
+			)
+		)
+		for entry: M1PlanetCatalogEntry in entries:
 			if entry.is_current_destination:
 				_current_planet_entry = entry
 				break
+		if _active_order == null:
+			var white_noise_order: OrderDefinition = _registry.find_order(
+				M1CatalogModel.WHITE_NOISE_ORDER_ID
+			)
+			_preparation_status = (
+				M1CatalogModel.build_destination_preparation_status(
+					white_noise_order,
+					_game_state
+				)
+			)
+			if (
+				_preparation_status != null
+				and _preparation_status.is_visible
+				and _game_state.has_reached_main_story_chapter(
+					M1ProgressRules.CHAPTER_M1_WHITE_NOISE
+				)
+			):
+				_display_order = white_noise_order
+	_display_order = _active_order if _active_order != null else _display_order
 	_refresh_order_and_destination()
 	_refresh_requirements()
 	_refresh_route()
@@ -56,6 +83,10 @@ func get_current_planet_entry() -> M1PlanetCatalogEntry:
 	return _current_planet_entry
 
 
+func get_preparation_status() -> M1DestinationPreparationStatus:
+	return _preparation_status
+
+
 func is_departure_enabled() -> bool:
 	return _departure_enabled
 
@@ -67,6 +98,7 @@ func get_summary_text() -> String:
 		_destination_label,
 		_unlock_label,
 		_content_label,
+		_environment_label,
 		_required_modules_label,
 		_configuration_label,
 		_route_label,
@@ -78,7 +110,7 @@ func get_summary_text() -> String:
 
 
 func _refresh_order_and_destination() -> void:
-	if _active_order == null:
+	if _display_order == null:
 		_order_label.text = tr("UI_COCKPIT_NAV_NO_ORDER")
 		_destination_label.text = tr("UI_COCKPIT_NAV_DESTINATION_UNSET")
 		_unlock_label.text = tr("UI_COCKPIT_NAV_UNLOCK_FORMAT") % tr(
@@ -87,23 +119,36 @@ func _refresh_order_and_destination() -> void:
 		_content_label.text = tr("UI_COCKPIT_NAV_CONTENT_FORMAT") % tr(
 			"UI_COCKPIT_NAV_CONTENT_REGISTERED"
 		)
+		_environment_label.text = ""
 		return
-	_order_label.text = tr("UI_COCKPIT_NAV_ORDER_FORMAT") % tr(
-		String(_active_order.display_name_key)
+	_order_label.text = tr(
+		(
+			"UI_M1_WHITE_NOISE_NAV_PREVIEW_ORDER_FORMAT"
+			if _active_order == null
+			else "UI_COCKPIT_NAV_ORDER_FORMAT"
+		)
+	) % tr(
+		String(_display_order.display_name_key)
 	)
 	var destination_name: String = tr("UI_COCKPIT_VALUE_UNAVAILABLE")
-	if _active_order.destination_planet != null:
+	if _display_order.destination_planet != null:
 		destination_name = tr(
-			String(_active_order.destination_planet.display_name_key)
+			String(_display_order.destination_planet.display_name_key)
 		)
 	_destination_label.text = tr("UI_COCKPIT_NAV_DESTINATION_FORMAT") % (
 		destination_name
 	)
 	var route_authorized: bool = (
-		_current_planet_entry != null
-		and (
-			_current_planet_entry.is_progression_unlocked
-			or _active_order.id == M1CatalogModel.M0_ORDER_ID
+		(
+			_current_planet_entry != null
+			and (
+				_current_planet_entry.is_progression_unlocked
+				or _display_order.id == M1CatalogModel.M0_ORDER_ID
+			)
+		)
+		or (
+			_preparation_status != null
+			and _preparation_status.is_navigation_unlocked
 		)
 	)
 	_unlock_label.text = tr("UI_COCKPIT_NAV_UNLOCK_FORMAT") % tr(
@@ -116,14 +161,19 @@ func _refresh_order_and_destination() -> void:
 		if (
 			_current_planet_entry != null
 			and _current_planet_entry.is_content_playable
-			and _active_order.is_playable()
+			and _display_order.is_playable()
 		)
 		else "UI_COCKPIT_NAV_CONTENT_REGISTERED"
+	)
+	_environment_label.text = (
+		tr("UI_M1_WHITE_NOISE_RISK_SUMMARY")
+		if _preparation_status != null
+		else ""
 	)
 
 
 func _refresh_requirements() -> void:
-	if _active_order == null:
+	if _display_order == null:
 		_required_modules_label.text = tr(
 			"UI_COCKPIT_NAV_REQUIRED_MODULES_FORMAT"
 		) % tr("UI_COCKPIT_NAV_NO_REQUIRED_MODULES")
@@ -132,7 +182,7 @@ func _refresh_requirements() -> void:
 		) % tr("UI_COCKPIT_NAV_NO_REQUIRED_MODULES")
 		return
 	var required_entries: PackedStringArray = []
-	for module: ShipModuleDefinition in _active_order.required_modules:
+	for module: ShipModuleDefinition in _display_order.required_modules:
 		if module == null:
 			continue
 		var state: M1CatalogModel.ModuleInstallState = (
@@ -171,7 +221,19 @@ func _refresh_requirements() -> void:
 
 
 func _refresh_route() -> void:
-	if _active_order == null or _current_planet_entry == null:
+	if _active_order == null:
+		if (
+			_preparation_status != null
+			and _display_order != null
+			and not _preparation_status.hint_key.is_empty()
+		):
+			_route_label.text = tr("UI_COCKPIT_NAV_LOCK_FORMAT") % tr(
+				String(_preparation_status.hint_key)
+			)
+		else:
+			_route_label.text = tr("UI_COCKPIT_NAV_ROUTE_NO_ORDER")
+		return
+	if _current_planet_entry == null:
 		_route_label.text = tr("UI_COCKPIT_NAV_ROUTE_NO_ORDER")
 		return
 	_departure_enabled = _current_planet_entry.is_departure_selectable
@@ -210,9 +272,17 @@ func _refresh_known_planets() -> void:
 			"UI_COCKPIT_NAV_PLANET_CURRENT_SUFFIX"
 			if entry.is_current_destination
 			else (
-				"UI_COCKPIT_NAV_PLANET_UNLOCKED_SUFFIX"
-				if entry.is_progression_unlocked
-				else "UI_COCKPIT_NAV_PLANET_LOCKED_SUFFIX"
+				"UI_M1_WHITE_NOISE_NAV_PENDING_SUFFIX"
+				if (
+					entry.preparation_status != null
+					and entry.preparation_status.is_navigation_unlocked
+					and not entry.preparation_status.is_formal_route_available
+				)
+				else (
+					"UI_COCKPIT_NAV_PLANET_UNLOCKED_SUFFIX"
+					if entry.is_progression_unlocked
+					else "UI_COCKPIT_NAV_PLANET_LOCKED_SUFFIX"
+				)
 			)
 		)
 		lines.append(

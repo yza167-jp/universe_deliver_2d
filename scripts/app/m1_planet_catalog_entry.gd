@@ -11,3 +11,4 @@ var is_departure_selectable: bool = false
 var lock_reason: StringName = &""
 var lock_hint_key: StringName = &""
 var is_name_disclosed: bool = false
+var preparation_status: M1DestinationPreparationStatus

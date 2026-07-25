@@ -46,6 +46,12 @@ const PERMISSION_IDS: Array[StringName] = [
 const MODULE_HIGH_VOLTAGE_SHIELDING: StringName = &"module_high_voltage_shielding"
 const MODULE_BIOSIGNAL_ISOLATION: StringName = &"module_biosignal_isolation"
 const MODULE_CROSSWIND_STABILIZER: StringName = &"module_crosswind_stabilizer"
+const ORDER_RED_SAND_SHIELDING_RETROFIT: StringName = (
+	&"order_m1_red_sand_shielding_retrofit"
+)
+const STORY_RED_SAND_SHIELDING_RETROFIT_COMPLETED: StringName = (
+	&"story_m1_red_sand_shielding_retrofit_completed"
+)
 
 const SHIP_UPGRADE_IDS: Array[StringName] = [
 	MODULE_HIGH_VOLTAGE_SHIELDING,
@@ -163,6 +169,12 @@ static func get_planet_unlock_rule(planet_id: StringName) -> PlanetUnlockRule:
 			rule.minimum_chapter_id = CHAPTER_M1_WHITE_NOISE
 			rule.required_planet_ids = [PLANET_RED_SAND]
 			rule.required_module_ids = [MODULE_HIGH_VOLTAGE_SHIELDING]
+			rule.required_story_flag_ids = [
+				STORY_RED_SAND_SHIELDING_RETROFIT_COMPLETED,
+			]
+			rule.required_completed_order_ids = [
+				ORDER_RED_SAND_SHIELDING_RETROFIT,
+			]
 		PLANET_CANOPY_WORLD:
 			rule.minimum_chapter_id = CHAPTER_M1_CANOPY_WORLD
 			rule.required_planet_ids = [PLANET_WHITE_NOISE]
@@ -217,15 +229,6 @@ static func evaluate_planet_unlock_rule(
 	for required_planet_id: StringName in rule.required_planet_ids:
 		if not unlocked_planets.has(required_planet_id):
 			return REASON_REQUIRED_PLANET
-	for required_module_id: StringName in rule.required_module_ids:
-		if (
-			not ship_upgrades.has(required_module_id)
-			and not ShipLoadoutRules.is_module_equipped(
-				ship_configuration,
-				required_module_id
-			)
-		):
-			return REASON_REQUIRED_MODULE
 	for required_permission_id: StringName in rule.required_permission_ids:
 		if not permission_ids.has(required_permission_id):
 			return REASON_REQUIRED_PERMISSION
@@ -235,6 +238,15 @@ static func evaluate_planet_unlock_rule(
 	for required_order_id: StringName in rule.required_completed_order_ids:
 		if not completed_order_ids.get(required_order_id, false):
 			return REASON_REQUIRED_COMPLETED_ORDER
+	for required_module_id: StringName in rule.required_module_ids:
+		if (
+			not ship_upgrades.has(required_module_id)
+			and not ShipLoadoutRules.is_module_equipped(
+				ship_configuration,
+				required_module_id
+			)
+		):
+			return REASON_REQUIRED_MODULE
 	for required_context_id: StringName in rule.required_context_ids:
 		if not whitelist_context.get(required_context_id, false):
 			return REASON_REQUIRED_CONTEXT

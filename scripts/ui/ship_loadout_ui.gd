@@ -522,6 +522,8 @@ func _refresh_module(
 		state_text = tr("UI_LOADOUT_STATE_INSTALLED")
 	elif not owned:
 		state_text = tr("UI_LOADOUT_STATE_NOT_OBTAINED")
+	else:
+		state_text = tr("UI_LOADOUT_STATE_OWNED_NOT_INSTALLED")
 	status_label.text = tr("UI_LOADOUT_SLOT_STATUS_FORMAT") % [role_text, state_text]
 	if not owned:
 		toggle_button.text = tr("UI_LOADOUT_NOT_OBTAINED")
@@ -578,6 +580,15 @@ func _refresh_departure_state() -> void:
 		)
 		return
 	if _game_state.current_order_id != order_definition.id:
+		var preparation: M1DestinationPreparationStatus = (
+			M1CatalogModel.build_destination_preparation_status(
+				order_definition,
+				_game_state
+			)
+		)
+		if preparation != null and preparation.is_visible:
+			_apply_preparation_state(preparation)
+			return
 		_apply_departure_state(
 			"UI_LOADOUT_STATUS_WAITING_ORDER",
 			"UI_LOADOUT_FEEDBACK_WAITING_ORDER",
@@ -616,6 +627,24 @@ func _refresh_departure_state() -> void:
 		"UI_LOADOUT_STATUS_READY",
 		"UI_LOADOUT_FEEDBACK_READY",
 		false
+	)
+
+
+func _apply_preparation_state(
+	preparation: M1DestinationPreparationStatus
+) -> void:
+	var status_key: String = "UI_M1_WHITE_NOISE_PREP_STATUS_BLOCKED"
+	match preparation.state:
+		M1DestinationPreparationStatus.State.MODULE_NOT_INSTALLED:
+			status_key = "UI_M1_WHITE_NOISE_PREP_STATUS_INSTALL"
+		M1DestinationPreparationStatus.State.QUALIFIED_ROUTE_PENDING:
+			status_key = "UI_M1_WHITE_NOISE_PREP_STATUS_QUALIFIED"
+		M1DestinationPreparationStatus.State.READY:
+			status_key = "UI_M1_WHITE_NOISE_PREP_STATUS_READY"
+	_apply_departure_state(
+		status_key,
+		String(preparation.hint_key),
+		true
 	)
 
 

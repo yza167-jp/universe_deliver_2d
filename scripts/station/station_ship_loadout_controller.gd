@@ -64,15 +64,29 @@ func _on_loadout_closed() -> void:
 
 func _refresh_active_order_definition() -> void:
 	var active_order: OrderDefinition
+	var registry: GameDataRegistry
 	if (
 		_game_state != null
-		and not _game_state.current_order_id.is_empty()
 		and _order_terminal_ui != null
 		and _order_terminal_ui.data_registry != null
 	):
-		active_order = _order_terminal_ui.data_registry.find_order(
-			_game_state.current_order_id
-		)
+		registry = _order_terminal_ui.data_registry
+		if not _game_state.current_order_id.is_empty():
+			active_order = registry.find_order(_game_state.current_order_id)
+		elif _game_state.has_reached_main_story_chapter(
+			M1ProgressRules.CHAPTER_M1_WHITE_NOISE
+		):
+			var white_noise_order: OrderDefinition = registry.find_order(
+				M1CatalogModel.WHITE_NOISE_ORDER_ID
+			)
+			var preparation: M1DestinationPreparationStatus = (
+				M1CatalogModel.build_destination_preparation_status(
+					white_noise_order,
+					_game_state
+				)
+			)
+			if preparation != null and preparation.is_visible:
+				active_order = white_noise_order
 	_loadout_ui.set_order_definition(
 		active_order if active_order != null else _default_order_definition
 	)

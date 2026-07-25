@@ -636,6 +636,12 @@ static func _validate_m1_packet_contract(
 			errors.append(
 				"M1 Red Sand revisit must reward high-voltage shielding."
 			)
+		if not revisit_order.planet_unlock_rewards.has(
+			M1ProgressRules.PLANET_WHITE_NOISE
+		):
+			errors.append(
+				"M1 Red Sand revisit must unlock the White Noise navigation node."
+			)
 		if not revisit_order.station_state_rewards.has(
 			StationStateRules.ARCHIVE_TERMINAL_ID
 		):
@@ -876,6 +882,17 @@ static func _validate_order_rewards(
 			errors.append(
 				"OrderDefinition '%s' references unknown ship upgrade reward '%s'."
 				% [order.id, module_id]
+			)
+	_validate_string_names(
+		"OrderDefinition '%s' planet_unlock_rewards" % order.id,
+		order.planet_unlock_rewards,
+		errors
+	)
+	for planet_id: StringName in order.planet_unlock_rewards:
+		if registry.find_planet(planet_id) == null:
+			errors.append(
+				"OrderDefinition '%s' references unknown planet unlock reward '%s'."
+				% [order.id, planet_id]
 			)
 	_validate_string_names(
 		"OrderDefinition '%s' station_state_rewards" % order.id,

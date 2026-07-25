@@ -107,6 +107,10 @@ run_godot_checked \
   "Archive terminal catalog, modal focus, Lao Pi briefing, and Continue" \
   --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t113_archive_terminal_smoke_runner.gd
 
+run_godot_checked \
+  "White Noise qualification, navigation preview, loadout installation, and hard route guard" \
+  --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t114_white_noise_preparation_smoke_runner.gd
+
 for scenario_id in \
   red_sand_revisit \
   white_noise_catalog \

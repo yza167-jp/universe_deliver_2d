@@ -25,6 +25,11 @@ const RED_SAND_REVISIT_CARGO_CODEX_ENTRY_ID: StringName = (
 )
 const RELAY_ECHO_CODEX_ENTRY_ID: StringName = &"codex_anomaly_relay_echo"
 const WHITE_NOISE_CODEX_ENTRY_ID: StringName = &"codex_planet_white_noise"
+const WHITE_NOISE_PLANET_ID: StringName = M1ProgressRules.PLANET_WHITE_NOISE
+const WHITE_NOISE_CHAPTER_ID: StringName = M1ProgressRules.CHAPTER_M1_WHITE_NOISE
+const HIGH_VOLTAGE_SHIELDING_MODULE_ID: StringName = (
+	M1ProgressRules.MODULE_HIGH_VOLTAGE_SHIELDING
+)
 const RED_SAND_ARRIVAL_COMPLETED_FLAG: StringName = (
 	&"story_red_sand_arrival_main_dialogue_completed"
 )
@@ -440,6 +445,16 @@ func _apply_red_sand_revisit_content_compatibility() -> void:
 	)
 	_append_unique_id(codex_entry_ids, RELAY_ECHO_CODEX_ENTRY_ID)
 	_append_unique_id(codex_entry_ids, WHITE_NOISE_CODEX_ENTRY_ID)
+	if (
+		completed_order_ids.get(RED_SAND_REVISIT_ORDER_ID, false)
+		and story_flags.get(RED_SAND_REVISIT_COMPLETION_FLAG, false)
+		and M1ProgressRules.has_reached_chapter(
+			main_story_chapter,
+			WHITE_NOISE_CHAPTER_ID
+		)
+		and ship_upgrade_ids.has(HIGH_VOLTAGE_SHIELDING_MODULE_ID)
+	):
+		_append_unique_id(unlocked_planet_ids, WHITE_NOISE_PLANET_ID)
 
 
 func _apply_order_state_compatibility() -> void:

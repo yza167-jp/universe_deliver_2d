@@ -164,6 +164,26 @@ func _test_planet_unlock_rules(failures: Array[String]) -> void:
 	expect_true(
 		game_state.get_planet_unlock_reason(
 			M1ProgressRules.PLANET_WHITE_NOISE
+		) == M1ProgressRules.REASON_REQUIRED_STORY_FLAG,
+		"White Noise must retain the completed-revisit story gate.",
+		failures
+	)
+	game_state.set_story_flag(
+		M1ProgressRules.STORY_RED_SAND_SHIELDING_RETROFIT_COMPLETED
+	)
+	expect_true(
+		game_state.get_planet_unlock_reason(
+			M1ProgressRules.PLANET_WHITE_NOISE
+		) == M1ProgressRules.REASON_REQUIRED_COMPLETED_ORDER,
+		"White Noise must retain the exact completed-revisit order gate.",
+		failures
+	)
+	game_state.completed_order_ids[
+		M1ProgressRules.ORDER_RED_SAND_SHIELDING_RETROFIT
+	] = true
+	expect_true(
+		game_state.get_planet_unlock_reason(
+			M1ProgressRules.PLANET_WHITE_NOISE
 		) == M1ProgressRules.REASON_REQUIRED_MODULE,
 		"White Noise must remain locked without high-voltage shielding.",
 		failures
@@ -231,6 +251,12 @@ func _test_planet_unlock_rules(failures: Array[String]) -> void:
 	var equipped_state: GameStateModel = GameStateModel.new()
 	equipped_state.main_story_chapter = M1ProgressRules.CHAPTER_M1_WHITE_NOISE
 	equipped_state.unlocked_planet_ids = [M1ProgressRules.PLANET_RED_SAND]
+	equipped_state.story_flags[
+		M1ProgressRules.STORY_RED_SAND_SHIELDING_RETROFIT_COMPLETED
+	] = true
+	equipped_state.completed_order_ids[
+		M1ProgressRules.ORDER_RED_SAND_SHIELDING_RETROFIT
+	] = true
 	equipped_state.ship_configuration[
 		ShipLoadoutRules.SLOT_DEFENSE
 	] = M1ProgressRules.MODULE_HIGH_VOLTAGE_SHIELDING

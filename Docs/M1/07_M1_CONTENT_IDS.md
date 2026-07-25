@@ -14,9 +14,10 @@
   `order_red_sand_m0`。
 - Stretch `side_red_sand_unlisted_filters` 与 `cargo_red_sand_water_filters` 不进入
   必做注册表。
-- M0 首单为 `PLAYABLE`。本页列出的 7 份 M1 回访、主线与必做支线当前均为
-  `REGISTERED_ONLY`：可供目录、依赖和内容开发引用，但在对应剧情与路线任务完成
-  前不能接取或出发。内容落地任务必须显式将对应订单与星球切换为 `PLAYABLE`。
+- M0 首单和已完成闭环的赤砂回访为 `PLAYABLE`。白噪、穹林、群潮的 3 份主线与
+  3 份必做支线仍为 `REGISTERED_ONLY`：可供目录、依赖和内容开发引用，但在对应
+  剧情与路线任务完成前不能接取或出发。内容落地任务必须显式将对应订单与星球
+  切换为 `PLAYABLE`。
 
 ## 星球与环境占位
 
@@ -79,7 +80,7 @@ T-111 已实现屏蔽罩能力读取：安装时
 
 | Order ID | Type / Delivery | Credit | Route | Risk | Module rule | Readiness |
 |---|---|---:|---:|---:|---|---|
-| `order_m1_red_sand_shielding_retrofit` | Revisit / Landing | 140 | 1.00 | 2 | M0 drive + atmosphere required | `REGISTERED_ONLY` |
+| `order_m1_red_sand_shielding_retrofit` | Revisit / Landing | 140 | 12000 m | 2 | M0 drive + atmosphere required | `PLAYABLE` |
 | `order_m1_white_noise_archive_core` | Main / Landing | 180 | 1.25 | 4 | high-voltage shielding required | `REGISTERED_ONLY` |
 | `order_m1_canopy_ecology_cargo` | Main / Landing | 200 | 1.15 | 3 | biosignal isolation recommended | `REGISTERED_ONLY` |
 | `order_m1_tidal_weather_core` | Main / Landing | 240 | 1.30 | 4 | crosswind stabilizer recommended | `REGISTERED_ONLY` |
@@ -107,10 +108,11 @@ T-111 已实现屏蔽罩能力读取：安装时
 - 完成奖励为 `140` 信用点、赤砂关系 `+1`、
   `codex_cargo_relay_pattern_shielding_materials`、
   `module_high_voltage_shielding`、`station_state_archive_terminal`、
-  `chapter_m1_white_noise` 与赤砂回访完成状态。
+  `planet_white_noise` 导航节点、`chapter_m1_white_noise` 与赤砂回访完成状态。
 
-上述路线值是 T-110 的 `Working` 技术骨架。正式订单继续保持
-`REGISTERED_ONLY`，直到 T-112 完成实际场景、路线、交付与结算闭环。
+上述路线值已由 T-112 的实际场景、路线、交付与结算闭环落实。T-114 只解锁
+白噪导航节点和订单预览；`planet_white_noise` 与
+`order_m1_white_noise_archive_core` 仍保持 `REGISTERED_ONLY` 且没有路线场景。
 
 新增目的地 ID：
 

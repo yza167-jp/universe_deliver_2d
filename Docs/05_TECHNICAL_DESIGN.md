@@ -375,6 +375,24 @@ active order 置顶，同一时刻最多一个当前主线，未发现的可选�
 `M1CatalogHintResolver` 将章节、星球、许可、模块、内容就绪和航线缺失原因转换为
 稳定的本地化提示，玩家界面不直接显示内部 ID。
 
+T-114 的 `M1DestinationPreparationStatus` 是同一查询层生成的只读结果，不是新的
+Manager。白噪星资格按精确顺序检查赤砂回访章节、完成标记与完成订单，再检查
+`module_high_voltage_shielding` 的所有权和 Defense 槽安装状态，最终区分：
+
+```text
+PREVIOUS_MAIN_REQUIRED
+MODULE_NOT_OBTAINED
+MODULE_NOT_INSTALLED
+QUALIFIED_ROUTE_PENDING
+READY
+```
+
+订单终端、`StationShipLoadoutController` / `ShipLoadoutUI` 和
+`CockpitNavigationPanel` 均消费这一个结果。UI 可以显示已解锁导航节点、风险与
+配置要求，但不能据此接取订单或开始旅行；正式运行时仍由
+`content_readiness`、目的星球就绪状态和真实 `flight_scene_path` 三层守卫拒绝
+白噪出发。
+
 订单终端是“左侧紧凑目录 + 右侧单项详情 + 固定操作区”；焦点与鼠标只改变当前
 选中项，只有显式接取动作才调用 `GameStateModel.accept_order()`。驾驶舱的
 `CockpitNavigationPanel` 使用同一目录投影，只显示当前订单目的地、准入门槛和
@@ -398,11 +416,12 @@ GameState。隐藏锁定条目不进入图鉴，允许出现的锁定位与全�
 关闭时恢复打开前焦点、玩家控制和场景提示。状态被移除或运行时重置时，终端会
 同步禁用并关闭仍在显示的浏览器。
 
-完成赤砂回访后，档案可投影已知的白噪星和旧铭牌异常回波，但这只代表“玩家已知”，
-不写入白噪星导航解锁。老皮的一次性档案简报由独立 `DialogueSequence` 和完成
-标记驱动，取消对话不会伪造完成。为兼容 T-113 之前已经完成回访的 schema v2
-存档，读取时只在正式回访完成事实存在时幂等补齐新增档案记录；存档 schema 保持
-v2，出发许可仍由后续权威资格规则计算。
+完成赤砂回访后，档案投影已知的白噪星和旧铭牌异常回波；“玩家已知”和“导航已
+解锁”仍由不同字段表达。赤砂回访的同一原子结算通过
+`planet_unlock_rewards` 写入白噪导航节点。老皮的一次性档案简报由独立
+`DialogueSequence` 和完成标记驱动，取消对话不会伪造完成。为兼容 T-114 之前
+已经完成回访的 schema v2 存档，读取时只有在精确回访完成订单、剧情标记、白噪
+章节和屏蔽罩所有权同时存在时，才幂等补齐白噪导航节点；存档 schema 仍保持 v2。
 
 `StationStateRules` 只登记三个精确 `station_state_*` ID 及其摘要等级。
 `GameStateModel.unlock_station_state()` 是唯一普通写入口：非法 ID 拒绝、重复 ID
@@ -466,6 +485,7 @@ permission_rewards
 codex_rewards
 souvenir_rewards
 ship_upgrade_rewards
+planet_unlock_rewards
 station_state_rewards
 chapter_reward
 revisit_state_rewards
@@ -1181,8 +1201,8 @@ Delivery Lab 与 Flight Lab。持久 UI 只显示 scenario、章节、订单、�
 
 保存迁移等验证继续使用测试专用临时路径。`scripts/check_m1_foundation.sh` 作为
 可独立运行的聚合入口，逐项标记 v2 迁移、多星球系统、目录导航、收藏与站点、
-低空投放、加急订单、赤砂回访闭环、档案终端、六个 M1 调试启动和 M0 完整闭环；
-该入口由 `scripts/check_project.sh` 调用。
+低空投放、加急订单、赤砂回访闭环、档案终端、白噪资格准备、六个 M1 调试启动和
+M0 完整闭环；该入口由 `scripts/check_project.sh` 调用。
 
 ## 18. 依赖策略
 

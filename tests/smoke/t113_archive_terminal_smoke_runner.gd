@@ -289,10 +289,10 @@ func _check_archive_terminal_flow() -> void:
 		== CodexEntryDefinition.Category.PLANET
 		and browser.get_entry_texts()
 		== PackedStringArray(["赤砂星", "白噪星"])
-		and not _game_state.is_planet_unlocked(
+		and _game_state.is_planet_unlocked(
 			M1ProgressRules.PLANET_WHITE_NOISE
 		),
-		"The archive did not separate known White Noise data from navigation unlock.",
+		"The completed revisit did not keep White Noise knowledge and navigation unlock aligned.",
 	)
 
 	var keyboard_event: InputEventAction = InputEventAction.new()

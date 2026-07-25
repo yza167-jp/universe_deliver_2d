@@ -37,6 +37,7 @@ relation_rewards = {
 }
 codex_rewards = Array[StringName]([&"codex_cargo_relay_pattern_shielding_materials", &"codex_anomaly_relay_echo", &"codex_planet_white_noise"])
 ship_upgrade_rewards = Array[StringName]([&"module_high_voltage_shielding"])
+planet_unlock_rewards = Array[StringName]([&"planet_white_noise"])
 station_state_rewards = Array[StringName]([&"station_state_archive_terminal"])
 chapter_reward = &"chapter_m1_white_noise"
 revisit_state_rewards = {

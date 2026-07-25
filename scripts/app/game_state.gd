@@ -205,6 +205,15 @@ func get_planet_unlock_reason(
 		return M1ProgressRules.REASON_INVALID_PLANET
 	if unlocked_planet_ids.has(planet_id):
 		return M1ProgressRules.REASON_ALREADY_UNLOCKED
+	return get_planet_qualification_reason(planet_id, whitelist_context)
+
+
+func get_planet_qualification_reason(
+	planet_id: StringName,
+	whitelist_context: Dictionary[StringName, bool] = {}
+) -> StringName:
+	if not M1ProgressRules.is_known_planet(planet_id):
+		return M1ProgressRules.REASON_INVALID_PLANET
 	return M1ProgressRules.evaluate_planet_unlock(
 		planet_id,
 		main_story_chapter,
@@ -561,7 +570,7 @@ func complete_order(
 	if (
 		requested_credit_reward < -1
 		or not _has_valid_order_rewards(order)
-		or not _can_apply_order_progression_rewards(order)
+		or not _can_apply_order_progression_rewards(order, additional_flags)
 		or not _has_valid_order_completion_modifiers(
 			order,
 			additional_relation_rewards,
@@ -663,6 +672,9 @@ func complete_order(
 	for additional_flag: StringName in additional_flags:
 		if not additional_flag.is_empty():
 			story_flags[additional_flag] = true
+	for planet_id: StringName in order.planet_unlock_rewards:
+		if not unlocked_planet_ids.has(planet_id):
+			unlocked_planet_ids.append(planet_id)
 	if not station_upgrade_id.is_empty():
 		_record_station_upgrade(station_upgrade_id)
 	_apply_m0_first_delivery_collection_compatibility(station_upgrade_id)
@@ -1318,6 +1330,9 @@ func _has_valid_order_rewards(order: OrderDefinition) -> bool:
 	for module_id: StringName in order.ship_upgrade_rewards:
 		if not M1ProgressRules.is_known_ship_upgrade(module_id):
 			return false
+	for planet_id: StringName in order.planet_unlock_rewards:
+		if not M1ProgressRules.is_known_planet(planet_id):
+			return false
 	for state_id: StringName in order.station_state_rewards:
 		if not StationStateRules.is_known_state_id(state_id):
 			return false
@@ -1371,12 +1386,49 @@ func _has_valid_order_completion_modifiers(
 	return true
 
 
-func _can_apply_order_progression_rewards(order: OrderDefinition) -> bool:
-	if order == null or order.chapter_reward.is_empty():
-		return true
-	if has_reached_main_story_chapter(order.chapter_reward):
-		return true
-	return get_main_story_advance_reason(order.chapter_reward).is_empty()
+func _can_apply_order_progression_rewards(
+	order: OrderDefinition,
+	additional_flags: Array[StringName] = []
+) -> bool:
+	if order == null:
+		return false
+	var next_chapter: StringName = main_story_chapter
+	if not order.chapter_reward.is_empty():
+		if not has_reached_main_story_chapter(order.chapter_reward):
+			if not get_main_story_advance_reason(order.chapter_reward).is_empty():
+				return false
+			next_chapter = order.chapter_reward
+	var next_upgrades: Array[StringName] = ship_upgrade_ids.duplicate()
+	for module_id: StringName in order.ship_upgrade_rewards:
+		if not next_upgrades.has(module_id):
+			next_upgrades.append(module_id)
+	var next_flags: Dictionary[StringName, bool] = story_flags.duplicate()
+	for completion_flag: StringName in order.completion_flags:
+		if not completion_flag.is_empty():
+			next_flags[completion_flag] = true
+	for additional_flag: StringName in additional_flags:
+		if not additional_flag.is_empty():
+			next_flags[additional_flag] = true
+	var next_completed_orders: Dictionary[StringName, bool] = (
+		completed_order_ids.duplicate()
+	)
+	next_completed_orders[order.id] = true
+	for planet_id: StringName in order.planet_unlock_rewards:
+		if (
+			M1ProgressRules.evaluate_planet_unlock(
+				planet_id,
+				next_chapter,
+				unlocked_planet_ids,
+				ship_configuration,
+				next_upgrades,
+				planet_permission_ids,
+				next_flags,
+				next_completed_orders
+			)
+			!= &""
+		):
+			return false
+	return true
 
 
 func _clear_active_order_context() -> void:
