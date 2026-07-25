@@ -1,0 +1,67 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/express_order_hud.gd" id="1_hud"]
+[ext_resource type="Resource" path="res://data/m1_data_registry.tres" id="2_registry"]
+
+[sub_resource type="StyleBoxFlat" id="StyleExpress"]
+bg_color = Color(0.0313726, 0.0666667, 0.121569, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.466667, 0.788235, 0.768627, 0.92)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="SystemFont" id="SystemFontExpress"]
+font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
+allow_system_fallback = true
+
+[sub_resource type="Theme" id="ThemeExpress"]
+default_font = SubResource("SystemFontExpress")
+
+[node name="ExpressOrderHUD" type="PanelContainer"]
+unique_name_in_owner = true
+visible = false
+offset_left = 8.0
+offset_top = 316.0
+offset_right = 264.0
+offset_bottom = 352.0
+mouse_filter = 2
+theme = SubResource("ThemeExpress")
+theme_override_styles/panel = SubResource("StyleExpress")
+script = ExtResource("1_hud")
+data_registry = ExtResource("2_registry")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 7
+theme_override_constants/margin_top = 3
+theme_override_constants/margin_right = 7
+theme_override_constants/margin_bottom = 3
+
+[node name="Content" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="PrimaryLabel" type="Label" parent="Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.905882, 0.92549, 0.94902, 1)
+theme_override_font_sizes/font_size = 9
+text = "UI_EXPRESS_HUD_PRIMARY_REMAINING"
+text_overrun_behavior = 3
+
+[node name="SecondaryLabel" type="Label" parent="Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
+theme_override_font_sizes/font_size = 9
+text = "UI_EXPRESS_HUD_STATUS_FULL"
+text_overrun_behavior = 3

@@ -102,6 +102,7 @@ layout_mode = 2
 theme_override_constants/separation = 4
 
 [node name="EyebrowLabel" type="Label" parent="ContentPanel/Margin/Content"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
 theme_override_font_sizes/font_size = 11
@@ -196,6 +197,33 @@ theme_override_font_sizes/font_size = 12
 text = "--"
 horizontal_alignment = 2
 
+[node name="TimingPanel" type="PanelContainer" parent="ContentPanel/Margin/Content"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleUpgrade")
+
+[node name="TimingContent" type="VBoxContainer" parent="ContentPanel/Margin/Content/TimingPanel"]
+layout_mode = 2
+theme_override_constants/separation = 1
+
+[node name="TimingPrimaryLabel" type="Label" parent="ContentPanel/Margin/Content/TimingPanel/TimingContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.670588, 1, 0.941176, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_RESULTS_EXPRESS_PRIMARY_FORMAT"
+text_overrun_behavior = 3
+
+[node name="TimingSecondaryLabel" type="Label" parent="ContentPanel/Margin/Content/TimingPanel/TimingContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.87451, 0.784314, 1)
+theme_override_font_sizes/font_size = 9
+text = "UI_RESULTS_EXPRESS_SECONDARY_FORMAT"
+text_overrun_behavior = 3
+
 [node name="NarrativeHeading" type="Label" parent="ContentPanel/Margin/Content"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
@@ -213,6 +241,7 @@ autowrap_mode = 2
 max_lines_visible = 3
 
 [node name="StationChangePanel" type="PanelContainer" parent="ContentPanel/Margin/Content"]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleUpgrade")

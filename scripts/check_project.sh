@@ -234,6 +234,10 @@ run_step \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t106_station_collections_smoke_runner.gd
 
 run_step \
+  "M1 express timing, pause, HUD, settlement, and M0-layout smoke test" \
+  run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t108_express_order_smoke_runner.gd
+
+run_step \
   "Gate A station-to-cockpit playable path smoke test" \
   run_godot_checked --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/station_gate_a_smoke_runner.gd
 

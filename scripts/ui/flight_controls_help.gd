@@ -5,6 +5,7 @@ signal close_requested
 
 @onready var _title_label: Label = %TitleLabel
 @onready var _intro_label: Label = %IntroLabel
+@onready var _express_pause_label: Label = %ExpressPauseLabel
 @onready var _core_controls_label: Label = %CoreControlsLabel
 @onready var _laser_state_label: Label = %LaserStateLabel
 @onready var _assist_heading_label: Label = %AssistHeadingLabel
@@ -23,6 +24,7 @@ var _syncing_settings_controls: bool = false
 
 
 func _ready() -> void:
+	add_to_group(ExpressOrderHUD.HELP_PAUSE_GROUP)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	if _start_button != null and not _start_button.pressed.is_connected(
 		_on_start_button_pressed
@@ -114,6 +116,10 @@ func get_settings_feedback_text() -> String:
 	return "" if _settings_feedback_label == null else _settings_feedback_label.text
 
 
+func is_express_pause_notice_visible() -> bool:
+	return _express_pause_label != null and _express_pause_label.visible
+
+
 func is_route_hints_enabled() -> bool:
 	return _route_hints_button != null and _route_hints_button.button_pressed
 
@@ -127,6 +133,7 @@ func refresh() -> void:
 		return
 	_title_label.text = tr("UI_FLIGHT_CONTROLS_TITLE")
 	_intro_label.text = tr("UI_FLIGHT_CONTROLS_INTRO")
+	_sync_express_pause_notice()
 	_core_controls_label.text = tr("UI_FLIGHT_CONTROLS_CORE").replace("\\n", "\n")
 	var laser_state_key: StringName = (
 		&"UI_FLIGHT_CONTROLS_LASER_INSTALLED"
@@ -230,3 +237,25 @@ func _disconnect_settings_service() -> void:
 	if _settings_service.settings_changed.is_connected(_sync_accessibility_controls):
 		_settings_service.settings_changed.disconnect(_sync_accessibility_controls)
 	_settings_service = null
+
+
+func _sync_express_pause_notice() -> void:
+	if _express_pause_label == null:
+		return
+	_express_pause_label.text = tr("UI_EXPRESS_MODAL_PAUSED")
+	_express_pause_label.visible = false
+	if not is_inside_tree():
+		return
+	var scene_tree: SceneTree = get_tree()
+	if scene_tree == null:
+		return
+	for candidate: Node in scene_tree.get_nodes_in_group(
+		ExpressOrderHUD.DRIVER_GROUP
+	):
+		if not candidate is ExpressOrderHUD:
+			continue
+		var hud: ExpressOrderHUD = candidate as ExpressOrderHUD
+		hud.refresh_from_state()
+		if hud.has_active_express_order():
+			_express_pause_label.visible = true
+			return

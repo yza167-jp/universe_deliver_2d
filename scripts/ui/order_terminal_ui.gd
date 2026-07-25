@@ -22,6 +22,7 @@ signal order_accepted(order_id: StringName)
 @onready var _route_label: Label = %RouteLabel
 @onready var _reward_label: Label = %RewardLabel
 @onready var _relation_reward_label: Label = %RelationRewardLabel
+@onready var _express_timing_label: Label = %ExpressTimingLabel
 @onready var _required_heading_label: Label = %RequiredHeadingLabel
 @onready var _required_modules_label: Label = %RequiredModulesLabel
 @onready var _recommended_heading_label: Label = %RecommendedHeadingLabel
@@ -237,6 +238,14 @@ func get_relation_reward_text() -> String:
 	return "" if _relation_reward_label == null else _relation_reward_label.text
 
 
+func get_express_timing_text() -> String:
+	return "" if _express_timing_label == null else _express_timing_label.text
+
+
+func is_express_timing_visible() -> bool:
+	return _express_timing_label != null and _express_timing_label.visible
+
+
 func get_customer_history_text() -> String:
 	return "" if _customer_history_label == null else _customer_history_label.text
 
@@ -281,6 +290,7 @@ func _initialize_controls() -> bool:
 		_route_label,
 		_reward_label,
 		_relation_reward_label,
+		_express_timing_label,
 		_required_heading_label,
 		_required_modules_label,
 		_recommended_heading_label,
@@ -533,6 +543,8 @@ func _refresh_detail(entry: M1OrderCatalogEntry) -> void:
 		_route_label.text = unavailable
 		_reward_label.text = unavailable
 		_relation_reward_label.text = unavailable
+		_express_timing_label.text = ""
+		_express_timing_label.visible = false
 		_required_modules_label.text = unavailable
 		_recommended_modules_label.text = unavailable
 		_environment_label.text = unavailable
@@ -561,6 +573,12 @@ func _refresh_detail(entry: M1OrderCatalogEntry) -> void:
 		]
 		_reward_label.text = tr("UI_ORDER_REWARD_FORMAT") % order.credit_reward
 		_relation_reward_label.text = _build_relation_reward_text(order)
+		_express_timing_label.visible = order.is_express
+		_express_timing_label.text = (
+			_build_express_timing_text(order)
+			if order.is_express
+			else ""
+		)
 		_required_modules_label.text = _build_module_text(
 			order.required_modules,
 			tr("UI_ORDER_NO_REQUIRED_MODULES")
@@ -587,6 +605,8 @@ func _refresh_detail(entry: M1OrderCatalogEntry) -> void:
 		_route_label.text = unavailable
 		_reward_label.text = unavailable
 		_relation_reward_label.text = unavailable
+		_express_timing_label.text = ""
+		_express_timing_label.visible = false
 		_required_modules_label.text = unavailable
 		_recommended_modules_label.text = unavailable
 		_environment_label.text = unavailable
@@ -606,6 +626,14 @@ func _refresh_detail(entry: M1OrderCatalogEntry) -> void:
 	else:
 		_feedback_label.text = tr("UI_CATALOG_HINT_DATA_UNAVAILABLE")
 	_body_scroll.scroll_vertical = 0
+
+
+func _build_express_timing_text(order: OrderDefinition) -> String:
+	return tr("UI_ORDER_EXPRESS_TIMING_FORMAT") % [
+		M1OrderRules.format_duration(order.target_seconds, true),
+		M1OrderRules.format_duration(order.grace_seconds, true),
+		roundi(order.minimum_reward_ratio * 100.0),
+	]
 
 
 func _get_entry_name(entry: M1OrderCatalogEntry) -> String:

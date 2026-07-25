@@ -558,20 +558,25 @@ func complete_order(
 		last_order_error = ORDER_ERROR_INVALID_REWARD
 		return false
 
-	var base_credit_reward: int = (
-		order.credit_reward
-		if requested_credit_reward < 0
-		else requested_credit_reward
-	)
 	var elapsed_seconds: float = (
 		0.0
 		if order_run_state == null
 		else order_run_state.elapsed_time
 	)
-	var reward_ratio: float = M1OrderRules.get_reward_ratio(order, elapsed_seconds)
-	var final_credit_reward: int = maxi(
-		roundi(float(base_credit_reward) * reward_ratio),
-		0
+	var calculated_settlement: OrderSettlementResult = (
+		OrderSettlementCalculator.calculate(order, order_run_state)
+		if requested_credit_reward < 0
+		else null
+	)
+	if requested_credit_reward < 0 and calculated_settlement == null:
+		last_order_error = ORDER_ERROR_INVALID_SETTLEMENT
+		return false
+	## A supplied reward has already passed through the settlement calculator.
+	## Only the direct completion path calculates cargo and timing adjustments here.
+	var final_credit_reward: int = (
+		calculated_settlement.total_reward
+		if calculated_settlement != null
+		else requested_credit_reward
 	)
 	var relation_rewards: Dictionary[StringName, int] = order.relation_rewards.duplicate()
 	if (
@@ -735,7 +740,7 @@ func get_active_order_reward_ratio(order: OrderDefinition) -> float:
 	return M1OrderRules.get_reward_ratio(order, order_run_state.elapsed_time)
 
 
-## Commits the one-way M0 result through the same unified reward ledger.
+## Commits one authoritative settlement through the unified reward ledger.
 func settle_current_order(
 	order: OrderDefinition,
 	settlement: OrderSettlementResult,
@@ -748,7 +753,6 @@ func settle_current_order(
 		or settlement == null
 		or settlement.order_id != order.id
 		or settlement.total_reward < 0
-		or station_upgrade_id.is_empty()
 	):
 		last_order_error = ORDER_ERROR_INVALID_SETTLEMENT
 		return false
@@ -757,6 +761,38 @@ func settle_current_order(
 		return false
 	if current_order_id != order.id:
 		last_order_error = ORDER_ERROR_NOT_ACTIVE
+		return false
+	var expected_settlement: OrderSettlementResult = (
+		OrderSettlementCalculator.calculate(order, order_run_state)
+	)
+	if (
+		expected_settlement == null
+		or settlement.base_reward != expected_settlement.base_reward
+		or settlement.cargo_adjustment != expected_settlement.cargo_adjustment
+		or settlement.cargo_adjusted_reward
+		!= expected_settlement.cargo_adjusted_reward
+		or settlement.is_express != expected_settlement.is_express
+		or not is_equal_approx(
+			settlement.elapsed_time,
+			expected_settlement.elapsed_time
+		)
+		or not is_equal_approx(
+			settlement.target_seconds,
+			expected_settlement.target_seconds
+		)
+		or settlement.timing_status != expected_settlement.timing_status
+		or settlement.total_reward != expected_settlement.total_reward
+		or not is_equal_approx(
+			settlement.reward_ratio,
+			expected_settlement.reward_ratio
+		)
+		or settlement.time_adjustment != expected_settlement.time_adjustment
+		or settlement.earned_on_time_relation_bonus
+		!= expected_settlement.earned_on_time_relation_bonus
+		or settlement.on_time_relation_bonus
+		!= expected_settlement.on_time_relation_bonus
+	):
+		last_order_error = ORDER_ERROR_INVALID_SETTLEMENT
 		return false
 	var credits_before: int = credits
 	if not complete_order(

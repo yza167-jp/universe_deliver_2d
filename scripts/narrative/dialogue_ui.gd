@@ -8,6 +8,7 @@ signal flow_event_emitted(event_id: StringName)
 @export_range(1.0, 240.0, 1.0) var characters_per_second: float = 42.0
 
 @onready var speaker_label: Label = %SpeakerLabel
+@onready var express_pause_label: Label = %ExpressPauseLabel
 @onready var body_label: RichTextLabel = %BodyLabel
 @onready var choice_container: VBoxContainer = %ChoiceContainer
 @onready var quick_show_button: Button = %QuickShowButton
@@ -29,6 +30,7 @@ var _settings_service: SettingsServiceModel
 
 
 func _ready() -> void:
+	add_to_group(ExpressOrderHUD.DIALOGUE_PAUSE_GROUP)
 	_initialize_controls()
 	_bind_settings_service()
 	if _runtime == null:
@@ -68,6 +70,7 @@ func start_dialogue(sequence: DialogueSequence, game_state: GameStateModel) -> b
 	if not _runtime.start(sequence, game_state):
 		visible = false
 		return false
+	_refresh_express_pause_notice()
 	dialogue_started.emit(sequence.id)
 	return true
 
@@ -162,6 +165,10 @@ func body_font_has_glyph(codepoint: int) -> bool:
 	return body_font != null and body_font.has_char(codepoint)
 
 
+func is_express_pause_notice_visible() -> bool:
+	return express_pause_label != null and express_pause_label.visible
+
+
 func _on_line_changed(line: DialogueLine) -> void:
 	var speaker_name: String = ""
 	if line.speaker != null:
@@ -238,6 +245,7 @@ func _on_runtime_finished() -> void:
 	set_process(false)
 	visible = false
 	history_panel.visible = false
+	express_pause_label.visible = false
 	dialogue_finished.emit()
 
 
@@ -256,6 +264,7 @@ func _initialize_controls() -> bool:
 	if _controls_initialized:
 		return true
 	speaker_label = get_node_or_null("%SpeakerLabel") as Label
+	express_pause_label = get_node_or_null("%ExpressPauseLabel") as Label
 	body_label = get_node_or_null("%BodyLabel") as RichTextLabel
 	choice_container = get_node_or_null("%ChoiceContainer") as VBoxContainer
 	quick_show_button = get_node_or_null("%QuickShowButton") as Button
@@ -268,6 +277,7 @@ func _initialize_controls() -> bool:
 	close_history_button = get_node_or_null("%CloseHistoryButton") as Button
 	if (
 		speaker_label == null
+		or express_pause_label == null
 		or body_label == null
 		or choice_container == null
 		or quick_show_button == null
@@ -288,8 +298,31 @@ func _initialize_controls() -> bool:
 	continue_button.pressed.connect(continue_dialogue)
 	close_history_button.pressed.connect(hide_history)
 	history_panel.visible = false
+	express_pause_label.visible = false
 	_controls_initialized = true
 	return true
+
+
+func _refresh_express_pause_notice() -> void:
+	if express_pause_label == null:
+		return
+	express_pause_label.text = tr("UI_EXPRESS_MODAL_PAUSED")
+	express_pause_label.visible = false
+	if not is_inside_tree():
+		return
+	var scene_tree: SceneTree = get_tree()
+	if scene_tree == null:
+		return
+	for candidate: Node in scene_tree.get_nodes_in_group(
+		ExpressOrderHUD.DRIVER_GROUP
+	):
+		if not candidate is ExpressOrderHUD:
+			continue
+		var hud: ExpressOrderHUD = candidate as ExpressOrderHUD
+		hud.refresh_from_state()
+		if hud.has_active_express_order():
+			express_pause_label.visible = true
+			return
 
 
 func _bind_settings_service() -> void:

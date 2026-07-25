@@ -3,15 +3,22 @@ extends Control
 
 signal settlement_committed(result: OrderSettlementResult)
 
+const M0_ORDER_ID: StringName = &"order_red_sand_m0"
+
 @export var order: OrderDefinition
 
+@onready var _eyebrow_label: Label = %EyebrowLabel
 @onready var _title_label: Label = %TitleLabel
 @onready var _base_reward_value: Label = %BaseRewardValue
 @onready var _cargo_integrity_value: Label = %CargoIntegrityValue
 @onready var _cargo_adjustment_value: Label = %CargoAdjustmentValue
 @onready var _total_reward_value: Label = %TotalRewardValue
 @onready var _credit_balance_value: Label = %CreditBalanceValue
+@onready var _timing_panel: PanelContainer = %TimingPanel
+@onready var _timing_primary_label: Label = %TimingPrimaryLabel
+@onready var _timing_secondary_label: Label = %TimingSecondaryLabel
 @onready var _narrative_label: Label = %NarrativeLabel
+@onready var _station_change_panel: PanelContainer = %StationChangePanel
 @onready var _station_change_label: Label = %StationChangeLabel
 @onready var _next_step_label: Label = %NextStepLabel
 @onready var _return_button: Button = %ReturnButton
@@ -49,14 +56,18 @@ func present_settlement() -> bool:
 	if _settlement_result == null:
 		_render_unavailable()
 		return false
-	var settlement_flags: Array[StringName] = [
-		M0ProgressIds.STORY_FIRST_DELIVERY_SETTLED,
-		M0ProgressIds.STORY_RETURN_DIALOGUE_PENDING,
-	]
+	var settlement_flags: Array[StringName] = []
+	var station_upgrade_id: StringName = &""
+	if _is_m0_order():
+		settlement_flags = [
+			M0ProgressIds.STORY_FIRST_DELIVERY_SETTLED,
+			M0ProgressIds.STORY_RETURN_DIALOGUE_PENDING,
+		]
+		station_upgrade_id = M0ProgressIds.STATION_UPGRADE_FIRST_DELIVERY_DISPLAY
 	_settlement_is_committed = game_state.settle_current_order(
 		order,
 		_settlement_result,
-		M0ProgressIds.STATION_UPGRADE_FIRST_DELIVERY_DISPLAY,
+		station_upgrade_id,
 		settlement_flags
 	)
 	if not _settlement_is_committed:
@@ -105,6 +116,28 @@ func get_return_button() -> Button:
 	return _return_button
 
 
+func is_timing_panel_visible() -> bool:
+	return _timing_panel != null and _timing_panel.visible
+
+
+func get_timing_text() -> String:
+	if (
+		_timing_panel == null
+		or not _timing_panel.visible
+		or _timing_primary_label == null
+		or _timing_secondary_label == null
+	):
+		return ""
+	return "%s\n%s" % [
+		_timing_primary_label.text,
+		_timing_secondary_label.text,
+	]
+
+
+func get_timing_panel_rect() -> Rect2:
+	return Rect2() if _timing_panel == null else _timing_panel.get_global_rect()
+
+
 func _render_settlement() -> void:
 	if not is_node_ready():
 		return
@@ -112,6 +145,11 @@ func _render_settlement() -> void:
 		_render_unavailable()
 		return
 	var game_state: GameStateModel = _resolve_game_state()
+	_eyebrow_label.text = tr(
+		"UI_RESULTS_EYEBROW"
+		if _is_m0_order()
+		else "UI_RESULTS_EYEBROW_EXPRESS"
+	)
 	_title_label.text = tr("UI_RESULTS_TITLE_FORMAT") % tr(String(order.display_name_key))
 	_base_reward_value.text = tr("UI_RESULTS_CREDITS_FORMAT") % _settlement_result.base_reward
 	_cargo_integrity_value.text = tr("UI_RESULTS_PERCENT_FORMAT") % roundi(
@@ -124,13 +162,21 @@ func _render_settlement() -> void:
 	_credit_balance_value.text = tr("UI_RESULTS_CREDITS_FORMAT") % (
 		game_state.get_credits() if game_state != null else _settlement_result.total_reward
 	)
-	_narrative_label.text = "\n".join([
-		_get_entry_style_text(),
-		_get_cargo_result_text(),
-		_get_landing_result_text(),
-	])
-	_station_change_label.text = tr("UI_RESULTS_STATION_CHANGE_DETAIL")
-	_next_step_label.text = tr("UI_RESULTS_NEXT_STEP")
+	_render_express_timing()
+	if _is_m0_order():
+		_narrative_label.text = "\n".join([
+			_get_entry_style_text(),
+			_get_cargo_result_text(),
+			_get_landing_result_text(),
+		])
+		_station_change_panel.visible = true
+		_station_change_label.text = tr("UI_RESULTS_STATION_CHANGE_DETAIL")
+		_next_step_label.text = tr("UI_RESULTS_NEXT_STEP")
+	else:
+		_narrative_label.text = tr("UI_RESULTS_NARRATIVE_GENERIC")
+		_station_change_panel.visible = false
+		_station_change_label.text = ""
+		_next_step_label.text = tr("UI_RESULTS_NEXT_STEP_GENERIC")
 	_return_button.disabled = false
 
 
@@ -143,10 +189,55 @@ func _render_unavailable() -> void:
 	_cargo_adjustment_value.text = tr("UI_RESULTS_VALUE_UNAVAILABLE")
 	_total_reward_value.text = tr("UI_RESULTS_VALUE_UNAVAILABLE")
 	_credit_balance_value.text = tr("UI_RESULTS_VALUE_UNAVAILABLE")
+	_timing_panel.visible = false
+	_timing_primary_label.text = ""
+	_timing_secondary_label.text = ""
 	_narrative_label.text = tr("UI_RESULTS_UNAVAILABLE")
+	_station_change_panel.visible = true
 	_station_change_label.text = tr("UI_RESULTS_UNAVAILABLE_DETAIL")
 	_next_step_label.text = tr("UI_RESULTS_NEXT_STEP_UNAVAILABLE")
 	_return_button.disabled = true
+
+
+func _render_express_timing() -> void:
+	_timing_panel.visible = _settlement_result.is_express
+	if not _settlement_result.is_express:
+		_timing_primary_label.text = ""
+		_timing_secondary_label.text = ""
+		return
+	_timing_primary_label.text = tr("UI_RESULTS_EXPRESS_PRIMARY_FORMAT") % [
+		M1OrderRules.format_duration(_settlement_result.elapsed_time),
+		M1OrderRules.format_duration(_settlement_result.target_seconds, true),
+		tr(String(_get_timing_status_key(_settlement_result.timing_status))),
+	]
+	var relation_bonus_text: String = tr("UI_RESULTS_EXPRESS_RELATION_NONE")
+	if _settlement_result.earned_on_time_relation_bonus:
+		relation_bonus_text = tr("UI_RESULTS_EXPRESS_RELATION_FORMAT") % (
+			"+%d" % _settlement_result.on_time_relation_bonus
+		)
+	_timing_secondary_label.text = tr(
+		"UI_RESULTS_EXPRESS_SECONDARY_FORMAT"
+	) % [
+		"%+d" % _settlement_result.time_adjustment,
+		roundi(_settlement_result.reward_ratio * 100.0),
+		relation_bonus_text,
+	]
+
+
+func _get_timing_status_key(status: StringName) -> StringName:
+	match status:
+		M1OrderRules.TIMING_STATUS_GRACE:
+			return &"UI_EXPRESS_STATUS_GRACE"
+		M1OrderRules.TIMING_STATUS_FLOOR:
+			return &"UI_EXPRESS_STATUS_FLOOR"
+		M1OrderRules.TIMING_STATUS_PAUSED:
+			return &"UI_EXPRESS_STATUS_PAUSED"
+		_:
+			return &"UI_EXPRESS_STATUS_FULL"
+
+
+func _is_m0_order() -> bool:
+	return order != null and order.id == M0_ORDER_ID
 
 
 func _get_entry_style_text() -> String:

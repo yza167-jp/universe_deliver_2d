@@ -72,6 +72,15 @@ theme_override_font_sizes/font_size = 10
 text = "UI_FLIGHT_CONTROLS_INTRO"
 horizontal_alignment = 1
 
+[node name="ExpressPauseLabel" type="Label" parent="Panel/Margin/Content"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.670588, 1, 0.941176, 1)
+theme_override_font_sizes/font_size = 9
+text = "UI_EXPRESS_MODAL_PAUSED"
+horizontal_alignment = 1
+
 [node name="CoreControlsLabel" type="Label" parent="Panel/Margin/Content"]
 unique_name_in_owner = true
 layout_mode = 2

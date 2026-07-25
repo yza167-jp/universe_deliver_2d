@@ -312,6 +312,31 @@ current_value)`。只有 `changed = true` 时才发出一次 `persistent_state_c
 加急计时暂停、准时判断和报酬比例。超时在宽限窗口中线性从 `1.0` 降至配置的
 `minimum_reward_ratio`，不把超时直接解释为硬失败。
 
+`ExpressOrderHUD` 位于 `App/PersistentUI`，同时承担唯一轻量计时适配器和两行
+玩家反馈。它只解析当前 `ACCEPTED + is_express` 订单，并通过
+`GameStateModel.advance_active_order_time()` 修改 `OrderRunState.elapsed_time`；
+场景脚本、飞行 HUD 和结算 UI 不拥有第二个累计循环。组内按实例 ID 选出唯一
+权威驱动，误实例化的副本不会提交同帧第二份 delta。驱动使用
+`PROCESS_MODE_ALWAYS`，分别检查持久 `DialogueUI`、`FlightControlsHelp` 与
+`SceneTree.paused`；冻结时继续提供状态而不累计。对话与帮助模态打开时，紧凑
+HUD 隐藏并由模态内部的本地化暂停提示接管；单纯系统暂停仍在原 HUD 显示冻结
+状态。场景切换、检查点和 `R` 重试不触碰 elapsed time，存档只恢复保存值，不
+依据 `last_saved_at_unix` 补算离线时间。
+
+结算的信用点权威顺序为：`base_reward` → `cargo_adjusted_reward` →
+`time_adjustment` → `total_reward`。`OrderSettlementCalculator` 同时记录
+`elapsed_time / target_seconds / timing_status / reward_ratio /
+earned_on_time_relation_bonus / on_time_relation_bonus`；
+`GameStateModel.settle_current_order()` 校验该结果后把
+`total_reward` 当作最终值提交，不能再乘一次时间倍率。准时关系奖励在同一完成
+事务内计算，`reward_applied_order_ids` 在信用点或关系变化前拦截结算重入和读档
+后的重复调用。
+
+加急 HUD 位于 640×360 左下安全区，最多两行，使用青色与琥珀色区分全额、宽限、
+保底和暂停，不使用红色硬失败倒计时。订单终端只在 `is_express` 时显示目标、
+宽限、最低比例与非硬失败说明；结算时间面板同样对非加急订单完全隐藏，因此
+M0 赤砂首单的数值与布局保持原样。
+
 订单的“数据已登记”和“内容可游玩”是不同合同。`OrderDefinition.content_readiness`
 为 `REGISTERED_ONLY` 时，目录可以只读展示开发线索，但
 `GameStateModel.get_order_acceptance_error()`、配置确认和旅行开始会再次检查订单、

@@ -250,6 +250,16 @@ theme_override_font_sizes/font_size = 12
 text = "UI_ORDER_NO_RELATION_REWARD"
 autowrap_mode = 2
 
+[node name="ExpressTimingLabel" type="Label" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content/BodyScroll/DetailContent"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.670588, 1, 0.941176, 1)
+theme_override_font_sizes/font_size = 11
+text = "UI_ORDER_EXPRESS_TIMING_FORMAT"
+autowrap_mode = 2
+max_lines_visible = 2
+
 [node name="RequiredHeadingLabel" type="Label" parent="TerminalPanel/Margin/Content/Body/DetailPanel/Margin/Content/BodyScroll/DetailContent"]
 unique_name_in_owner = true
 layout_mode = 2

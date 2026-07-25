@@ -85,6 +85,15 @@ theme_override_colors/font_color = Color(0.905882, 0.658824, 0.356863, 1)
 theme_override_font_sizes/font_size = 18
 text = "CHARACTER_LAO_PI_NAME"
 
+[node name="ExpressPauseLabel" type="Label" parent="DialoguePanel/Margin/Content"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.670588, 1, 0.941176, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_EXPRESS_MODAL_PAUSED"
+horizontal_alignment = 2
+
 [node name="BodyLabel" type="RichTextLabel" parent="DialoguePanel/Margin/Content"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 62)

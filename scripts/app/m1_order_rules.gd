@@ -5,6 +5,11 @@ extends RefCounted
 
 const REASON_INVALID_CONDITION: StringName = &"invalid_unlock_condition"
 const REASON_ARCHIVED_ONLY: StringName = &"archived_only"
+const TIMING_STATUS_NONE: StringName = &""
+const TIMING_STATUS_FULL_REWARD: StringName = &"full_reward"
+const TIMING_STATUS_GRACE: StringName = &"grace"
+const TIMING_STATUS_FLOOR: StringName = &"floor"
+const TIMING_STATUS_PAUSED: StringName = &"paused"
 
 
 static func get_unlock_error(
@@ -99,3 +104,33 @@ static func get_reward_ratio(
 		1.0
 	)
 	return lerpf(1.0, minimum_ratio, overtime_progress)
+
+
+static func get_timing_status(
+	order: OrderDefinition,
+	elapsed_seconds: float,
+	timing_paused: bool = false
+) -> StringName:
+	if order == null or not order.is_express:
+		return TIMING_STATUS_NONE
+	if timing_paused:
+		return TIMING_STATUS_PAUSED
+	var safe_elapsed: float = maxf(elapsed_seconds, 0.0)
+	if safe_elapsed <= order.target_seconds:
+		return TIMING_STATUS_FULL_REWARD
+	if safe_elapsed < order.target_seconds + order.grace_seconds:
+		return TIMING_STATUS_GRACE
+	return TIMING_STATUS_FLOOR
+
+
+static func format_duration(
+	seconds: float,
+	round_up: bool = false
+) -> String:
+	var safe_seconds: float = maxf(seconds, 0.0)
+	var whole_seconds: int = (
+		ceili(safe_seconds)
+		if round_up
+		else floori(safe_seconds)
+	)
+	return "%02d:%02d" % [whole_seconds / 60, whole_seconds % 60]
