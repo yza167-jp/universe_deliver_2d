@@ -10,6 +10,15 @@
 |---|---|---|---|---|---|---|
 | — | — | — | — | — | — | — |
 
+## 项目原创程序占位记录
+
+以下内容不属于第三方素材，仍在此记录来源，避免后续 production placeholder
+被误认为来源不明资产：
+
+| Asset ID | File/Folder | Creator / Source | License | Modified | Usage | Notes |
+|---|---|---|---|---|---|---|
+| `white_noise_t123_procedural_presentation` | `scripts/flight/white_noise_route_visuals.gd`; `scripts/flight/white_noise_environment_feedback.gd`; `assets/flight_particle_streak.svg` | 项目原创程序绘制、程序合成声音与仓库既有项目纹理，2026-07-27 | 随项目 | Yes | 白噪星七层背景、极光/雪粒/档案 VFX、安全/暴雪/地下环境音与短动机 | 无外部录音、生成式位图或第三方素材；production placeholder，移除成本低 |
+
 ## 规则
 
 - 来源或许可证不明确的素材不得提交。

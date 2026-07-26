@@ -412,6 +412,14 @@ T-122 用 `WhiteNoiseMainOrderContent` 把白噪主单的四套驾驶舱对白�
 订单数据提供，不在 UI 脚本中硬编码。正式白噪订单和星球继续
 `REGISTERED_ONLY`，专项旅行烟雾只使用进程内深拷贝夹具。
 
+T-123 将白噪路线灰盒提升为统一 production placeholder，但不改变 T-120/T-121
+的路线、碰撞或危险数值。世界空间由 `WhiteNoiseRouteVisuals` 生成七层冰原、
+裂谷、极光与档案结构；场景局部 `WhiteNoiseEnvironmentFeedback` 运行时合成
+安全、暴雪、地下三层环境循环和短记忆动机。高对比辅助会同步降低雪粒、世界/
+屏幕噪声线与脉冲闪光，同时保留航标、HUD 和碰撞上缘。全部来源为项目原创程序
+内容与仓库既有粒子纹理，不增加第三方依赖；正式星球与订单仍为
+`REGISTERED_ONLY`。
+
 ## 13. 不在 M1 的系统
 
 - 完整战斗。

@@ -57,7 +57,7 @@ func _draw() -> void:
 		true
 	)
 
-	var line_count: int = 18 + roundi(visibility * 18.0)
+	var line_count: int = get_feedback_line_count()
 	var drift: float = _visual_elapsed_seconds * lerpf(
 		70.0,
 		180.0,
@@ -100,7 +100,12 @@ func _draw() -> void:
 		)
 		draw_rect(
 			Rect2(Vector2.ZERO, size),
-			Color(0.5, 0.95, 1.0, flash_progress * 0.24),
+			Color(
+				0.5,
+				0.95,
+				1.0,
+				flash_progress * 0.24 * get_pulse_flash_alpha_scale()
+			),
 			true
 		)
 
@@ -219,6 +224,17 @@ func get_visibility_intensity() -> float:
 		1.0
 	)
 	return profile.visibility_intensity * normalized_interference
+
+
+func get_feedback_line_count() -> int:
+	var line_count: int = 18 + roundi(get_visibility_intensity() * 18.0)
+	if _high_contrast_enabled:
+		line_count = maxi(roundi(float(line_count) * 0.56), 10)
+	return line_count
+
+
+func get_pulse_flash_alpha_scale() -> float:
+	return 0.42 if _high_contrast_enabled else 1.0
 
 
 func get_total_pulse_count() -> int:

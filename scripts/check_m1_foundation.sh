@@ -131,6 +131,10 @@ run_godot_checked \
   "White Noise order brief, cargo framing, and independent cockpit content" \
   --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t122_white_noise_content_smoke_runner.gd
 
+run_godot_checked \
+  "White Noise layered presentation, generated ambience, motif, and reduced visual noise" \
+  --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t123_white_noise_presentation_smoke_runner.gd
+
 for scenario_id in \
   gate_e \
   red_sand_revisit \

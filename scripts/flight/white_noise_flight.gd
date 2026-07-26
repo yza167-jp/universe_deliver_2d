@@ -21,6 +21,9 @@ const ASSIST_PRESETS: Array[float] = [
 @onready var route_hud: WhiteNoiseRouteHUD = %WhiteNoiseRouteHUD
 @onready var route_visuals: WhiteNoiseRouteVisuals = %RouteVisuals
 @onready var storm_controller: WhiteNoiseStormController = %StormController
+@onready var environment_feedback: WhiteNoiseEnvironmentFeedback = (
+	%EnvironmentPresentation
+)
 
 @export var route_definition: WhiteNoiseRouteDefinition
 @export var planet_definition: PlanetDefinition
@@ -54,6 +57,8 @@ func _ready() -> void:
 	_active_assist_index = 1
 	_configure_ship_loadout()
 	_settings_service = _resolve_settings_service()
+	environment_feedback.bind(_settings_service)
+	environment_feedback.set_segment(route_definition.segments[0])
 	debug_hud.bind_ship(flight_ship)
 	debug_hud.set_route_guide_visible(false)
 	route_hud.bind(self, flight_ship)
@@ -126,6 +131,10 @@ func get_route_visuals() -> WhiteNoiseRouteVisuals:
 
 func get_storm_controller() -> WhiteNoiseStormController:
 	return storm_controller
+
+
+func get_environment_feedback() -> WhiteNoiseEnvironmentFeedback:
+	return environment_feedback
 
 
 func get_route_definition() -> WhiteNoiseRouteDefinition:
@@ -209,6 +218,7 @@ func restart_from_checkpoint(is_automatic: bool = false) -> bool:
 			_maximum_route_distance >= route_definition.get_branch_join_distance()
 		)
 	storm_controller.reset_for_route(_maximum_route_distance)
+	environment_feedback.set_segment(get_active_segment())
 	_sync_camera()
 	route_hud.refresh()
 	if is_automatic:
@@ -280,6 +290,7 @@ func debug_set_route_state(
 	)
 	_configure_checkpoint(_active_segment_index)
 	storm_controller.reset_for_route(clamped_distance)
+	environment_feedback.set_segment(get_active_segment())
 	_sync_camera()
 	route_hud.refresh()
 	return true
@@ -299,6 +310,7 @@ func _enter_segment(segment_index: int) -> void:
 		return
 	var segment: FlightRouteSegment = route_definition.segments[segment_index]
 	flight_ship.set_environment_profile(segment.environment_profile, false)
+	environment_feedback.set_segment(segment)
 	_configure_checkpoint(segment_index)
 	route_hud.show_checkpoint(segment.checkpoint_id)
 
@@ -482,6 +494,7 @@ func _validate_configuration() -> bool:
 		or route_hud == null
 		or route_visuals == null
 		or storm_controller == null
+		or environment_feedback == null
 		or storm_controller.profile == null
 	):
 		push_error("White Noise route configuration is incomplete.")
