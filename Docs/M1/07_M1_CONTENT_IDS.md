@@ -56,6 +56,9 @@
   `white_noise_scenic`；统一从 `10000 m` 分开，在 `17000 m` 汇合。
 - 独立调试订单：`debug_m1_white_noise_route`，只由
   `--m1-debug=white_noise_route` 在内存中建立，不进入正式注册表。
+- Gate F 隔离场景：`gate_f`。它从回访完成、档案终端接通、屏蔽罩已安装且
+  `order_m1_white_noise_archive_core` 尚未接取的快照开始；主单完成前
+  `side_white_noise_returned_memory` 继续锁定。
 - 路线 profile 以基准 `200 px/s² × planet_white_noise.gravity_scale 1.28`
   得到统一 `256 px/s²` 重力；T-121 再接入电磁干扰与屏蔽差异。
 

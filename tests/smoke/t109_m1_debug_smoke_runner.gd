@@ -201,6 +201,8 @@ func _exercise_scenario(
 		"Repeated application of scenario %s was not deterministic."
 		% scenario_id
 	)
+	await process_frame
+	await process_frame
 
 
 func _check_target_scene(
@@ -277,6 +279,39 @@ func _check_target_scene(
 				M1ProgressRules.MODULE_HIGH_VOLTAGE_SHIELDING
 			),
 			"Gate E did not open the isolated post-M0 station before revisit acceptance."
+		)
+	elif scenario_id == M1DebugScenarioCatalog.SCENARIO_GATE_F:
+		var white_noise_order: OrderDefinition = _registry.find_order(
+			M1DebugScenarioCatalog.ORDER_WHITE_NOISE
+		)
+		var white_noise_side_order: OrderDefinition = _registry.find_order(
+			M1DebugScenarioCatalog.ORDER_WHITE_NOISE_SIDE
+		)
+		_check(
+			active_scene is StationHub
+			and _game_state.current_order_id.is_empty()
+			and _game_state.main_story_chapter
+			== M1ProgressRules.CHAPTER_M1_WHITE_NOISE
+			and _game_state.has_completed_order(
+				M1DebugScenarioCatalog.ORDER_RED_SAND_REVISIT
+			)
+			and _game_state.get_revisit_state(
+				M1ProgressRules.PLANET_RED_SAND
+			) == M1ProgressRules.REVISIT_RED_SAND_COMPLETED
+			and _game_state.has_station_state(
+				StationStateRules.ARCHIVE_TERMINAL_ID
+			)
+			and _game_state.has_ship_module(
+				M1ProgressRules.MODULE_HIGH_VOLTAGE_SHIELDING
+			)
+			and _game_state.is_ship_module_equipped(
+				M1ProgressRules.MODULE_HIGH_VOLTAGE_SHIELDING
+			)
+			and white_noise_order != null
+			and _game_state.can_accept_order(white_noise_order)
+			and white_noise_side_order != null
+			and not _game_state.can_accept_order(white_noise_side_order),
+			"Gate F did not open the isolated post-revisit station before the White Noise main order."
 		)
 	elif scenario_id == M1DebugScenarioCatalog.SCENARIO_LOW_ALTITUDE_DROP:
 		_check(
@@ -367,7 +402,7 @@ func _finish() -> void:
 	TranslationServer.set_locale(_original_locale)
 	if _failures.is_empty():
 		print(
-			"[t109-m1-debug] PASS: nine deterministic scenarios, exact reset, "
+			"[t109-m1-debug] PASS: ten deterministic scenarios, exact reset, "
 			+ "catalog/lab targets, compact status, save isolation, and "
 			+ "formal readiness guards."
 		)

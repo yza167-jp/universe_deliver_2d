@@ -17,6 +17,9 @@ var relation_values: Dictionary[StringName, int] = {}
 var starting_credits: int = 0
 var completed_order_ids: Array[StringName] = []
 var story_flag_ids: Array[StringName] = []
+var station_state_ids: Array[StringName] = []
+var codex_entry_ids: Array[StringName] = []
+var souvenir_ids: Array[StringName] = []
 var revisit_states: Dictionary[StringName, StringName] = {}
 var target_stage: int = SceneRouterService.Stage.STATION
 var target_scene_path: String = ""
@@ -39,6 +42,9 @@ func to_canonical_dictionary() -> Dictionary[String, Variant]:
 		"starting_credits": starting_credits,
 		"completed_order_ids": _sorted_strings(completed_order_ids),
 		"story_flag_ids": _sorted_strings(story_flag_ids),
+		"station_state_ids": _sorted_strings(station_state_ids),
+		"codex_entry_ids": _sorted_strings(codex_entry_ids),
+		"souvenir_ids": _sorted_strings(souvenir_ids),
 		"revisit_states": _sorted_string_name_map(revisit_states),
 		"target_stage": target_stage,
 		"target_scene_path": target_scene_path,

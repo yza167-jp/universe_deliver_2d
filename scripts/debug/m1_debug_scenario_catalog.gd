@@ -26,6 +26,7 @@ const SCENARIO_TIDAL_CATALOG: StringName = &"tidal_catalog"
 const SCENARIO_LOW_ALTITUDE_DROP: StringName = &"low_altitude_drop"
 const SCENARIO_EXPRESS_ORDER: StringName = &"express_order"
 const SCENARIO_GATE_E: StringName = &"gate_e"
+const SCENARIO_GATE_F: StringName = &"gate_f"
 
 const SCENARIO_IDS: Array[StringName] = [
 	SCENARIO_RED_SAND_REVISIT,
@@ -37,6 +38,7 @@ const SCENARIO_IDS: Array[StringName] = [
 	SCENARIO_LOW_ALTITUDE_DROP,
 	SCENARIO_EXPRESS_ORDER,
 	SCENARIO_GATE_E,
+	SCENARIO_GATE_F,
 ]
 
 const ORDER_M0: StringName = &"order_red_sand_m0"
@@ -45,6 +47,7 @@ const ORDER_RED_SAND_REVISIT: StringName = (
 	&"order_m1_red_sand_shielding_retrofit"
 )
 const ORDER_WHITE_NOISE: StringName = &"order_m1_white_noise_archive_core"
+const ORDER_WHITE_NOISE_SIDE: StringName = &"side_white_noise_returned_memory"
 const ORDER_CANOPY: StringName = &"order_m1_canopy_ecology_cargo"
 const ORDER_TIDAL: StringName = &"order_m1_tidal_weather_core"
 const ORDER_CANOPY_DROP: StringName = &"side_canopy_spore_drop"
@@ -73,6 +76,14 @@ const STORY_CANOPY_COMPLETED: StringName = (
 const STORY_TIDAL_COMPLETED: StringName = (
 	&"story_m1_tidal_weather_core_completed"
 )
+const STORY_REVISIT_RECORDS_LOCAL: StringName = (
+	&"story_m1_red_sand_retrofit_records_kept_local"
+)
+const CODEX_REVISIT_CARGO: StringName = (
+	&"codex_cargo_relay_pattern_shielding_materials"
+)
+const CODEX_RELAY_ECHO: StringName = &"codex_anomaly_relay_echo"
+const CODEX_WHITE_NOISE: StringName = &"codex_planet_white_noise"
 
 var last_error: String = ""
 
@@ -147,6 +158,8 @@ func build_initial_progress(
 	progress.story_flags[STORY_M0_ARRIVAL] = true
 	for flag_id: StringName in definition.story_flag_ids:
 		progress.story_flags[flag_id] = true
+	for station_state_id: StringName in definition.station_state_ids:
+		progress.station_upgrade_ids[station_state_id] = true
 	for planet_id: StringName in definition.revisit_states:
 		progress.revisit_state[planet_id] = definition.revisit_states[planet_id]
 	for order_id: StringName in definition.completed_order_ids:
@@ -161,8 +174,16 @@ func build_initial_progress(
 		M0ProgressIds.CODEX_CHARACTER_IYA,
 		M0ProgressIds.CODEX_RELAY_PLAQUE,
 	]
+	for codex_entry_id: StringName in definition.codex_entry_ids:
+		if not progress.codex_entry_ids.has(codex_entry_id):
+			progress.codex_entry_ids.append(codex_entry_id)
 	progress.souvenir_ids = [M0ProgressIds.SOUVENIR_RELAY_PLAQUE]
-	progress.station_state_level = StationStateRules.M0_FIRST_DELIVERY_LEVEL
+	for souvenir_id: StringName in definition.souvenir_ids:
+		if not progress.souvenir_ids.has(souvenir_id):
+			progress.souvenir_ids.append(souvenir_id)
+	progress.station_state_level = StationStateRules.get_required_summary_level(
+		progress.station_upgrade_ids
+	)
 	progress.last_stable_station_state = &"station_after_first_delivery"
 	progress.ship_configuration = ShipLoadoutRules.create_default_configuration()
 	for module_id: StringName in definition.equipped_module_ids:
@@ -314,6 +335,30 @@ func validate_definition(
 	for flag_id: StringName in definition.story_flag_ids:
 		if not M1ProgressRules.is_stable_id(flag_id):
 			errors.append("Invalid story flag ID: %s." % flag_id)
+	_validate_unique_ids(
+		definition.station_state_ids,
+		"station_state_ids",
+		errors
+	)
+	for station_state_id: StringName in definition.station_state_ids:
+		if not StationStateRules.is_known_state_id(station_state_id):
+			errors.append("Unknown station state: %s." % station_state_id)
+	_validate_unique_ids(
+		definition.codex_entry_ids,
+		"codex_entry_ids",
+		errors
+	)
+	for codex_entry_id: StringName in definition.codex_entry_ids:
+		if registry.find_codex_entry(codex_entry_id) == null:
+			errors.append("Unknown Codex entry: %s." % codex_entry_id)
+	_validate_unique_ids(
+		definition.souvenir_ids,
+		"souvenir_ids",
+		errors
+	)
+	for souvenir_id: StringName in definition.souvenir_ids:
+		if registry.find_souvenir(souvenir_id) == null:
+			errors.append("Unknown souvenir: %s." % souvenir_id)
 	for planet_id: StringName in definition.revisit_states:
 		var state_id: StringName = definition.revisit_states.get(
 			planet_id,
@@ -360,6 +405,8 @@ func _create_definition(
 			return _build_express_order()
 		SCENARIO_GATE_E:
 			return _build_gate_e()
+		SCENARIO_GATE_F:
+			return _build_gate_f()
 	return null
 
 
@@ -560,6 +607,60 @@ func _build_gate_e() -> M1DebugScenarioDefinition:
 	definition.revisit_states = {
 		M1ProgressRules.PLANET_RED_SAND:
 		M1ProgressRules.REVISIT_RED_SAND_AVAILABLE,
+	}
+	definition.target_stage = SceneRouterService.Stage.STATION
+	definition.target_scene_path = STATION_SCENE_PATH
+	definition.preview_only = false
+	return definition
+
+
+func _build_gate_f() -> M1DebugScenarioDefinition:
+	var definition: M1DebugScenarioDefinition = _base_catalog_definition(
+		SCENARIO_GATE_F,
+		M1ProgressRules.CHAPTER_M1_WHITE_NOISE,
+		[
+			M1ProgressRules.PLANET_RED_SAND,
+			M1ProgressRules.PLANET_WHITE_NOISE,
+		],
+		M1ProgressRules.PLANET_WHITE_NOISE,
+		ORDER_WHITE_NOISE
+	)
+	definition.completed_order_ids = [
+		ORDER_M0,
+		ORDER_M0_CANONICAL,
+		ORDER_RED_SAND_REVISIT,
+	]
+	definition.story_flag_ids = [
+		STORY_M0_COMPLETED,
+		STORY_REVISIT_COMPLETED,
+		STORY_REVISIT_RECORDS_LOCAL,
+		StationTutorialController.COMPLETION_FLAG,
+		M0ProgressIds.STORY_FIRST_DELIVERY_SETTLED,
+		M0ProgressIds.STORY_RETURN_DIALOGUE_COMPLETED,
+		StationTutorialController.ARCHIVE_BRIEFING_COMPLETION_FLAG,
+	]
+	definition.station_state_ids = [
+		StationStateRules.ARCHIVE_TERMINAL_ID,
+	]
+	definition.codex_entry_ids = [
+		CODEX_REVISIT_CARGO,
+		CODEX_RELAY_ECHO,
+		CODEX_WHITE_NOISE,
+	]
+	definition.available_module_ids = [
+		M1ProgressRules.MODULE_HIGH_VOLTAGE_SHIELDING,
+	]
+	definition.equipped_module_ids = [
+		M1ProgressRules.MODULE_HIGH_VOLTAGE_SHIELDING,
+	]
+	definition.relation_values = {
+		M1ProgressRules.PLANET_RED_SAND: 3,
+		M1ProgressRules.PLANET_WHITE_NOISE: 0,
+	}
+	definition.starting_credits = 240
+	definition.revisit_states = {
+		M1ProgressRules.PLANET_RED_SAND:
+		M1ProgressRules.REVISIT_RED_SAND_COMPLETED,
 	}
 	definition.target_stage = SceneRouterService.Stage.STATION
 	definition.target_scene_path = STATION_SCENE_PATH

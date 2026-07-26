@@ -147,8 +147,13 @@ run_godot_checked \
   "White Noise voluntary returned-memory side flow, shortened route, choice, settlement, and Continue" \
   --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t126_white_noise_side_flow_smoke_runner.gd
 
+run_godot_checked \
+  "Gate F isolated start, formal main route, reset, optional handoff, and save isolation" \
+  --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t129_gate_f_smoke_runner.gd
+
 for scenario_id in \
   gate_e \
+  gate_f \
   red_sand_revisit \
   white_noise_catalog \
   white_noise_route \

@@ -37,8 +37,9 @@ func _test_scenario_catalog(
 			M1DebugScenarioCatalog.SCENARIO_LOW_ALTITUDE_DROP,
 			M1DebugScenarioCatalog.SCENARIO_EXPRESS_ORDER,
 			M1DebugScenarioCatalog.SCENARIO_GATE_E,
+			M1DebugScenarioCatalog.SCENARIO_GATE_F,
 		],
-		"The M1 debug catalog must expose its nine scenarios in stable order.",
+		"The M1 debug catalog must expose its ten scenarios in stable order.",
 		failures
 	)
 	for scenario_id: StringName in scenario_ids:
@@ -263,6 +264,7 @@ func _test_registered_only_guards(
 			M1DebugScenarioCatalog.SCENARIO_WHITE_NOISE_CATALOG,
 			M1DebugScenarioCatalog.SCENARIO_WHITE_NOISE_ROUTE,
 			M1DebugScenarioCatalog.SCENARIO_WHITE_NOISE_ROUTE_UNSHIELDED,
+			M1DebugScenarioCatalog.SCENARIO_GATE_F,
 		]:
 			expect_true(
 				focused_order != null
