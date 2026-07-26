@@ -139,6 +139,7 @@
 | 2026-07-26 | Gate E Round 2 预检 | Human Check | 三维模块语义；旧机柜接通流程；逐条只读历史；数据驱动回访呈现；维修服务三段路线；共享中文字体回退 | Godot 4.7.1 headless import、67 套测试、T-111～T-114、v1→v2、M1 聚合、M0 闭环、完整项目检查和 11 张 640×360 Metal 录帧通过。T-119 与阶段 B 返回 `Human Check`；T-120 继续 `Blocked`，等待玩家 Round 2 判断。 |
 | 2026-07-26 | Gate E Round 2 | Rework required | 阶段 8 拉起的高度冻结误报；真实对白选择按钮的锁定对象释放 | 玩家日志确认 canonical AGL 的 RayCast、剖面和 Final 值仍有效，但只比较窗口首尾会误判正常平滑反转；`Button.pressed` 发射期间同步释放当前选项会中断 UI 刷新。T-119 与阶段 B 回退 `In Progress`，T-110 至 T-114 保持 `Done`，T-120 保持 `Blocked`。 |
 | 2026-07-26 | Gate E Round 3 预检 | Human Check | Final AGL 窗口范围不变量；选项按钮延迟释放；真实拉起与按钮回归 | Godot 4.7.1 headless import、67 套测试、全部项目烟雾、M1 聚合、M0 闭环、非 headless Metal T-112/对白烟雾和 11 张 640×360 录帧通过。T-119 与阶段 B 返回 `Human Check`；T-120 继续 `Blocked`，等待玩家 Round 3 聚焦复测。 |
+| 2026-07-26 | Gate E Round 3 | Passed | 接受阶段 8 高度响应、两个真实对白选择按钮，以及赤砂回访至白噪资格的完整成长链 | 用户确认高度与对白错误均已消失，并接受屏蔽罩、档案终端、历史记录和白噪资格。T-119 与阶段 B 标记 `Done`；T-120 与阶段 C 进入 `In Progress`。Gate E 通过不代表白噪星正式内容已经完成。 |
 
 ## 开放问题
 
