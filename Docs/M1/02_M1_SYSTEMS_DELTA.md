@@ -404,6 +404,14 @@ WhiteNoiseStormController`。危险按 `2.4 / 12.0 / 2.8 s` 最短时长与三�
 Resource。路线提示、高对比和慢动作继续消费既有 SettingsService，帮助/系统
 暂停、重试、F6、离开窗口与场景释放均清理计时、反馈和时间倍率。
 
+T-122 用 `WhiteNoiseMainOrderContent` 把白噪主单的四套驾驶舱对白、旅行阶段
+文案、公司终端备注、货舱封签和独立完成标记绑定到稳定订单 ID。驾驶舱只按当前
+活动订单选择这组内容，不把白噪规则写入通用旅行控制器，也不复用 M0/赤砂回访
+的对白已读标记。订单终端同时消费 `CargoDefinition.company_description_key`
+与 `story_description_key`，把“公司记录”和“实际用途”并列显示；客户历史仍由
+订单数据提供，不在 UI 脚本中硬编码。正式白噪订单和星球继续
+`REGISTERED_ONLY`，专项旅行烟雾只使用进程内深拷贝夹具。
+
 ## 13. 不在 M1 的系统
 
 - 完整战斗。

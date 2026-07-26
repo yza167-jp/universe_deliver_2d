@@ -417,7 +417,7 @@ func _test_order_contracts(
 			and order.recipient != null
 			and order.destination_planet != null
 			and order.cargo != null
-			and order.customer_history_keys.size() == 3
+			and order.customer_history_keys.size() >= 3
 			and not order.story_requirements.is_empty()
 			and not order.completion_flags.is_empty(),
 			"M1 order '%s' must consume the complete T-103 Packet field contract." % order.id,

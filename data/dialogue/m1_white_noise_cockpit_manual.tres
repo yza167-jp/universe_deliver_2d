@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_sequence.gd" id="1_sequence"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_line.gd" id="2_line"]
+[ext_resource type="Resource" path="res://data/characters/lao_pi.tres" id="3_lao_pi"]
+
+[sub_resource type="Resource" id="LineGravity"]
+script = ExtResource("2_line")
+id = &"white_noise_gravity"
+speaker = ExtResource("3_lao_pi")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_COCKPIT_MANUAL_GRAVITY"
+portrait_expression = &"neutral"
+next_line_id = &"white_noise_storm"
+
+[sub_resource type="Resource" id="LineStorm"]
+script = ExtResource("2_line")
+id = &"white_noise_storm"
+speaker = ExtResource("3_lao_pi")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_COCKPIT_MANUAL_STORM"
+portrait_expression = &"concerned"
+next_line_id = &"white_noise_access"
+
+[sub_resource type="Resource" id="LineAccess"]
+script = ExtResource("2_line")
+id = &"white_noise_access"
+speaker = ExtResource("3_lao_pi")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_COCKPIT_MANUAL_ACCESS"
+portrait_expression = &"thoughtful"
+
+[resource]
+script = ExtResource("1_sequence")
+id = &"dialogue_m1_white_noise_cockpit_manual"
+start_line_id = &"white_noise_gravity"
+lines = [SubResource("LineGravity"), SubResource("LineStorm"), SubResource("LineAccess")]

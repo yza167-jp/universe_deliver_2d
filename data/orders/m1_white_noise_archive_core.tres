@@ -48,6 +48,6 @@ route_distance = 1.25
 risk_level = 4
 required_modules = [ExtResource("7_drive"), ExtResource("8_high_voltage")]
 recommended_modules = [ExtResource("9_backup"), ExtResource("10_laser")]
-customer_history_keys = Array[StringName]([&"ORDER_M1_WHITE_NOISE_ARCHIVE_CORE_HISTORY_01", &"ORDER_M1_WHITE_NOISE_ARCHIVE_CORE_HISTORY_02", &"ORDER_M1_WHITE_NOISE_ARCHIVE_CORE_HISTORY_03"])
+customer_history_keys = Array[StringName]([&"ORDER_M1_WHITE_NOISE_ARCHIVE_CORE_HISTORY_01", &"ORDER_M1_WHITE_NOISE_ARCHIVE_CORE_HISTORY_02", &"ORDER_M1_WHITE_NOISE_ARCHIVE_CORE_HISTORY_03", &"ORDER_M1_WHITE_NOISE_ARCHIVE_CORE_HISTORY_04", &"ORDER_M1_WHITE_NOISE_ARCHIVE_CORE_HISTORY_05"])
 story_requirements = Array[StringName]([&"story_m1_red_sand_shielding_retrofit_completed"])
 completion_flags = Array[StringName]([&"story_m1_white_noise_archive_core_completed"])

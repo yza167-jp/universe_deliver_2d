@@ -808,11 +808,20 @@ func _translate_cargo_description(
 	cargo: CargoDefinition,
 	fallback: String
 ) -> String:
-	return (
+	if cargo == null:
+		return fallback
+	var company_description: String = _translate_key(
+		cargo.company_description_key,
 		fallback
-		if cargo == null
-		else _translate_key(cargo.company_description_key, fallback)
 	)
+	var story_description: String = _translate_key(
+		cargo.story_description_key,
+		fallback
+	)
+	return "\n".join(PackedStringArray([
+		tr("UI_ORDER_CARGO_COMPANY_RECORD_FORMAT") % company_description,
+		tr("UI_ORDER_CARGO_CONTEXT_NOTE_FORMAT") % story_description,
+	]))
 
 
 func _translate_delivery_type(

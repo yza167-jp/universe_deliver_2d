@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="WhiteNoiseMainOrderContent" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/definitions/white_noise_main_order_content.gd" id="1_content"]
+[ext_resource type="Resource" path="res://data/orders/m1_white_noise_archive_core.tres" id="2_order"]
+[ext_resource type="Resource" path="res://data/dialogue/m1_white_noise_cockpit_manual.tres" id="3_manual"]
+[ext_resource type="Resource" path="res://data/dialogue/m1_white_noise_travel_main.tres" id="4_main"]
+[ext_resource type="Resource" path="res://data/dialogue/m1_white_noise_travel_radio.tres" id="5_radio"]
+[ext_resource type="Resource" path="res://data/dialogue/m1_white_noise_travel_cargo.tres" id="6_cargo"]
+
+[resource]
+script = ExtResource("1_content")
+id = &"white_noise_main_order_content"
+order = ExtResource("2_order")
+cockpit_manual_dialogue = ExtResource("3_manual")
+cockpit_travel_main_dialogue = ExtResource("4_main")
+cockpit_travel_radio_dialogue = ExtResource("5_radio")
+cockpit_travel_cargo_dialogue = ExtResource("6_cargo")
+cockpit_travel_phase_name_keys = Array[StringName]([&"UI_M1_WHITE_NOISE_COCKPIT_PHASE_DEPARTURE", &"UI_M1_WHITE_NOISE_COCKPIT_PHASE_CRUISE", &"UI_M1_WHITE_NOISE_COCKPIT_PHASE_APPROACH", &"UI_M1_WHITE_NOISE_COCKPIT_PHASE_COMPLETED"])
+cockpit_travel_phase_detail_keys = Array[StringName]([&"UI_M1_WHITE_NOISE_COCKPIT_DETAIL_DEPARTURE", &"UI_M1_WHITE_NOISE_COCKPIT_DETAIL_CRUISE", &"UI_M1_WHITE_NOISE_COCKPIT_DETAIL_APPROACH", &"UI_M1_WHITE_NOISE_COCKPIT_DETAIL_COMPLETED"])
+cockpit_company_note_key = &"UI_M1_WHITE_NOISE_COCKPIT_COMPANY_NOTE"
+cockpit_cargo_note_key = &"UI_M1_WHITE_NOISE_COCKPIT_CARGO_NOTE"
+cockpit_travel_completion_flag = &"story_m1_white_noise_cockpit_travel_completed"

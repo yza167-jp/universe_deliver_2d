@@ -1011,6 +1011,15 @@ T-053 起，`FlightControlsHelp` 还绑定场景传入的 `SettingsService`，�
 - 旅行由 `TravelSequenceController` 按阶段触发视觉、音频和对话。
 - 旅行结束只传递目的地与订单状态到 Scene Router。
 
+T-122 在通用驾驶舱外增加订单级 `WhiteNoiseMainOrderContent` Resource，保存
+白噪主单的手动老皮对白、必播旅行对白、收音机/货舱对白、四段状态 Key、设备
+备注和独立完成标记。`Cockpit` 只依据当前活动订单稳定 ID 选择该 Resource，
+`TravelSequenceController` 仍只负责通用阶段推进；对白已读继续由
+`DialogueRuntime` 使用 sequence/line ID 写入 v2 状态，不另建白噪 Manager。
+订单终端以 `CargoDefinition.company_description_key` 和
+`story_description_key` 为同一货物的两份权威文本，分别标成公司记录与实际
+用途，避免 UI 自行推断文明冲突。
+
 ## 11. 存档
 
 ### 11.1 格式
