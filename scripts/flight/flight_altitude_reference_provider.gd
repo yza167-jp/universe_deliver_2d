@@ -318,11 +318,11 @@ static func is_motion_invariant_violated(
 	current_ship_route_y: float,
 	start_ground_route_y: float,
 	current_ground_route_y: float,
-	start_final_agl_meters: float,
-	current_final_agl_meters: float,
+	minimum_final_agl_meters: float,
+	maximum_final_agl_meters: float,
 	meters_per_unit: float,
 	minimum_expected_change_meters: float,
-	maximum_final_change_meters: float
+	maximum_final_range_meters: float
 ) -> bool:
 	var expected_agl_change: float = absf(
 		(
@@ -332,12 +332,15 @@ static func is_motion_invariant_violated(
 		)
 		* maxf(meters_per_unit, 0.001)
 	)
-	var final_agl_change: float = absf(
-		current_final_agl_meters - start_final_agl_meters
+	## Endpoint delta alone misclassifies a responsive smoothed value that moves
+	## away and returns while the raw target crosses it. The observed range still
+	## distinguishes that motion from a genuinely frozen output.
+	var final_agl_range: float = absf(
+		maximum_final_agl_meters - minimum_final_agl_meters
 	)
 	return (
 		expected_agl_change >= maxf(minimum_expected_change_meters, 0.0)
-		and final_agl_change <= maxf(maximum_final_change_meters, 0.0)
+		and final_agl_range <= maxf(maximum_final_range_meters, 0.0)
 	)
 
 

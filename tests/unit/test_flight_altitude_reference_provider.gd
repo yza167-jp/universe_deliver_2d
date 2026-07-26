@@ -220,7 +220,13 @@ func _test_motion_invariant_detection(failures: Array[String]) -> void:
 		)
 		and not FlightAltitudeReferenceProvider.is_motion_invariant_violated(
 			300.0, 280.0, 660.0, 640.0, 360.0, 360.0, 1.0, 12.0, 0.75
+		)
+		and not FlightAltitudeReferenceProvider.is_motion_invariant_violated(
+			538.0, 512.0, 660.0, 660.0, 133.2, 140.1, 1.0, 12.0, 0.75
 		),
-		"The runtime invariant must detect a frozen Final AGL without flagging correct or terrain-following motion.",
+		(
+			"The runtime invariant must detect a frozen Final AGL without "
+			+ "flagging correct, terrain-following, or pull-up reversal motion."
+		),
 		failures
 	)

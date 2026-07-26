@@ -214,7 +214,10 @@ func _build_choice_buttons() -> void:
 
 func _clear_choice_buttons() -> void:
 	for child: Node in choice_container.get_children():
-		child.free()
+		## A pressed Button is locked until its signal callback returns. Detach it
+		## immediately so container state stays current, then defer destruction.
+		choice_container.remove_child(child)
+		child.queue_free()
 	choice_container.visible = false
 
 

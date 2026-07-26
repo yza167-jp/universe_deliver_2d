@@ -137,6 +137,8 @@
 | 2026-07-24 | Gate D Round 3 | Passed | 接受非阻塞观察文字、可选护盾备用电源和最终雷暴轨迹；关闭 M0 完整闭环验收 | 用户明确确认 Human Check 通过。T-055、阶段 F 与 M0 标记 `Done`；M0 共 `6/6` 阶段、`35/35` 任务完成，M1 规划资格解锁，但本轮不创建或领取 M1 任务。 |
 | 2026-07-26 | Gate E Round 1 | Rework required | 模块槽语义；持久档案机柜与一次性激活；可读订单历史；赤砂回访独立文案；三段短航线原因；中文缺字 | 用户确认 M1 基础流程可运行，但六项信息表达与成长连续性阻塞验收。T-110 至 T-114 保持 `Done`；T-119 与阶段 B 回退 `In Progress`；T-120 保持 `Blocked`。 |
 | 2026-07-26 | Gate E Round 2 预检 | Human Check | 三维模块语义；旧机柜接通流程；逐条只读历史；数据驱动回访呈现；维修服务三段路线；共享中文字体回退 | Godot 4.7.1 headless import、67 套测试、T-111～T-114、v1→v2、M1 聚合、M0 闭环、完整项目检查和 11 张 640×360 Metal 录帧通过。T-119 与阶段 B 返回 `Human Check`；T-120 继续 `Blocked`，等待玩家 Round 2 判断。 |
+| 2026-07-26 | Gate E Round 2 | Rework required | 阶段 8 拉起的高度冻结误报；真实对白选择按钮的锁定对象释放 | 玩家日志确认 canonical AGL 的 RayCast、剖面和 Final 值仍有效，但只比较窗口首尾会误判正常平滑反转；`Button.pressed` 发射期间同步释放当前选项会中断 UI 刷新。T-119 与阶段 B 回退 `In Progress`，T-110 至 T-114 保持 `Done`，T-120 保持 `Blocked`。 |
+| 2026-07-26 | Gate E Round 3 预检 | Human Check | Final AGL 窗口范围不变量；选项按钮延迟释放；真实拉起与按钮回归 | Godot 4.7.1 headless import、67 套测试、全部项目烟雾、M1 聚合、M0 闭环、非 headless Metal T-112/对白烟雾和 11 张 640×360 录帧通过。T-119 与阶段 B 返回 `Human Check`；T-120 继续 `Blocked`，等待玩家 Round 3 聚焦复测。 |
 
 ## 开放问题
 

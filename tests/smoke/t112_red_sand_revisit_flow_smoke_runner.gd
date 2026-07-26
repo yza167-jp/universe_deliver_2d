@@ -9,10 +9,13 @@ const TEST_SAVE_PATH: String = "user://t112_red_sand_revisit.json"
 const TEST_TEMP_PATH: String = "user://t112_red_sand_revisit.tmp"
 const TEST_BACKUP_PATH: String = "user://t112_red_sand_revisit.backup.json"
 const TEST_REJECTED_PATH: String = "user://t112_red_sand_revisit.invalid.json"
-const LOCAL_CHOICE_ID: StringName = &"keep_retrofit_record_local"
 const REVISIT_CODEX_ID: StringName = (
 	&"codex_cargo_relay_pattern_shielding_materials"
 )
+const PULL_UP_SAMPLE_FRAMES: int = 27
+const PULL_UP_START_RAW_AGL_METERS: float = 122.5
+const PULL_UP_END_RAW_AGL_METERS: float = 148.0
+const PULL_UP_START_FILTERED_AGL_METERS: float = 141.77497
 
 var _failures: PackedStringArray = []
 var _original_locale: String = ""
@@ -249,6 +252,7 @@ func _complete_route(route: RedSandFlight) -> bool:
 		== route.get_active_segment().checkpoint_id,
 		"T-112 final approach did not become local stage 3/3 with its safe checkpoint."
 	)
+	_exercise_stage_eight_pull_up(route, ship)
 	ship.position += Vector2(280.0, 44.0)
 	ship.velocity = Vector2(240.0, 75.0)
 	_check(
@@ -280,6 +284,86 @@ func _complete_route(route: RedSandFlight) -> bool:
 	return _scene_router.current_stage == SceneRouterService.Stage.ARRIVAL
 
 
+func _exercise_stage_eight_pull_up(
+	route: RedSandFlight,
+	ship: FlightLabShip
+) -> void:
+	var provider: FlightAltitudeReferenceProvider = (
+		route.get_altitude_reference_provider()
+	)
+	_check(provider != null, "T-112 pull-up regression requires canonical AGL.")
+	if provider == null:
+		return
+
+	ship.rotation = 0.0
+	ship.position.x = route.route_origin_x + 33450.0
+	route._physics_process(0.0)
+	if not provider.is_current_source_valid():
+		_check(false, "T-112 pull-up regression could not establish Stage 8 AGL.")
+		return
+	ship.position.y += (
+		provider.raw_profile_altitude_meters
+		- PULL_UP_START_RAW_AGL_METERS
+	)
+	route._physics_process(0.0)
+	_check(
+		absf(
+			provider.raw_profile_altitude_meters
+			- PULL_UP_START_RAW_AGL_METERS
+		) < 0.05,
+		"T-112 pull-up regression could not place the ship at its low AGL sample."
+	)
+
+	## Reproduce a responsive smoothed value whose endpoints nearly match while
+	## it first falls and then rises as the raw Stage 8 AGL crosses it.
+	provider.player_visible_altitude_meters = PULL_UP_START_FILTERED_AGL_METERS
+	provider.final_agl_altitude_meters = PULL_UP_START_FILTERED_AGL_METERS
+	provider.last_valid_agl_meters = PULL_UP_START_FILTERED_AGL_METERS
+	route._altitude_invariant_latched = false
+	route._reset_altitude_invariant_window()
+	var first_final_agl: float = 0.0
+	var minimum_final_agl: float = INF
+	var maximum_final_agl: float = -INF
+	var pull_up_step: float = (
+		PULL_UP_END_RAW_AGL_METERS - PULL_UP_START_RAW_AGL_METERS
+	) / float(PULL_UP_SAMPLE_FRAMES)
+	for frame_index: int in PULL_UP_SAMPLE_FRAMES:
+		ship.position.y -= pull_up_step
+		ship.velocity = Vector2(110.0, -98.48)
+		route._physics_process(1.0 / 60.0)
+		var final_agl: float = provider.final_agl_altitude_meters
+		if frame_index == 0:
+			first_final_agl = final_agl
+		minimum_final_agl = minf(minimum_final_agl, final_agl)
+		maximum_final_agl = maxf(maximum_final_agl, final_agl)
+
+	var final_agl: float = provider.final_agl_altitude_meters
+	var observed_range: float = maximum_final_agl - minimum_final_agl
+	_check(
+		provider.is_current_source_valid()
+		and absf(
+			provider.raw_profile_altitude_meters
+			- PULL_UP_END_RAW_AGL_METERS
+		) < 0.05
+		and absf(final_agl - first_final_agl)
+		<= RedSandFlight.ALTITUDE_INVARIANT_MAX_FINAL_RANGE_METERS
+		and observed_range > 4.0
+		and not route.has_altitude_invariant_violation(),
+		(
+			(
+				"T-112 Stage 8 pull-up was mistaken for frozen AGL: "
+				+ "first=%.2f final=%.2f range=%.2f raw=%.2f."
+			)
+			% [
+				first_final_agl,
+				final_agl,
+				observed_range,
+				provider.raw_profile_altitude_meters,
+			]
+		)
+	)
+
+
 func _complete_revisit_arrival(arrival: RedSandArrival) -> bool:
 	_check(arrival != null, "T-112 revisit arrival did not instantiate.")
 	if arrival == null:
@@ -302,9 +386,24 @@ func _complete_revisit_arrival(arrival: RedSandArrival) -> bool:
 		== DialogueRuntime.SequenceSkipResult.STOPPED_AT_CHOICE,
 		"T-112 dialogue could not reach the local record choice."
 	)
+	var choice_container: VBoxContainer = dialogue_ui.get_node(
+		"DialoguePanel/Margin/Content/ChoiceContainer"
+	) as VBoxContainer
+	var local_choice_button: Button = (
+		choice_container.get_child(1) as Button
+		if choice_container != null and choice_container.get_child_count() >= 2
+		else null
+	)
 	_check(
-		dialogue_ui.select_choice(LOCAL_CHOICE_ID),
-		"T-112 local-record choice could not be selected."
+		local_choice_button != null,
+		"T-112 local-record choice did not expose its real Button."
+	)
+	if local_choice_button != null:
+		local_choice_button.pressed.emit()
+	_check(
+		_game_state.has_story_flag(_contract.keep_local_record_flag)
+		and choice_container.get_child_count() == 0,
+		"T-112 real local-record Button did not apply its branch and clear safely."
 	)
 	_check(
 		dialogue_ui.skip_dialogue_sequence()
@@ -564,7 +663,8 @@ func _finish() -> void:
 	if _failures.is_empty():
 		print(
 			"[t112-red-sand-revisit-flow] PASS: short safe route, changed "
-			+ "facility, checkpoint retry, Iya/Lao Pi choice, atomic rewards, "
+			+ "facility, Stage 8 pull-up AGL, checkpoint retry, real Iya/Lao Pi "
+			+ "choice buttons, atomic rewards, "
 			+ "station growth, save, restart, and Continue."
 		)
 		quit(0)

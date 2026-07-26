@@ -153,6 +153,46 @@ export GODOT_BIN="/Applications/Godot.app/Contents/MacOS/Godot"
   不判断最终像素美术或英文完成度。
 - `gate_e` 自动存档关闭；`F6` 重置隔离快照，退出后不保留这次试玩进度。
 
+### Gate E Round 2 人工反馈
+
+**结果：** `Rework required`。
+
+1. 阶段 8 低空拉起时，canonical AGL 仍为有效 `PROFILE`，RayCast 与剖面也
+   一致，但调试不变量把窗口内先降后升、首尾接近的正常平滑响应误报为高度冻结。
+2. 赤砂回访抵达对白点击记录选择时，选项按钮仍处于 `pressed` 信号发射过程，
+   UI 同步释放该按钮导致 Godot 报告锁定对象不能释放，并可能中断下一行刷新。
+
+本轮只修复以上两个 Gate E 阻塞，不重新设计已经通过的模块、档案、历史、
+回访短航线或中文字体，也不开始 T-120。
+
+### Gate E Round 3 聚焦复测
+
+**状态：** 自动检查与真实 Metal 烟雾已通过；T-119 和阶段 B 为
+`Human Check`，T-120 继续 `Blocked`。
+
+使用同一隔离场景启动：
+
+```bash
+export GODOT_BIN="/Applications/Godot.app/Contents/MacOS/Godot"
+"$GODOT_BIN" --path . --language zh_CN -- --m1-debug=gate_e
+```
+
+完整流程预计仍为 20–40 分钟；如 Round 2 其余项目已确认，可聚焦以下
+10–20 分钟复测：
+
+1. 完成赤砂回访短航线。进入阶段 8 后先下降到约 `120–150 m`，再明显拉起；
+   HUD 高度应继续响应，终端不得出现 `Altitude invariant violated`。
+2. 在伊娅/老皮的记录选择处用鼠标或键盘激活一个实际选项按钮；下一行应立即
+   正常显示，不得出现 `Object is locked and can't be freed` 或脚本错误。
+3. 继续完成抵达互动、结算和返站，确认选择对应的故事标记、档案接通和历史记录
+   仍正常保留。
+4. 如需覆盖另一选择，按 `F6` 重置隔离场景后重复至选择处；两个按钮都必须能
+   进入各自下一行，不能留下旧选项或锁死对白。
+
+仍需人工判断：真实操作节奏下阶段 8 拉起是否自然、两条选择的视觉推进是否
+连贯，以及完整回访闭环是否没有新回归。自动测试只能确认数值、状态和无错误
+实例化，不能代替这些 Gate E 判断。
+
 ### 通过后
 
 - T-119 Done。

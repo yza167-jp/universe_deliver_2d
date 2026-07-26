@@ -83,9 +83,22 @@ func run() -> Array[String]:
 		"Whole-sequence skip must never choose a branch.",
 		failures
 	)
+	var first_choice_button: Button = choice_container.get_child(0) as Button
 	expect_true(
-		dialogue_ui.select_choice(&"follow_process"),
-		"Player choice must remain usable after whole-sequence skip.",
+		first_choice_button != null,
+		"Choice UI must expose a real focusable Button.",
+		failures
+	)
+	if first_choice_button != null:
+		first_choice_button.pressed.emit()
+	expect_true(
+		game_state.has_story_flag(&"story_dialogue_test_professional")
+		and choice_container.get_child_count() == 0
+		and dialogue_ui.get_full_text() == tr("DIALOGUE_TEST_RESPONSE_PROCESS"),
+		(
+			"A real Button.pressed path must apply the choice, detach old "
+			+ "buttons, and reveal the selected response."
+		),
 		failures
 	)
 	expect_true(

@@ -13,7 +13,7 @@ const ENTRY_START_SEGMENT_INDEX: int = 3
 const ENTRY_FINALIZE_SEGMENT_INDEX: int = 7
 const ALTITUDE_INVARIANT_WINDOW_SECONDS: float = 0.45
 const ALTITUDE_INVARIANT_EXPECTED_CHANGE_METERS: float = 12.0
-const ALTITUDE_INVARIANT_MAX_FINAL_CHANGE_METERS: float = 0.75
+const ALTITUDE_INVARIANT_MAX_FINAL_RANGE_METERS: float = 0.75
 ## Profile is authoritative while PhysicsServer2D catches up with moved StaticBody2D
 ## transforms. Four calls also cover debug/test jumps across all late route stages.
 const SURFACE_FRAME_RAYCAST_DEFERRED_FRAMES: int = 4
@@ -60,7 +60,8 @@ var _altitude_invariant_latched: bool = false
 var _altitude_invariant_elapsed: float = 0.0
 var _altitude_invariant_start_ship_y: float = 0.0
 var _altitude_invariant_start_ground_y: float = 0.0
-var _altitude_invariant_start_final_agl: float = 0.0
+var _altitude_invariant_min_final_agl: float = 0.0
+var _altitude_invariant_max_final_agl: float = 0.0
 var _controls_help_open: bool = false
 var _was_tree_paused: bool = false
 var _direct_test_mode: bool = false
@@ -968,30 +969,55 @@ func _update_altitude_invariant(delta: float) -> void:
 		_altitude_invariant_start_ground_y = (
 			_altitude_reference_provider.ground_route_y
 		)
-		_altitude_invariant_start_final_agl = (
+		_altitude_invariant_min_final_agl = (
 			_altitude_reference_provider.final_agl_altitude_meters
 		)
+		_altitude_invariant_max_final_agl = (
+			_altitude_reference_provider.final_agl_altitude_meters
+		)
+	var current_final_agl: float = (
+		_altitude_reference_provider.final_agl_altitude_meters
+	)
+	_altitude_invariant_min_final_agl = minf(
+		_altitude_invariant_min_final_agl,
+		current_final_agl
+	)
+	_altitude_invariant_max_final_agl = maxf(
+		_altitude_invariant_max_final_agl,
+		current_final_agl
+	)
 	_altitude_invariant_elapsed += delta
 	if _altitude_invariant_elapsed < ALTITUDE_INVARIANT_WINDOW_SECONDS:
 		return
+	var observed_final_range: float = (
+		_altitude_invariant_max_final_agl
+		- _altitude_invariant_min_final_agl
+	)
 	if (
 		FlightAltitudeReferenceProvider.is_motion_invariant_violated(
 			_altitude_invariant_start_ship_y,
 			_altitude_reference_provider.ship_reference_route_y,
 			_altitude_invariant_start_ground_y,
 			_altitude_reference_provider.ground_route_y,
-			_altitude_invariant_start_final_agl,
-			_altitude_reference_provider.final_agl_altitude_meters,
+			_altitude_invariant_min_final_agl,
+			_altitude_invariant_max_final_agl,
 			_altitude_reference_provider.meters_per_route_unit,
 			ALTITUDE_INVARIANT_EXPECTED_CHANGE_METERS,
-			ALTITUDE_INVARIANT_MAX_FINAL_CHANGE_METERS
+			ALTITUDE_INVARIANT_MAX_FINAL_RANGE_METERS
 		)
 		and not _altitude_invariant_latched
 	):
 		_altitude_invariant_latched = true
 		push_error(
-			"Altitude invariant violated: vertical_velocity=%.2f %s"
-			% [flight_ship.get_vertical_speed(), get_altitude_diagnostic_snapshot()]
+			(
+				"Altitude invariant violated: vertical_velocity=%.2f "
+				+ "observed_final_range=%.2f %s"
+			)
+			% [
+				flight_ship.get_vertical_speed(),
+				observed_final_range,
+				get_altitude_diagnostic_snapshot(),
+			]
 		)
 	_reset_altitude_invariant_window()
 
@@ -1000,7 +1026,8 @@ func _reset_altitude_invariant_window() -> void:
 	_altitude_invariant_elapsed = 0.0
 	_altitude_invariant_start_ship_y = 0.0
 	_altitude_invariant_start_ground_y = 0.0
-	_altitude_invariant_start_final_agl = 0.0
+	_altitude_invariant_min_final_agl = 0.0
+	_altitude_invariant_max_final_agl = 0.0
 
 
 func has_altitude_invariant_violation() -> bool:

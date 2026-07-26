@@ -91,12 +91,32 @@ func _run_smoke() -> void:
 	dialogue_ui.hide_history()
 	_check(not history_panel.visible, "Dialogue history did not close.")
 
+	var first_choice_button: Button = choice_container.get_child(0) as Button
+	_check(first_choice_button != null, "Choice prompt did not expose a real Button.")
+	if first_choice_button != null:
+		first_choice_button.pressed.emit()
+	await process_frame
+	_check(
+		game_state.has_story_flag(&"story_dialogue_test_professional")
+		and choice_container.get_child_count() == 0
+		and dialogue_ui.get_full_text() == tr("DIALOGUE_TEST_RESPONSE_PROCESS"),
+		"Real choice-button activation did not advance without retaining locked buttons."
+	)
+	_check(
+		dialogue_ui.skip_dialogue_sequence()
+		== DialogueRuntime.SequenceSkipResult.FINISHED,
+		"Dialogue could not finish after real choice-button activation."
+	)
+
 	host.queue_free()
 	game_state.free()
 	TranslationServer.set_locale(original_locale)
 	await process_frame
 	if _failures.is_empty():
-		print("[dialogue-ui] PASS: Chinese glyphs, layout, history, localization, and safe sequence skip.")
+		print(
+			"[dialogue-ui] PASS: Chinese glyphs, layout, history, localization, "
+			+ "real choice activation, and safe sequence skip."
+		)
 		quit(0)
 		return
 	for failure: String in _failures:
