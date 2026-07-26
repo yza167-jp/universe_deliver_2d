@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://scripts/flight/white_noise_flight.gd" id="1_flight"]
 [ext_resource type="Script" path="res://scripts/flight/white_noise_route_visuals.gd" id="2_visuals"]
@@ -17,6 +17,7 @@
 [ext_resource type="Script" path="res://scripts/flight/white_noise_environment_feedback.gd" id="15_environment_feedback"]
 [ext_resource type="Texture2D" path="res://assets/flight_particle_streak.svg" id="16_snow_texture"]
 [ext_resource type="Resource" path="res://data/settlements/white_noise_settlement_contract.tres" id="17_settlement"]
+[ext_resource type="Resource" path="res://data/settlements/white_noise_side_order_contract.tres" id="18_side_settlement"]
 
 [sub_resource type="RectangleShape2D" id="ShapeShip"]
 size = Vector2(38, 16)
@@ -51,6 +52,7 @@ route_definition = ExtResource("8_route")
 planet_definition = ExtResource("9_planet")
 data_registry = ExtResource("10_registry")
 settlement_contract = ExtResource("17_settlement")
+side_order_contract = ExtResource("18_side_settlement")
 
 [node name="Backdrop" type="CanvasLayer" parent="."]
 layer = -20

@@ -143,6 +143,10 @@ run_godot_checked \
   "White Noise production route, atomic settlement, station growth, save, and Continue" \
   --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t125_white_noise_main_flow_smoke_runner.gd
 
+run_godot_checked \
+  "White Noise voluntary returned-memory side flow, shortened route, choice, settlement, and Continue" \
+  --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t126_white_noise_side_flow_smoke_runner.gd
+
 for scenario_id in \
   gate_e \
   red_sand_revisit \

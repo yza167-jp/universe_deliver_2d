@@ -421,6 +421,7 @@ func _test_order_contracts(
 					if order.id in [
 						&"order_m1_red_sand_shielding_retrofit",
 						&"order_m1_white_noise_archive_core",
+						&"side_white_noise_returned_memory",
 					]
 					else OrderDefinition.ContentReadiness.REGISTERED_ONLY
 				)

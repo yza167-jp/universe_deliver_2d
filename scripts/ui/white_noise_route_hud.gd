@@ -63,13 +63,14 @@ func refresh() -> void:
 	if segment == null:
 		return
 	_stage_label.text = tr(segment.display_name_key)
+	_hint_label.text = tr(
+		"UI_WHITE_NOISE_SIDE_ROUTE_HINTS"
+		if _flight.is_side_order_route()
+		else "UI_WHITE_NOISE_ROUTE_HINTS"
+	)
 	_progress_label.text = tr("UI_WHITE_NOISE_ROUTE_PROGRESS") % [
 		roundi(_flight.get_overall_progress() * 100.0),
-		roundi(maxf(
-			_flight.get_route_definition().get_total_distance()
-			- _flight.get_route_distance(),
-			0.0
-		)),
+		roundi(_flight.get_remaining_route_distance()),
 	]
 	if (
 		_storm_state_name != &"ACTIVE"
@@ -163,6 +164,9 @@ func is_hint_visible() -> bool:
 func _refresh_branch_label() -> void:
 	if _flight == null:
 		return
+	if _flight.is_side_order_route():
+		_branch_label.text = tr("UI_WHITE_NOISE_SIDE_ROUTE_LABEL")
+		return
 	var branch_id: StringName = _flight.get_active_branch_id()
 	if branch_id.is_empty():
 		_branch_label.text = tr("UI_WHITE_NOISE_BRANCH_PENDING")
@@ -218,7 +222,14 @@ func show_retry() -> void:
 
 
 func show_route_complete() -> void:
-	_show_status(tr("UI_WHITE_NOISE_ROUTE_COMPLETE"), 3600.0)
+	_show_status(
+		tr(
+			"UI_WHITE_NOISE_SIDE_ROUTE_COMPLETE"
+			if _flight != null and _flight.is_side_order_route()
+			else "UI_WHITE_NOISE_ROUTE_COMPLETE"
+		),
+		3600.0
+	)
 
 
 func show_controls_help() -> void:

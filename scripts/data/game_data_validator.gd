@@ -11,6 +11,9 @@ const M1_RED_SAND_REVISIT_ORDER_ID: StringName = (
 	&"order_m1_red_sand_shielding_retrofit"
 )
 const M1_WHITE_NOISE_ORDER_ID: StringName = &"order_m1_white_noise_archive_core"
+const M1_WHITE_NOISE_SIDE_ORDER_ID: StringName = (
+	&"side_white_noise_returned_memory"
+)
 const M1_CANOPY_SIDE_ORDER_ID: StringName = &"side_canopy_spore_drop"
 const M1_TIDAL_SIDE_ORDER_ID: StringName = &"side_tidal_beacon_before_eye"
 const M1_REQUIRED_PLANET_IDS: Array[StringName] = [
@@ -31,6 +34,7 @@ const M1_PLAYABLE_ORDER_IDS: Array[StringName] = [
 	M1_ACTUAL_M0_ORDER_ID,
 	M1_RED_SAND_REVISIT_ORDER_ID,
 	M1_WHITE_NOISE_ORDER_ID,
+	M1_WHITE_NOISE_SIDE_ORDER_ID,
 ]
 const M1_REQUIRED_ORDER_IDS: Array[StringName] = [
 	M1_ACTUAL_M0_ORDER_ID,
@@ -39,11 +43,11 @@ const M1_REQUIRED_ORDER_IDS: Array[StringName] = [
 	&"order_m1_canopy_ecology_cargo",
 	&"order_m1_tidal_weather_core",
 	M1_CANOPY_SIDE_ORDER_ID,
-	&"side_white_noise_returned_memory",
+	M1_WHITE_NOISE_SIDE_ORDER_ID,
 	M1_TIDAL_SIDE_ORDER_ID,
 ]
 const M1_REQUIRED_SIDE_ORDER_IDS: Array[StringName] = [
-	&"side_white_noise_returned_memory",
+	M1_WHITE_NOISE_SIDE_ORDER_ID,
 	M1_CANOPY_SIDE_ORDER_ID,
 	M1_TIDAL_SIDE_ORDER_ID,
 ]
@@ -720,6 +724,37 @@ static func _validate_m1_packet_contract(
 		):
 			errors.append(
 				"M1 White Noise main order must expose its T-125 progression rewards."
+			)
+	var white_noise_side_order: OrderDefinition = registry.find_order(
+		M1_WHITE_NOISE_SIDE_ORDER_ID
+	)
+	if white_noise_side_order != null:
+		if (
+			white_noise_side_order.order_type
+			!= OrderDefinition.OrderType.SIDE
+			or not is_equal_approx(
+				white_noise_side_order.route_distance,
+				17000.0
+			)
+			or white_noise_side_order.required_completed_order_ids
+			!= [M1_WHITE_NOISE_ORDER_ID]
+			or not white_noise_side_order.chapter_reward.is_empty()
+			or not white_noise_side_order.planet_unlock_rewards.is_empty()
+			or not white_noise_side_order.story_requirements.has(
+				&"story_m1_white_noise_archive_core_completed"
+			)
+			or not _order_module_list_has_id(
+				white_noise_side_order.required_modules,
+				M1_HIGH_VOLTAGE_MODULE_ID
+			)
+			or white_noise_side_order.relation_rewards.get(
+				M1ProgressRules.PLANET_WHITE_NOISE,
+				0
+			) != 1
+		):
+			errors.append(
+				"M1 White Noise side order must reuse the 17000 m route "
+				+ "without becoming a Canopy mainline prerequisite."
 			)
 	var canopy_side_order: OrderDefinition = registry.find_order(M1_CANOPY_SIDE_ORDER_ID)
 	if (

@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_sequence.gd" id="1_sequence"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_line.gd" id="2_line"]
+[ext_resource type="Resource" path="res://data/characters/lao_pi.tres" id="3_lao_pi"]
+
+[sub_resource type="Resource" id="LineCompany"]
+script = ExtResource("2_line")
+id = &"returned_memory_company_record"
+speaker = ExtResource("3_lao_pi")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_SIDE_TRAVEL_RADIO_COMPANY"
+portrait_expression = &"neutral"
+next_line_id = &"returned_memory_owner_request"
+
+[sub_resource type="Resource" id="LineOwner"]
+script = ExtResource("2_line")
+id = &"returned_memory_owner_request"
+speaker = ExtResource("3_lao_pi")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_SIDE_TRAVEL_RADIO_OWNER"
+portrait_expression = &"concerned"
+
+[resource]
+script = ExtResource("1_sequence")
+id = &"dialogue_m1_white_noise_side_travel_radio"
+start_line_id = &"returned_memory_company_record"
+lines = [SubResource("LineCompany"), SubResource("LineOwner")]

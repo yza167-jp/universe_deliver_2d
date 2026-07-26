@@ -269,8 +269,11 @@ func _run_smoke() -> void:
 		terminal_ui.get_selected_order_id() == WHITE_SIDE_ORDER_ID
 		and game_state.current_order_id.is_empty()
 		and not terminal_ui.is_accept_enabled()
-		and terminal_ui.get_feedback_text().contains("航路资料尚未开放"),
-		"Mouse selection must inspect registered-only optional content without accepting it."
+		and terminal_ui.get_feedback_text().contains(
+			"完成白噪星档案主线后获得"
+		),
+		"Mouse selection must inspect the playable optional order while "
+		+ "preserving its White Noise mainline prerequisite."
 	)
 	_check(terminal_ui.select_order(REVISIT_ORDER_ID), "Revisit could not be selected for keyboard focus.")
 	var revisit_button: Button = terminal_ui.get_directory_button(REVISIT_ORDER_ID)
@@ -286,7 +289,7 @@ func _run_smoke() -> void:
 	_check(
 		not terminal_ui.accept_current_order()
 		and game_state.current_order_id.is_empty(),
-		"Registered-only content was accepted through the explicit action."
+		"A playable optional order bypassed its mainline prerequisite."
 	)
 	for text: String in terminal_ui.get_directory_entry_texts():
 		_check(

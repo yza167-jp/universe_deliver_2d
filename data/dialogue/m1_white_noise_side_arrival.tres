@@ -1,0 +1,119 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=25 format=3]
+
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_sequence.gd" id="1_sequence"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_line.gd" id="2_line"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_choice.gd" id="3_choice"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_effect.gd" id="4_effect"]
+[ext_resource type="Resource" path="res://data/characters/white_noise_archivist.tres" id="5_archivist"]
+[ext_resource type="Resource" path="res://data/characters/white_noise_memory_owner.tres" id="6_owner"]
+
+[sub_resource type="Resource" id="EffectPrivate"]
+script = ExtResource("4_effect")
+effect_id = &"story_side_white_noise_choice_keep_private"
+
+[sub_resource type="Resource" id="EffectAnonymous"]
+script = ExtResource("4_effect")
+effect_id = &"story_side_white_noise_choice_anonymous_index"
+
+[sub_resource type="Resource" id="EffectLocalOriginal"]
+script = ExtResource("4_effect")
+effect_id = &"story_side_white_noise_choice_local_original"
+
+[sub_resource type="Resource" id="EffectChoiceRecorded"]
+script = ExtResource("4_effect")
+effect_id = &"story_side_white_noise_choice_recorded"
+
+[sub_resource type="Resource" id="EffectArrivalCompleted"]
+script = ExtResource("4_effect")
+effect_id = &"story_side_white_noise_arrival_dialogue_completed"
+
+[sub_resource type="Resource" id="ChoicePrivate"]
+script = ExtResource("3_choice")
+id = &"returned_memory_keep_private"
+text_key = &"DIALOGUE_M1_WHITE_NOISE_SIDE_ARRIVAL_CHOICE_PRIVATE"
+effects = [SubResource("EffectPrivate")]
+next_line_id = &"returned_memory_private_response"
+
+[sub_resource type="Resource" id="ChoiceAnonymous"]
+script = ExtResource("3_choice")
+id = &"returned_memory_anonymous_index"
+text_key = &"DIALOGUE_M1_WHITE_NOISE_SIDE_ARRIVAL_CHOICE_ANONYMOUS"
+effects = [SubResource("EffectAnonymous")]
+next_line_id = &"returned_memory_anonymous_response"
+
+[sub_resource type="Resource" id="ChoiceLocalOriginal"]
+script = ExtResource("3_choice")
+id = &"returned_memory_local_original"
+text_key = &"DIALOGUE_M1_WHITE_NOISE_SIDE_ARRIVAL_CHOICE_LOCAL_ORIGINAL"
+effects = [SubResource("EffectLocalOriginal")]
+next_line_id = &"returned_memory_local_original_response"
+
+[sub_resource type="Resource" id="LineHandoff"]
+script = ExtResource("2_line")
+id = &"returned_memory_handoff"
+speaker = ExtResource("6_owner")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_SIDE_ARRIVAL_HANDOFF"
+portrait_expression = &"serious"
+next_line_id = &"returned_memory_daily_detail"
+
+[sub_resource type="Resource" id="LineDailyDetail"]
+script = ExtResource("2_line")
+id = &"returned_memory_daily_detail"
+speaker = ExtResource("6_owner")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_SIDE_ARRIVAL_DAILY_DETAIL"
+portrait_expression = &"thoughtful"
+next_line_id = &"returned_memory_authorization"
+
+[sub_resource type="Resource" id="LineAuthorization"]
+script = ExtResource("2_line")
+id = &"returned_memory_authorization"
+speaker = ExtResource("5_archivist")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_SIDE_ARRIVAL_AUTHORIZATION"
+portrait_expression = &"neutral"
+next_line_id = &"returned_memory_choice"
+
+[sub_resource type="Resource" id="LineChoice"]
+script = ExtResource("2_line")
+id = &"returned_memory_choice"
+speaker = ExtResource("6_owner")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_SIDE_ARRIVAL_CHOICE_PROMPT"
+portrait_expression = &"serious"
+choices = [SubResource("ChoicePrivate"), SubResource("ChoiceAnonymous"), SubResource("ChoiceLocalOriginal")]
+
+[sub_resource type="Resource" id="LinePrivateResponse"]
+script = ExtResource("2_line")
+id = &"returned_memory_private_response"
+speaker = ExtResource("6_owner")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_SIDE_ARRIVAL_PRIVATE_RESPONSE"
+portrait_expression = &"relieved"
+next_line_id = &"returned_memory_shared_close"
+
+[sub_resource type="Resource" id="LineAnonymousResponse"]
+script = ExtResource("2_line")
+id = &"returned_memory_anonymous_response"
+speaker = ExtResource("5_archivist")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_SIDE_ARRIVAL_ANONYMOUS_RESPONSE"
+portrait_expression = &"neutral"
+next_line_id = &"returned_memory_shared_close"
+
+[sub_resource type="Resource" id="LineLocalOriginalResponse"]
+script = ExtResource("2_line")
+id = &"returned_memory_local_original_response"
+speaker = ExtResource("6_owner")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_SIDE_ARRIVAL_LOCAL_ORIGINAL_RESPONSE"
+portrait_expression = &"thoughtful"
+next_line_id = &"returned_memory_shared_close"
+
+[sub_resource type="Resource" id="LineSharedClose"]
+script = ExtResource("2_line")
+id = &"returned_memory_shared_close"
+speaker = ExtResource("5_archivist")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_SIDE_ARRIVAL_SHARED_CLOSE"
+portrait_expression = &"friendly"
+effects = [SubResource("EffectChoiceRecorded"), SubResource("EffectArrivalCompleted")]
+
+[resource]
+script = ExtResource("1_sequence")
+id = &"dialogue_m1_white_noise_side_arrival"
+start_line_id = &"returned_memory_handoff"
+lines = [SubResource("LineHandoff"), SubResource("LineDailyDetail"), SubResource("LineAuthorization"), SubResource("LineChoice"), SubResource("LinePrivateResponse"), SubResource("LineAnonymousResponse"), SubResource("LineLocalOriginalResponse"), SubResource("LineSharedClose")]

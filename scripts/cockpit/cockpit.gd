@@ -73,6 +73,7 @@ const MUTED_TEXT: Color = Color("9aa7b5")
 @export var travel_cargo_dialogue: DialogueSequence
 @export var revisit_contract: RedSandRevisitContract
 @export var white_noise_content: WhiteNoiseMainOrderContent
+@export var white_noise_side_contract: WhiteNoiseSideOrderContract
 
 @onready var _title_label: Label = %TitleLabel
 @onready var _instruction_label: Label = %InstructionLabel
@@ -706,6 +707,10 @@ func _build_company_panel_text() -> String:
 		lines.append(tr(String(revisit_contract.cockpit_company_note_key)))
 	elif _is_white_noise_main() and white_noise_content != null:
 		lines.append(tr(String(white_noise_content.cockpit_company_note_key)))
+	elif _is_white_noise_side() and white_noise_side_contract != null:
+		lines.append(
+			tr(String(white_noise_side_contract.cockpit_company_note_key))
+		)
 	lines.append(travel_status)
 	return "\n".join(lines)
 
@@ -729,6 +734,10 @@ func _build_cargo_panel_text() -> String:
 		lines.append(tr(String(revisit_contract.cockpit_cargo_note_key)))
 	elif _is_white_noise_main() and white_noise_content != null:
 		lines.append(tr(String(white_noise_content.cockpit_cargo_note_key)))
+	elif _is_white_noise_side() and white_noise_side_contract != null:
+		lines.append(
+			tr(String(white_noise_side_contract.cockpit_cargo_note_key))
+		)
 	return "\n".join(lines)
 
 
@@ -1011,6 +1020,14 @@ func _get_travel_phase_key(phase: GameStateModel.TravelState) -> StringName:
 		)
 		if not white_noise_key.is_empty():
 			return white_noise_key
+	if _is_white_noise_side() and white_noise_side_contract != null:
+		var side_key: StringName = (
+			white_noise_side_contract.get_cockpit_travel_phase_name_key(
+				phase
+			)
+		)
+		if not side_key.is_empty():
+			return side_key
 	match phase:
 		GameStateModel.TravelState.DEPARTURE:
 			return &"UI_COCKPIT_TRAVEL_PHASE_DEPARTURE"
@@ -1036,6 +1053,14 @@ func _get_travel_detail_key(phase: GameStateModel.TravelState) -> StringName:
 		)
 		if not white_noise_key.is_empty():
 			return white_noise_key
+	if _is_white_noise_side() and white_noise_side_contract != null:
+		var side_key: StringName = (
+			white_noise_side_contract.get_cockpit_travel_phase_detail_key(
+				phase
+			)
+		)
+		if not side_key.is_empty():
+			return side_key
 	match phase:
 		GameStateModel.TravelState.DEPARTURE:
 			return &"UI_COCKPIT_TRAVEL_DETAIL_DEPARTURE"
@@ -1200,11 +1225,21 @@ func _is_white_noise_main() -> bool:
 	)
 
 
+func _is_white_noise_side() -> bool:
+	return (
+		white_noise_side_contract != null
+		and _active_order != null
+		and white_noise_side_contract.is_side_order(_active_order.id)
+	)
+
+
 func _get_manual_lao_pi_dialogue() -> DialogueSequence:
 	if _is_red_sand_revisit():
 		return revisit_contract.cockpit_manual_dialogue
 	if _is_white_noise_main():
 		return white_noise_content.cockpit_manual_dialogue
+	if _is_white_noise_side():
+		return white_noise_side_contract.cockpit_manual_dialogue
 	return lao_pi_dialogue
 
 
@@ -1213,6 +1248,8 @@ func _get_travel_main_dialogue() -> DialogueSequence:
 		return revisit_contract.cockpit_travel_main_dialogue
 	if _is_white_noise_main():
 		return white_noise_content.cockpit_travel_main_dialogue
+	if _is_white_noise_side():
+		return white_noise_side_contract.cockpit_travel_main_dialogue
 	return travel_main_dialogue
 
 
@@ -1221,6 +1258,8 @@ func _get_travel_radio_dialogue() -> DialogueSequence:
 		return revisit_contract.cockpit_travel_radio_dialogue
 	if _is_white_noise_main():
 		return white_noise_content.cockpit_travel_radio_dialogue
+	if _is_white_noise_side():
+		return white_noise_side_contract.cockpit_travel_radio_dialogue
 	return travel_radio_dialogue
 
 
@@ -1229,6 +1268,8 @@ func _get_travel_cargo_dialogue() -> DialogueSequence:
 		return revisit_contract.cockpit_travel_cargo_dialogue
 	if _is_white_noise_main():
 		return white_noise_content.cockpit_travel_cargo_dialogue
+	if _is_white_noise_side():
+		return white_noise_side_contract.cockpit_travel_cargo_dialogue
 	return travel_cargo_dialogue
 
 
@@ -1237,6 +1278,8 @@ func _get_travel_main_completion_flag() -> StringName:
 		return revisit_contract.cockpit_travel_completion_flag
 	if _is_white_noise_main():
 		return white_noise_content.cockpit_travel_completion_flag
+	if _is_white_noise_side():
+		return white_noise_side_contract.cockpit_travel_completion_flag
 	return TRAVEL_MAIN_DIALOGUE_COMPLETED_FLAG
 
 

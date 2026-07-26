@@ -1,4 +1,4 @@
-[gd_scene load_steps=22 format=3]
+[gd_scene load_steps=23 format=3]
 
 [ext_resource type="Script" path="res://scripts/cockpit/cockpit.gd" id="1_cockpit"]
 [ext_resource type="Script" path="res://scripts/cockpit/cockpit_starfield.gd" id="2_starfield"]
@@ -13,6 +13,7 @@
 [ext_resource type="Resource" path="res://data/revisits/red_sand_revisit_contract.tres" id="11_revisit"]
 [ext_resource type="Font" path="res://data/ui/chinese_ui_font.tres" id="12_chinese_font"]
 [ext_resource type="Resource" path="res://data/orders/white_noise_main_order_content.tres" id="13_white_noise"]
+[ext_resource type="Resource" path="res://data/settlements/white_noise_side_order_contract.tres" id="14_white_side"]
 
 [sub_resource type="Theme" id="ThemeCockpit"]
 default_font = ExtResource("12_chinese_font")
@@ -130,6 +131,7 @@ travel_radio_dialogue = ExtResource("8_travel_radio")
 travel_cargo_dialogue = ExtResource("9_travel_cargo")
 revisit_contract = ExtResource("11_revisit")
 white_noise_content = ExtResource("13_white_noise")
+white_noise_side_contract = ExtResource("14_white_side")
 
 [node name="TitleLabel" type="Label" parent="."]
 unique_name_in_owner = true

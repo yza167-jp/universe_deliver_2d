@@ -30,6 +30,7 @@ const ASSIST_PRESETS: Array[float] = [
 @export var planet_definition: PlanetDefinition
 @export var data_registry: GameDataRegistry
 @export var settlement_contract: WhiteNoiseSettlementContract
+@export var side_order_contract: WhiteNoiseSideOrderContract
 
 var game_state_override: GameStateModel
 var settings_service_override: SettingsServiceModel
@@ -46,6 +47,8 @@ var _controls_help_open: bool = false
 var _was_tree_paused: bool = false
 var _active_assist_index: int = 1
 var _settings_service: SettingsServiceModel
+var _route_start_distance: float = 0.0
+var _side_order_route: bool = false
 
 
 func _ready() -> void:
@@ -53,9 +56,16 @@ func _ready() -> void:
 	flight_ship.process_mode = Node.PROCESS_MODE_PAUSABLE
 	if not _validate_configuration():
 		return
+	_side_order_route = _is_white_noise_side_order()
+	_active_segment_index = _get_initial_segment_index()
+	_route_start_distance = route_definition.segments[
+		_active_segment_index
+	].start_distance
 	route_visuals.route_definition = route_definition
 	flight_ship.set_environment_profile(
-		route_definition.segments[0].environment_profile,
+		route_definition.segments[
+			_active_segment_index
+		].environment_profile,
 		true
 	)
 	flight_ship.set_assist_strength(FlightAssistMode.LIMITED)
@@ -63,7 +73,9 @@ func _ready() -> void:
 	_configure_ship_loadout()
 	_settings_service = _resolve_settings_service()
 	environment_feedback.bind(_settings_service)
-	environment_feedback.set_segment(route_definition.segments[0])
+	environment_feedback.set_segment(
+		route_definition.segments[_active_segment_index]
+	)
 	debug_hud.bind_ship(flight_ship)
 	debug_hud.set_route_guide_visible(false)
 	route_hud.bind(self, flight_ship)
@@ -76,7 +88,7 @@ func _ready() -> void:
 	):
 		return
 	_connect_ship_signals()
-	_configure_checkpoint(0)
+	_configure_checkpoint(_active_segment_index)
 	restart_from_checkpoint(false)
 
 
@@ -154,7 +166,35 @@ func get_route_distance() -> float:
 
 
 func get_overall_progress() -> float:
-	return route_definition.get_overall_progress(get_route_distance())
+	if route_definition == null:
+		return 0.0
+	var mission_distance: float = (
+		route_definition.get_total_distance() - _route_start_distance
+	)
+	if mission_distance <= 0.0:
+		return 0.0
+	return clampf(
+		(get_route_distance() - _route_start_distance) / mission_distance,
+		0.0,
+		1.0
+	)
+
+
+func get_remaining_route_distance() -> float:
+	if route_definition == null:
+		return 0.0
+	return maxf(
+		route_definition.get_total_distance() - get_route_distance(),
+		0.0
+	)
+
+
+func get_route_start_distance() -> float:
+	return _route_start_distance
+
+
+func is_side_order_route() -> bool:
+	return _side_order_route
 
 
 func get_active_segment_index() -> int:
@@ -493,9 +533,12 @@ func _update_arrival_transition(delta: float) -> void:
 		or settlement_contract == null
 	):
 		return
+	var arrival_scene_path: String = settlement_contract.arrival_scene_path
+	if _side_order_route and side_order_contract != null:
+		arrival_scene_path = side_order_contract.arrival_scene_path
 	if not scene_router.request_stage_scene(
 		SceneRouterService.Stage.ARRIVAL,
-		settlement_contract.arrival_scene_path
+		arrival_scene_path
 	):
 		push_error(
 			"White Noise landing could not enter ARRIVAL: %s"
@@ -602,6 +645,22 @@ func _resolve_settings_service() -> SettingsServiceModel:
 	return get_node_or_null("/root/SettingsService") as SettingsServiceModel
 
 
+func _get_initial_segment_index() -> int:
+	if _side_order_route and side_order_contract != null:
+		return side_order_contract.route_start_segment_index
+	return 0
+
+
+func _is_white_noise_side_order() -> bool:
+	if side_order_contract == null:
+		return false
+	var game_state: GameStateModel = _resolve_game_state()
+	return (
+		game_state != null
+		and side_order_contract.is_side_order(game_state.current_order_id)
+	)
+
+
 func _validate_configuration() -> bool:
 	if (
 		route_definition == null
@@ -619,6 +678,12 @@ func _validate_configuration() -> bool:
 		return false
 	var errors: PackedStringArray = route_definition.validate()
 	errors.append_array(settlement_contract.validate(data_registry))
+	if side_order_contract == null:
+		errors.append("White Noise side-order contract is missing.")
+	else:
+		errors.append_array(
+			side_order_contract.validate(data_registry, route_definition)
+		)
 	var authoritative_gravity: float = (
 		BASE_PLANET_GRAVITY * planet_definition.gravity_scale
 	)

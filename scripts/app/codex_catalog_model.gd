@@ -20,6 +20,21 @@ const RED_SAND_UPLOAD_DESCRIPTION_KEY: StringName = (
 const RED_SAND_LOCAL_DESCRIPTION_KEY: StringName = (
 	&"CODEX_CARGO_RELAY_PATTERN_SHIELDING_MATERIALS_DESCRIPTION_LOCAL"
 )
+const WHITE_NOISE_MEMORY_OWNER_ENTRY_ID: StringName = (
+	&"codex_character_white_noise_memory_owner"
+)
+const WHITE_NOISE_RETURNED_CARGO_ENTRY_ID: StringName = (
+	&"codex_cargo_returned_memory_case"
+)
+const WHITE_NOISE_SIDE_PRIVATE_FLAG: StringName = (
+	&"story_side_white_noise_choice_keep_private"
+)
+const WHITE_NOISE_SIDE_ANONYMOUS_FLAG: StringName = (
+	&"story_side_white_noise_choice_anonymous_index"
+)
+const WHITE_NOISE_SIDE_LOCAL_ORIGINAL_FLAG: StringName = (
+	&"story_side_white_noise_choice_local_original"
+)
 const CATEGORY_ORDER: Array[CodexEntryDefinition.Category] = [
 	CodexEntryDefinition.Category.PLANET,
 	CodexEntryDefinition.Category.CHARACTER,
@@ -118,13 +133,55 @@ static func _get_description_key(
 ) -> StringName:
 	if not is_unlocked:
 		return UNKNOWN_DESCRIPTION_KEY
-	if definition.id != RED_SAND_REVISIT_CARGO_ENTRY_ID or game_state == null:
+	if game_state == null:
 		return definition.description_key
-	if game_state.has_story_flag(RED_SAND_UPLOAD_FLAG):
-		return RED_SAND_UPLOAD_DESCRIPTION_KEY
-	if game_state.has_story_flag(RED_SAND_KEEP_LOCAL_FLAG):
-		return RED_SAND_LOCAL_DESCRIPTION_KEY
+	if definition.id == RED_SAND_REVISIT_CARGO_ENTRY_ID:
+		if game_state.has_story_flag(RED_SAND_UPLOAD_FLAG):
+			return RED_SAND_UPLOAD_DESCRIPTION_KEY
+		if game_state.has_story_flag(RED_SAND_KEEP_LOCAL_FLAG):
+			return RED_SAND_LOCAL_DESCRIPTION_KEY
+	if definition.id in [
+		WHITE_NOISE_MEMORY_OWNER_ENTRY_ID,
+		WHITE_NOISE_RETURNED_CARGO_ENTRY_ID,
+	]:
+		return _get_white_noise_return_description_key(
+			definition,
+			game_state
+		)
 	return definition.description_key
+
+
+static func _get_white_noise_return_description_key(
+	definition: CodexEntryDefinition,
+	game_state: GameStateModel
+) -> StringName:
+	var selected_count: int = 0
+	var selected_index: int = -1
+	var choice_flags: Array[StringName] = [
+		WHITE_NOISE_SIDE_PRIVATE_FLAG,
+		WHITE_NOISE_SIDE_ANONYMOUS_FLAG,
+		WHITE_NOISE_SIDE_LOCAL_ORIGINAL_FLAG,
+	]
+	for index: int in choice_flags.size():
+		if game_state.has_story_flag(choice_flags[index]):
+			selected_count += 1
+			selected_index = index
+	if selected_count != 1:
+		return definition.description_key
+	var description_keys: Array[StringName] = []
+	if definition.id == WHITE_NOISE_MEMORY_OWNER_ENTRY_ID:
+		description_keys = [
+			&"CODEX_CHARACTER_WHITE_NOISE_MEMORY_OWNER_DESCRIPTION_PRIVATE",
+			&"CODEX_CHARACTER_WHITE_NOISE_MEMORY_OWNER_DESCRIPTION_ANONYMOUS",
+			&"CODEX_CHARACTER_WHITE_NOISE_MEMORY_OWNER_DESCRIPTION_LOCAL_ORIGINAL",
+		]
+	else:
+		description_keys = [
+			&"CODEX_CARGO_RETURNED_MEMORY_CASE_DESCRIPTION_PRIVATE",
+			&"CODEX_CARGO_RETURNED_MEMORY_CASE_DESCRIPTION_ANONYMOUS",
+			&"CODEX_CARGO_RETURNED_MEMORY_CASE_DESCRIPTION_LOCAL_ORIGINAL",
+		]
+	return description_keys[selected_index]
 
 
 static func _create_souvenir_entry(

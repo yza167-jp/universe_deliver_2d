@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_sequence.gd" id="1_sequence"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_line.gd" id="2_line"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_effect.gd" id="3_effect"]
+[ext_resource type="Resource" path="res://data/characters/lao_pi.tres" id="4_lao_pi"]
+
+[sub_resource type="Resource" id="EffectCompleted"]
+script = ExtResource("3_effect")
+effect_id = &"story_side_white_noise_cockpit_travel_completed"
+
+[sub_resource type="Resource" id="LineReturn"]
+script = ExtResource("2_line")
+id = &"returned_memory_short_route"
+speaker = ExtResource("4_lao_pi")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_SIDE_TRAVEL_MAIN_ROUTE"
+portrait_expression = &"neutral"
+next_line_id = &"returned_memory_boundary"
+
+[sub_resource type="Resource" id="LineBoundary"]
+script = ExtResource("2_line")
+id = &"returned_memory_boundary"
+speaker = ExtResource("4_lao_pi")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_SIDE_TRAVEL_MAIN_BOUNDARY"
+portrait_expression = &"thoughtful"
+effects = [SubResource("EffectCompleted")]
+
+[resource]
+script = ExtResource("1_sequence")
+id = &"dialogue_m1_white_noise_side_travel_main"
+start_line_id = &"returned_memory_short_route"
+lines = [SubResource("LineReturn"), SubResource("LineBoundary")]

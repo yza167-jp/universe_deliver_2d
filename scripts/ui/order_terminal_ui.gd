@@ -638,7 +638,11 @@ func _refresh_detail(entry: M1OrderCatalogEntry) -> void:
 	elif not entry.lock_hint_key.is_empty():
 		_feedback_label.text = tr(String(entry.lock_hint_key))
 	elif entry.accept_enabled:
-		_feedback_label.text = tr("UI_ORDER_LOCK_READY")
+		_feedback_label.text = tr(
+			"UI_ORDER_SIDE_VOLUNTARY_READY"
+			if entry.order_type == OrderDefinition.OrderType.SIDE
+			else "UI_ORDER_LOCK_READY"
+		)
 	else:
 		_feedback_label.text = tr("UI_CATALOG_HINT_DATA_UNAVAILABLE")
 	_body_scroll.scroll_vertical = 0

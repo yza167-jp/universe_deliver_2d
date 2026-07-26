@@ -9,6 +9,7 @@ const M0_ORDER_ID: StringName = &"order_red_sand_m0"
 @export var data_registry: GameDataRegistry
 @export var revisit_contract: RedSandRevisitContract
 @export var white_noise_settlement_contract: WhiteNoiseSettlementContract
+@export var white_noise_side_contract: WhiteNoiseSideOrderContract
 
 @onready var _eyebrow_label: Label = %EyebrowLabel
 @onready var _title_label: Label = %TitleLabel
@@ -70,6 +71,15 @@ func present_settlement() -> bool:
 	):
 		_render_unavailable()
 		return false
+	if _is_white_noise_side() and (
+		white_noise_side_contract == null
+		or not white_noise_side_contract.validate(
+			data_registry
+		).is_empty()
+		or not white_noise_side_contract.is_delivery_ready(game_state)
+	):
+		_render_unavailable()
+		return false
 	var run_state: OrderRunState = game_state.get_active_order_run_state()
 	_settlement_result = OrderSettlementCalculator.calculate(order, run_state)
 	if _settlement_result == null:
@@ -91,6 +101,8 @@ func present_settlement() -> bool:
 		settlement_flags = (
 			white_noise_settlement_contract.get_settlement_flags()
 		)
+	elif _is_white_noise_side():
+		settlement_flags = white_noise_side_contract.get_settlement_flags()
 	var additional_relation_rewards: Dictionary[StringName, int] = {}
 	var reward_modules_to_equip: Array[ShipModuleDefinition] = []
 	if _is_red_sand_revisit():
@@ -110,6 +122,12 @@ func present_settlement() -> bool:
 				game_state
 			)
 		)
+	elif _is_white_noise_side():
+		additional_relation_rewards = (
+			white_noise_side_contract.get_choice_relation_rewards(
+				run_state
+			)
+		)
 	var additional_codex_rewards: Array[StringName] = []
 	var additional_demo_ending_flags: Dictionary[StringName, Variant] = {}
 	if _is_white_noise_main():
@@ -122,6 +140,10 @@ func present_settlement() -> bool:
 			white_noise_settlement_contract.get_demo_ending_flags(
 				game_state
 			)
+		)
+	elif _is_white_noise_side():
+		additional_demo_ending_flags = (
+			white_noise_side_contract.get_demo_ending_flags(game_state)
 		)
 	_settlement_is_committed = game_state.settle_current_order(
 		order,
@@ -217,6 +239,8 @@ func _render_settlement() -> void:
 		eyebrow_key = (
 			white_noise_settlement_contract.results_eyebrow_key
 		)
+	elif _is_white_noise_side():
+		eyebrow_key = white_noise_side_contract.results_eyebrow_key
 	_eyebrow_label.text = tr(eyebrow_key)
 	_title_label.text = tr("UI_RESULTS_TITLE_FORMAT") % tr(String(order.display_name_key))
 	_base_reward_value.text = tr("UI_RESULTS_CREDITS_FORMAT") % _settlement_result.base_reward
@@ -270,6 +294,41 @@ func _render_settlement() -> void:
 		)
 		_next_step_label.text = tr(
 			white_noise_settlement_contract.next_step_key
+		)
+	elif _is_white_noise_side():
+		var narrative_lines: PackedStringArray = [
+			tr(
+				String(
+					white_noise_side_contract.get_result_narrative_key(
+						game_state
+					)
+				)
+			),
+		]
+		if white_noise_side_contract.is_cargo_relation_penalized(
+			_settlement_result.cargo_integrity
+		):
+			narrative_lines.append(
+				tr(
+					String(white_noise_side_contract.cargo_damaged_key)
+				) % [
+					roundi(
+						white_noise_side_contract.relation_integrity_threshold
+					),
+					white_noise_side_contract.damaged_relation_penalty,
+				]
+			)
+		else:
+			narrative_lines.append(
+				tr(String(white_noise_side_contract.cargo_intact_key))
+			)
+		_narrative_label.text = "\n".join(narrative_lines)
+		_station_change_panel.visible = true
+		_station_change_label.text = tr(
+			String(white_noise_side_contract.station_change_key)
+		)
+		_next_step_label.text = tr(
+			String(white_noise_side_contract.next_step_key)
 		)
 	else:
 		_narrative_label.text = tr("UI_RESULTS_NARRATIVE_GENERIC")
@@ -352,6 +411,14 @@ func _is_white_noise_main() -> bool:
 		order != null
 		and white_noise_settlement_contract != null
 		and white_noise_settlement_contract.is_white_noise_order(order.id)
+	)
+
+
+func _is_white_noise_side() -> bool:
+	return (
+		order != null
+		and white_noise_side_contract != null
+		and white_noise_side_contract.is_side_order(order.id)
 	)
 
 

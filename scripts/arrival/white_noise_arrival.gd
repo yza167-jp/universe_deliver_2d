@@ -53,6 +53,7 @@ const FROST_WHITE: Color = Color("d6edf0")
 
 @export var arrival_contract: WhiteNoiseArrivalContract
 @export var settlement_contract: WhiteNoiseSettlementContract
+@export var side_order_contract: WhiteNoiseSideOrderContract
 @export var data_registry: GameDataRegistry
 
 @onready var _player: StationPlayer = %StationPlayer
@@ -67,6 +68,14 @@ const FROST_WHITE: Color = Color("d6edf0")
 @onready var _objective_label: Label = %ObjectiveLabel
 @onready var _status_panel: PanelContainer = %StatusPanel
 @onready var _status_label: Label = %StatusLabel
+@onready var _location_label: Label = (
+	$ArrivalUI/LocationPanel/Content/LocationLabel
+)
+@onready var _scope_label: Label = (
+	$ArrivalUI/LocationPanel/Content/ScopeLabel
+)
+@onready var _delivery_world_label: Label = $WorldLabels/DeliveryLabel
+@onready var _index_world_label: Label = $WorldLabels/IndexLabel
 
 var game_state_override: GameStateModel
 var dialogue_ui_override: DialogueUI
@@ -84,6 +93,7 @@ var _archive_phase: float = 0.0
 
 func _ready() -> void:
 	_connect_interactions()
+	_configure_order_presentation()
 	_objective_label.visible = false
 	_status_panel.visible = false
 	_modal_coordinator.begin_modal(MODAL_DIALOGUE)
@@ -122,9 +132,10 @@ func _unhandled_input(event: InputEvent) -> void:
 func _notification(what: int) -> void:
 	if what != NOTIFICATION_TRANSLATION_CHANGED or not is_node_ready():
 		return
+	_configure_order_presentation()
 	refresh_landing_feedback()
 	if _exploration_is_unlocked:
-		_objective_label.text = tr("UI_WHITE_NOISE_ARRIVAL_OBJECTIVE")
+		_objective_label.text = tr(String(_get_objective_key()))
 	if not _status_key.is_empty():
 		_status_label.text = _format_status_text(_status_key)
 
@@ -140,9 +151,17 @@ func refresh_landing_feedback() -> void:
 	var feedback_key: StringName = &""
 	match run_state.landing_result:
 		OrderRunState.LANDING_RESULT_SMOOTH:
-			feedback_key = &"UI_WHITE_NOISE_ARRIVAL_LANDING_SMOOTH"
+			feedback_key = (
+				&"UI_WHITE_NOISE_SIDE_ARRIVAL_LANDING_SMOOTH"
+				if _is_white_noise_side_order()
+				else &"UI_WHITE_NOISE_ARRIVAL_LANDING_SMOOTH"
+			)
 		OrderRunState.LANDING_RESULT_ROUGH:
-			feedback_key = &"UI_WHITE_NOISE_ARRIVAL_LANDING_ROUGH"
+			feedback_key = (
+				&"UI_WHITE_NOISE_SIDE_ARRIVAL_LANDING_ROUGH"
+				if _is_white_noise_side_order()
+				else &"UI_WHITE_NOISE_ARRIVAL_LANDING_ROUGH"
+			)
 		_:
 			_landing_feedback_label.visible = false
 			_landing_feedback_label.text = ""
@@ -254,23 +273,40 @@ func get_camera_world_rect() -> Rect2:
 func _begin_arrival_flow() -> void:
 	var game_state: GameStateModel = _resolve_game_state()
 	_dialogue_ui = _resolve_dialogue_ui()
+	var side_order_active: bool = _is_white_noise_side_order()
 	if (
 		game_state == null
 		or _dialogue_ui == null
-		or arrival_contract == null
-		or not arrival_contract.validate().is_empty()
 		or settlement_contract == null
 		or not settlement_contract.validate(data_registry).is_empty()
+		or (
+			side_order_active
+			and (
+				side_order_contract == null
+				or not side_order_contract.validate(data_registry).is_empty()
+			)
+		)
+		or (
+			not side_order_active
+			and (
+				arrival_contract == null
+				or not arrival_contract.validate().is_empty()
+			)
+		)
 	):
 		_modal_coordinator.end_modal(MODAL_DIALOGUE)
 		push_error("White Noise arrival could not resolve its contract or UI.")
 		return
-	if arrival_contract.is_delivery_ready(game_state):
+	if _is_delivery_ready(game_state):
 		_modal_coordinator.end_modal(MODAL_DIALOGUE)
 		_unlock_exploration()
 		return
 	if not _start_dialogue(
-		arrival_contract.main_dialogue,
+		(
+			side_order_contract.arrival_dialogue
+			if side_order_active
+			else arrival_contract.main_dialogue
+		),
 		DialogueKind.MAIN
 	):
 		_modal_coordinator.end_modal(MODAL_DIALOGUE)
@@ -330,10 +366,7 @@ func _on_dialogue_finished() -> void:
 	_modal_coordinator.end_modal(MODAL_DIALOGUE)
 	var game_state: GameStateModel = _resolve_game_state()
 	if finished_kind == DialogueKind.MAIN:
-		if (
-			arrival_contract != null
-			and arrival_contract.is_delivery_ready(game_state)
-		):
+		if _is_delivery_ready(game_state):
 			_unlock_exploration()
 			return
 		_show_status(&"UI_WHITE_NOISE_ARRIVAL_STATUS_ERROR")
@@ -357,7 +390,7 @@ func _unlock_exploration() -> void:
 	if not _modal_coordinator.is_modal_active():
 		_player.set_input_enabled(true)
 		_player.set_interaction_prompt_suppressed(false)
-	_objective_label.text = tr("UI_WHITE_NOISE_ARRIVAL_OBJECTIVE")
+	_objective_label.text = tr(String(_get_objective_key()))
 	_objective_label.visible = true
 	if not was_unlocked:
 		exploration_unlocked.emit()
@@ -367,20 +400,54 @@ func _on_delivery_cradle_interacted(_actor: Node) -> void:
 	if not _can_observe():
 		return
 	_record_optional_trigger(DELIVERY_INSPECTION_TRIGGER_ID)
-	_show_status(&"UI_WHITE_NOISE_ARRIVAL_STATUS_DELIVERY")
+	_show_status(
+		&"UI_WHITE_NOISE_SIDE_ARRIVAL_STATUS_DELIVERY"
+		if _is_white_noise_side_order()
+		else &"UI_WHITE_NOISE_ARRIVAL_STATUS_DELIVERY"
+	)
 
 
 func _on_archivist_interacted(_actor: Node) -> void:
 	if not _can_observe():
 		return
 	_record_optional_trigger(ARCHIVIST_TALK_TRIGGER_ID)
-	_show_status(&"UI_WHITE_NOISE_ARRIVAL_STATUS_ARCHIVIST")
+	_show_status(
+		&"UI_WHITE_NOISE_SIDE_ARRIVAL_STATUS_ARCHIVIST"
+		if _is_white_noise_side_order()
+		else &"UI_WHITE_NOISE_ARRIVAL_STATUS_ARCHIVIST"
+	)
 
 
 func _on_index_terminal_interacted(_actor: Node) -> void:
-	if not _can_observe() or arrival_contract == null:
+	if not _can_observe():
 		return
 	var game_state: GameStateModel = _resolve_game_state()
+	if _is_white_noise_side_order():
+		if (
+			side_order_contract == null
+			or not side_order_contract.has_valid_choice(game_state)
+		):
+			_show_status(&"UI_WHITE_NOISE_ARRIVAL_STATUS_ERROR")
+			return
+		_record_optional_trigger(INDEX_INSPECTION_TRIGGER_ID)
+		var side_status_key: StringName = (
+			&"UI_WHITE_NOISE_SIDE_ARRIVAL_STATUS_INDEX_PRIVATE"
+		)
+		var selected_choice: StringName = (
+			side_order_contract.get_selected_choice_id(game_state)
+		)
+		if selected_choice == side_order_contract.anonymous_index_flag:
+			side_status_key = (
+				&"UI_WHITE_NOISE_SIDE_ARRIVAL_STATUS_INDEX_ANONYMOUS"
+			)
+		elif selected_choice == side_order_contract.local_original_flag:
+			side_status_key = (
+				&"UI_WHITE_NOISE_SIDE_ARRIVAL_STATUS_INDEX_LOCAL_ORIGINAL"
+			)
+		_show_status(side_status_key)
+		return
+	if arrival_contract == null:
+		return
 	if not arrival_contract.has_valid_choice(game_state):
 		_show_status(&"UI_WHITE_NOISE_ARRIVAL_STATUS_ERROR")
 		return
@@ -397,7 +464,13 @@ func _on_index_terminal_interacted(_actor: Node) -> void:
 
 
 func _on_memory_owner_interacted(_actor: Node) -> void:
-	if not _exploration_is_unlocked or arrival_contract == null:
+	if not _exploration_is_unlocked:
+		return
+	if _is_white_noise_side_order():
+		_record_optional_trigger(MEMORY_OWNER_TALK_TRIGGER_ID)
+		_show_status(&"UI_WHITE_NOISE_SIDE_ARRIVAL_STATUS_OWNER_TALK")
+		return
+	if arrival_contract == null:
 		return
 	_start_dialogue(
 		arrival_contract.memory_owner_dialogue,
@@ -406,10 +479,10 @@ func _on_memory_owner_interacted(_actor: Node) -> void:
 
 
 func _on_return_lift_interacted(_actor: Node) -> void:
-	if not _can_observe() or arrival_contract == null:
+	if not _can_observe():
 		return
-	if not arrival_contract.is_delivery_ready(_resolve_game_state()):
-		_show_status(&"UI_WHITE_NOISE_ARRIVAL_STATUS_RETURN_BLOCKED")
+	if not _is_delivery_ready(_resolve_game_state()):
+		_show_status(_get_return_blocked_key())
 		return
 	return_requested.emit()
 	var scene_router: SceneRouterService = _resolve_scene_router()
@@ -417,17 +490,15 @@ func _on_return_lift_interacted(_actor: Node) -> void:
 		scene_router == null
 		or scene_router.current_stage != SceneRouterService.Stage.ARRIVAL
 	):
-		_show_status(&"UI_WHITE_NOISE_ARRIVAL_STATUS_RETURN_READY")
+		_show_status(_get_return_ready_key())
 		return
 	if not _modal_coordinator.begin_modal(MODAL_RETURN_TRANSITION):
 		return
-	_objective_label.text = tr(
-		"UI_WHITE_NOISE_ARRIVAL_OBJECTIVE_RETURNING"
-	)
+	_objective_label.text = tr(String(_get_returning_objective_key()))
 	if scene_router.request_stage(SceneRouterService.Stage.RESULTS):
 		return
 	_modal_coordinator.end_modal(MODAL_RETURN_TRANSITION)
-	_objective_label.text = tr("UI_WHITE_NOISE_ARRIVAL_OBJECTIVE")
+	_objective_label.text = tr(String(_get_objective_key()))
 	_show_status(&"UI_WHITE_NOISE_ARRIVAL_STATUS_RETURN_ERROR")
 
 
@@ -485,6 +556,96 @@ func _resolve_scene_router() -> SceneRouterService:
 	if scene_router_override != null:
 		return scene_router_override
 	return get_node_or_null("/root/SceneRouter") as SceneRouterService
+
+
+func _is_white_noise_side_order() -> bool:
+	if side_order_contract == null:
+		return false
+	var game_state: GameStateModel = _resolve_game_state()
+	return (
+		game_state != null
+		and side_order_contract.is_side_order(game_state.current_order_id)
+	)
+
+
+func _is_delivery_ready(game_state: GameStateModel) -> bool:
+	if _is_white_noise_side_order():
+		return (
+			side_order_contract != null
+			and side_order_contract.is_delivery_ready(game_state)
+		)
+	return (
+		arrival_contract != null
+		and arrival_contract.is_delivery_ready(game_state)
+	)
+
+
+func _get_objective_key() -> StringName:
+	return (
+		&"UI_WHITE_NOISE_SIDE_ARRIVAL_OBJECTIVE"
+		if _is_white_noise_side_order()
+		else &"UI_WHITE_NOISE_ARRIVAL_OBJECTIVE"
+	)
+
+
+func _get_return_blocked_key() -> StringName:
+	return (
+		&"UI_WHITE_NOISE_SIDE_ARRIVAL_STATUS_RETURN_BLOCKED"
+		if _is_white_noise_side_order()
+		else &"UI_WHITE_NOISE_ARRIVAL_STATUS_RETURN_BLOCKED"
+	)
+
+
+func _get_return_ready_key() -> StringName:
+	return (
+		&"UI_WHITE_NOISE_SIDE_ARRIVAL_STATUS_RETURN_READY"
+		if _is_white_noise_side_order()
+		else &"UI_WHITE_NOISE_ARRIVAL_STATUS_RETURN_READY"
+	)
+
+
+func _get_returning_objective_key() -> StringName:
+	return (
+		&"UI_WHITE_NOISE_SIDE_ARRIVAL_OBJECTIVE_RETURNING"
+		if _is_white_noise_side_order()
+		else &"UI_WHITE_NOISE_ARRIVAL_OBJECTIVE_RETURNING"
+	)
+
+
+func _configure_order_presentation() -> void:
+	if _location_label == null or _scope_label == null:
+		return
+	var side_order_active: bool = _is_white_noise_side_order()
+	_location_label.text = tr(
+		"UI_WHITE_NOISE_SIDE_ARRIVAL_LOCATION"
+		if side_order_active
+		else "UI_WHITE_NOISE_ARRIVAL_LOCATION"
+	)
+	_scope_label.text = tr(
+		"UI_WHITE_NOISE_SIDE_ARRIVAL_SCOPE"
+		if side_order_active
+		else "UI_WHITE_NOISE_ARRIVAL_SCOPE"
+	)
+	_delivery_world_label.text = tr(
+		"UI_WHITE_NOISE_SIDE_ARRIVAL_DELIVERY_LABEL"
+		if side_order_active
+		else "UI_WHITE_NOISE_ARRIVAL_DELIVERY_LABEL"
+	)
+	_index_world_label.text = tr(
+		"UI_WHITE_NOISE_SIDE_ARRIVAL_INDEX_LABEL"
+		if side_order_active
+		else "UI_WHITE_NOISE_ARRIVAL_INDEX_LABEL"
+	)
+	_delivery_cradle.prompt_key = (
+		&"UI_WHITE_NOISE_SIDE_ARRIVAL_INTERACT_DELIVERY"
+		if side_order_active
+		else &"UI_WHITE_NOISE_ARRIVAL_INTERACT_DELIVERY"
+	)
+	_index_terminal.prompt_key = (
+		&"UI_WHITE_NOISE_SIDE_ARRIVAL_INTERACT_INDEX"
+		if side_order_active
+		else &"UI_WHITE_NOISE_ARRIVAL_INTERACT_INDEX"
+	)
 
 
 func _get_active_run_state() -> OrderRunState:

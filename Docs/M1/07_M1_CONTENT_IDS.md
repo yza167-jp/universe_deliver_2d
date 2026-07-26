@@ -14,10 +14,11 @@
   `order_red_sand_m0`。
 - Stretch `side_red_sand_unlisted_filters` 与 `cargo_red_sand_water_filters` 不进入
   必做注册表。
-- M0 首单、赤砂回访和 T-125 已完成闭环的白噪主单为 `PLAYABLE`。穹林、群潮
-  主线与 3 份必做支线仍为 `REGISTERED_ONLY`：可供目录、依赖和内容开发引用，
-  但在对应正式订单流程完成前不能接取或出发。隔离白噪路线夹具不改变正式
-  Resource；内容落地任务必须显式将对应订单与星球切换为 `PLAYABLE`。
+- M0 首单、赤砂回访、T-125 白噪主单与 T-126 白噪返件支线为 `PLAYABLE`。
+  穹林、群潮主线及其 2 份必做支线仍为 `REGISTERED_ONLY`：可供目录、依赖和
+  内容开发引用，但在对应正式订单流程完成前不能接取或出发。隔离白噪路线夹具
+  不改变正式 Resource；内容落地任务必须显式将对应订单与星球切换为
+  `PLAYABLE`。
 
 ## 星球与环境占位
 
@@ -111,7 +112,7 @@ T-111 已实现屏蔽罩能力读取：安装时
 | `order_m1_white_noise_archive_core` | Main / Landing | 180 | 34000 m | 4 | high-voltage shielding required | `PLAYABLE` |
 | `order_m1_canopy_ecology_cargo` | Main / Landing | 200 | 1.15 | 3 | biosignal isolation recommended | `REGISTERED_ONLY` |
 | `order_m1_tidal_weather_core` | Main / Landing | 240 | 1.30 | 4 | crosswind stabilizer recommended | `REGISTERED_ONLY` |
-| `side_white_noise_returned_memory` | Side / Landing | 80 | 0.65 | 2 | archive permission required | `REGISTERED_ONLY` |
+| `side_white_noise_returned_memory` | Side / Landing | 80 | 17000 m | 2 | archive permission + completed White Noise main required | `PLAYABLE` |
 | `side_canopy_spore_drop` | Side / Low-altitude drop | 90 | 0.55 | 3 | biosignal isolation recommended | `REGISTERED_ONLY` |
 | `side_tidal_beacon_before_eye` | Side / Landing / Express | 120 | 0.70 | 4 | crosswind stabilizer recommended | `REGISTERED_ONLY` |
 
@@ -162,6 +163,25 @@ T-111 已实现屏蔽罩能力读取：安装时
   `codex_anomaly_white_noise_shared_custody`。
 - 固定奖励包括白噪关系 `+1`、档案许可、白噪基础图鉴、霜纹索引纪念品、
   穹林章节/导航与白噪回访种子；封存/共同保管当前各有可调额外关系 `+1`。
+
+### 白噪返件支线 T-126 合同
+
+- 合同 ID：`white_noise_returned_memory_contract`。
+- 复用路线：`res://scenes/flight/white_noise_flight.tscn` 的
+  `17000–34000 m` 窗口；起始段索引 `3`，名义距离 `17000 m`。
+- 复用目的地：`res://scenes/arrival/white_noise_arrival.tscn`，但使用独立
+  驾驶舱和抵达对白 ID。
+- 前置完成订单：`order_m1_white_noise_archive_core`；支线没有章节奖励或
+  星球解锁奖励，不作为穹林前置。
+- 选择标记：
+  `story_side_white_noise_choice_keep_private`、
+  `story_side_white_noise_choice_anonymous_index`、
+  `story_side_white_noise_choice_local_original`。
+- 结尾键：`ending_white_noise_memory_return`；合法值为
+  `memory_return_keep_private`、`memory_return_anonymous_index`、
+  `memory_return_local_original`。
+- 基础奖励为 `80` 信用点、白噪关系 `+1` 和人物/货物图鉴；货物完整度低于
+  当前 `70%` 工作阈值时额外关系修正 `-1`。
 
 新增目的地 ID：
 
