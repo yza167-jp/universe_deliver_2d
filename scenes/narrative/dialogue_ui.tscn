@@ -1,6 +1,7 @@
 [gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/narrative/dialogue_ui.gd" id="1_ui"]
+[ext_resource type="Font" path="res://data/ui/chinese_ui_font.tres" id="2_chinese_font"]
 
 [sub_resource type="StyleBoxFlat" id="StyleDialogue"]
 bg_color = Color(0.054902, 0.0901961, 0.145098, 0.97)
@@ -26,12 +27,8 @@ corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
-[sub_resource type="SystemFont" id="SystemFontUI"]
-font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
-allow_system_fallback = true
-
 [sub_resource type="Theme" id="ThemeDialogue"]
-default_font = SubResource("SystemFontUI")
+default_font = ExtResource("2_chinese_font")
 
 [node name="DialogueUI" type="Control" groups=["dialogue_ui"]]
 layout_mode = 3

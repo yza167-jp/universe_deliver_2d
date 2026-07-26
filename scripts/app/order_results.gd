@@ -73,6 +73,10 @@ func present_settlement() -> bool:
 			M0ProgressIds.STORY_RETURN_DIALOGUE_PENDING,
 		]
 		station_upgrade_id = M0ProgressIds.STATION_UPGRADE_FIRST_DELIVERY_DISPLAY
+	elif _is_red_sand_revisit():
+		settlement_flags = [
+			StationTutorialController.ARCHIVE_BRIEFING_PENDING_FLAG,
+		]
 	var additional_relation_rewards: Dictionary[StringName, int] = {}
 	var reward_modules_to_equip: Array[ShipModuleDefinition] = []
 	if _is_red_sand_revisit():

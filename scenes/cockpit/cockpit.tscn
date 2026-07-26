@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://scripts/cockpit/cockpit.gd" id="1_cockpit"]
 [ext_resource type="Script" path="res://scripts/cockpit/cockpit_starfield.gd" id="2_starfield"]
@@ -10,13 +10,11 @@
 [ext_resource type="Resource" path="res://data/dialogue/lao_pi_travel_radio.tres" id="8_travel_radio"]
 [ext_resource type="Resource" path="res://data/dialogue/lao_pi_travel_cargo.tres" id="9_travel_cargo"]
 [ext_resource type="Script" path="res://scripts/cockpit/cockpit_navigation_panel.gd" id="10_navigation_panel"]
-
-[sub_resource type="SystemFont" id="SystemFontCockpit"]
-font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
-allow_system_fallback = true
+[ext_resource type="Resource" path="res://data/revisits/red_sand_revisit_contract.tres" id="11_revisit"]
+[ext_resource type="Font" path="res://data/ui/chinese_ui_font.tres" id="12_chinese_font"]
 
 [sub_resource type="Theme" id="ThemeCockpit"]
-default_font = SubResource("SystemFontCockpit")
+default_font = ExtResource("12_chinese_font")
 
 [sub_resource type="StyleBoxFlat" id="StyleHotspotNormal"]
 bg_color = Color(0.0784314, 0.164706, 0.270588, 0.72)
@@ -129,6 +127,7 @@ lao_pi_dialogue = ExtResource("4_lao_pi_dialogue")
 travel_main_dialogue = ExtResource("7_travel_main")
 travel_radio_dialogue = ExtResource("8_travel_radio")
 travel_cargo_dialogue = ExtResource("9_travel_cargo")
+revisit_contract = ExtResource("11_revisit")
 
 [node name="TitleLabel" type="Label" parent="."]
 unique_name_in_owner = true

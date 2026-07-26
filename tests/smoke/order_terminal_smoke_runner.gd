@@ -157,10 +157,11 @@ func _run_smoke() -> void:
 		clue_button.pressed.emit()
 	await process_frame
 	_check(
-		terminal_ui.get_selected_order_id() == REVISIT_ORDER_ID
+		terminal_ui.get_selected_order_id() == M0_ORDER_ID
 		and game_state.current_order_id == M0_ORDER_ID
-		and terminal_ui.get_feedback_text().contains("一次只能执行一份订单"),
-		"Selecting the next lead must preserve the active order and explain the one-order rule."
+		and not terminal_ui.select_order(REVISIT_ORDER_ID)
+		and terminal_ui.get_feedback_text().contains("订单已锁定"),
+		"The neutral next lead must remain non-selectable while preserving the active order."
 	)
 	_check(
 		not terminal_ui.get_order_name_text().contains("PROVISIONAL")
@@ -205,9 +206,34 @@ func _run_smoke() -> void:
 	await process_frame
 	_check(
 		terminal_ui.get_history_count() == 1
-		and terminal_ui.get_directory_button(M0_ORDER_ID) == null
+		and terminal_ui.get_directory_button(M0_ORDER_ID) != null,
+		"Completed M0 must produce exactly one selectable history row."
+	)
+	_check(
+		terminal_ui.select_order(M0_ORDER_ID),
+		"Completed M0 history row could not be selected."
+	)
+	_check(
+		terminal_ui.get_status_text() == "已完成"
+		and terminal_ui.get_accept_button_text() == "只读历史"
+		and terminal_ui.get_feedback_text().contains("历史订单只读")
 		and not terminal_ui.is_accept_enabled(),
-		"Completed M0 must become compact history and never return as an accept card."
+		"Completed M0 history row did not become read-only."
+	)
+	_check(
+		terminal_ui.get_parties_text().contains("公司调度")
+		and terminal_ui.get_route_text().contains("赤砂星"),
+		"Completed M0 history detail lost its known parties or destination."
+	)
+	_check(
+		terminal_ui.get_reward_text().contains("100"),
+		"Completed M0 history detail lost its known base reward."
+	)
+	_check(
+		terminal_ui.get_customer_history_text().contains(
+			"详细飞行结算未保留"
+		),
+		"Completed M0 history detail did not disclose the settlement limitation."
 	)
 
 	var invalid_order: OrderDefinition = OrderDefinition.new()

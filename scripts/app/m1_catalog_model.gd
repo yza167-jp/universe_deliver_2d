@@ -275,7 +275,10 @@ static func _build_order_entry(
 
 	entry.is_selectable = (
 		entry.is_visible
-		and entry.display_category != M1OrderCatalogEntry.DisplayCategory.HISTORY
+		and (
+			entry.display_category
+			!= M1OrderCatalogEntry.DisplayCategory.NEXT_CLUE
+		)
 	)
 	entry.is_name_disclosed = (
 		entry.is_visible

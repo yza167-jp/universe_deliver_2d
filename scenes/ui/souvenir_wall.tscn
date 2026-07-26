@@ -2,13 +2,10 @@
 
 [ext_resource type="Script" path="res://scripts/ui/souvenir_wall_ui.gd" id="1_ui"]
 [ext_resource type="Resource" path="res://data/m1_data_registry.tres" id="2_registry"]
-
-[sub_resource type="SystemFont" id="SystemFontWall"]
-font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
-allow_system_fallback = true
+[ext_resource type="Font" path="res://data/ui/chinese_ui_font.tres" id="3_chinese_font"]
 
 [sub_resource type="Theme" id="ThemeWall"]
-default_font = SubResource("SystemFontWall")
+default_font = ExtResource("3_chinese_font")
 
 [sub_resource type="StyleBoxFlat" id="StyleWallPanel"]
 bg_color = Color(0.0313726, 0.0666667, 0.121569, 0.99)

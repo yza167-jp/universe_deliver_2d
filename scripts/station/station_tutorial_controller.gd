@@ -22,6 +22,9 @@ const MODAL_DIALOGUE: StringName = &"station_dialogue"
 const ARCHIVE_BRIEFING_COMPLETION_FLAG: StringName = (
 	&"story_m1_archive_terminal_briefing_completed"
 )
+const ARCHIVE_BRIEFING_PENDING_FLAG: StringName = (
+	&"story_m1_archive_terminal_briefing_pending"
+)
 const DIALOGUE_UI_SCENE: PackedScene = preload("res://scenes/narrative/dialogue_ui.tscn")
 
 @export_range(8.0, 160.0, 1.0) var required_movement_distance: float = 32.0
@@ -140,7 +143,7 @@ func _initialize_tutorial() -> void:
 	if already_completed:
 		_player.set_input_enabled(true)
 		_set_stage(Stage.COMPLETE)
-		call_deferred("_begin_return_dialogue_if_pending")
+		call_deferred("_begin_station_context_dialogue_if_pending")
 		return
 	_start_dialogue(intro_sequence)
 
@@ -269,7 +272,7 @@ func _on_dialogue_finished() -> void:
 				_apply_safe_fallback_for_sequence(finished_dialogue_id)
 	_pending_flow_event = StringName()
 	_modal_coordinator.end_modal(MODAL_DIALOGUE)
-	call_deferred("_resume_progression")
+	call_deferred("_continue_after_dialogue")
 
 
 func _apply_safe_fallback_for_sequence(sequence_id: StringName) -> void:
@@ -299,9 +302,18 @@ func _is_station_context_dialogue(sequence_id: StringName) -> bool:
 	return false
 
 
-func _begin_return_dialogue_if_pending() -> void:
-	if _stage == Stage.COMPLETE and _has_pending_return_dialogue():
+func _continue_after_dialogue() -> void:
+	_resume_progression()
+	_begin_station_context_dialogue_if_pending()
+
+
+func _begin_station_context_dialogue_if_pending() -> void:
+	if _stage != Stage.COMPLETE or not _active_dialogue_id.is_empty():
+		return
+	if _has_pending_return_dialogue():
 		_start_dialogue(return_sequence)
+	elif _has_pending_archive_briefing():
+		_start_dialogue(archive_terminal_sequence)
 
 
 func _has_pending_return_dialogue() -> bool:
@@ -318,6 +330,9 @@ func _has_pending_archive_briefing() -> bool:
 		and archive_terminal_sequence != null
 		and _game_state.has_station_state(
 			StationStateRules.ARCHIVE_TERMINAL_ID
+		)
+		and _game_state.has_story_flag(
+			ARCHIVE_BRIEFING_PENDING_FLAG
 		)
 		and not _game_state.has_story_flag(
 			ARCHIVE_BRIEFING_COMPLETION_FLAG

@@ -1,9 +1,11 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/red_sand_route_hud.gd" id="1_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/flight_controls_help.tscn" id="2_help"]
+[ext_resource type="Font" path="res://data/ui/chinese_ui_font.tres" id="3_chinese_font"]
 
 [sub_resource type="Theme" id="ThemeRoute"]
+default_font = ExtResource("3_chinese_font")
 default_font_size = 10
 
 [sub_resource type="StyleBoxFlat" id="StylePanel"]

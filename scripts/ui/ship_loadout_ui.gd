@@ -5,6 +5,7 @@ signal loadout_closed
 signal departure_confirmed(order_id: StringName)
 
 @export var order_definition: OrderDefinition
+@export var data_registry: GameDataRegistry
 
 @onready var _title_label: Label = %TitleLabel
 @onready var _ship_name_label: Label = %ShipNameLabel
@@ -119,10 +120,7 @@ func close_loadout() -> void:
 func toggle_module_for_slot(slot_type: ShipModuleDefinition.SlotType) -> bool:
 	if _game_state == null:
 		return false
-	var module: ShipModuleDefinition = ShipLoadoutRules.get_module_for_slot(
-		order_definition,
-		slot_type
-	)
+	var module: ShipModuleDefinition = _resolve_slot_module(slot_type)
 	if module == null:
 		return false
 	var changed: bool = false
@@ -137,10 +135,7 @@ func toggle_module_for_slot(slot_type: ShipModuleDefinition.SlotType) -> bool:
 func toggle_module_by_id(module_id: StringName) -> bool:
 	if _game_state == null:
 		return false
-	var module: ShipModuleDefinition = ShipLoadoutRules.get_module_by_id(
-		order_definition,
-		module_id
-	)
+	var module: ShipModuleDefinition = _resolve_module_by_id(module_id)
 	if module == null:
 		return false
 	var changed: bool = false
@@ -207,6 +202,30 @@ func get_slot_status_text(slot_type: ShipModuleDefinition.SlotType) -> String:
 			return _defense_status_label.text
 		ShipModuleDefinition.SlotType.UTILITY:
 			return _utility_status_label.text
+	return ""
+
+
+func get_slot_name_text(slot_type: ShipModuleDefinition.SlotType) -> String:
+	match slot_type:
+		ShipModuleDefinition.SlotType.POWER:
+			return _power_name_label.text
+		ShipModuleDefinition.SlotType.DEFENSE:
+			return _defense_name_label.text
+		ShipModuleDefinition.SlotType.UTILITY:
+			return _utility_name_label.text
+	return ""
+
+
+func get_slot_description_text(
+	slot_type: ShipModuleDefinition.SlotType
+) -> String:
+	match slot_type:
+		ShipModuleDefinition.SlotType.POWER:
+			return _power_description_label.text
+		ShipModuleDefinition.SlotType.DEFENSE:
+			return _defense_description_label.text
+		ShipModuleDefinition.SlotType.UTILITY:
+			return _utility_description_label.text
 	return ""
 
 
@@ -402,8 +421,7 @@ func _refresh_content() -> void:
 		_utility_toggle_button
 	)
 	_refresh_module(
-		ShipLoadoutRules.get_module_by_id(
-			order_definition,
+		_resolve_module_by_id(
 			ShipLoadoutRules.SHIELD_BACKUP_POWER_MODULE_ID
 		),
 		_backup_power_name_label,
@@ -474,10 +492,7 @@ func _refresh_slot(
 	status_label: Label,
 	toggle_button: Button
 ) -> void:
-	var module: ShipModuleDefinition = ShipLoadoutRules.get_module_for_slot(
-		order_definition,
-		slot_type
-	)
+	var module: ShipModuleDefinition = _resolve_slot_module(slot_type)
 	_refresh_module(
 		module,
 		name_label,
@@ -510,13 +525,18 @@ func _refresh_module(
 	name_label.text = tr(String(module.display_name_key))
 	description_label.text = tr(String(module.description_key))
 	name_label.tooltip_text = description_label.text
-	var role_text: String = tr("UI_LOADOUT_ROLE_RECOMMENDED")
-	if order_definition.required_modules.has(module):
+	var role_text: String = tr("UI_LOADOUT_ROLE_NOT_REQUIRED")
+	if order_definition != null and order_definition.required_modules.has(module):
 		role_text = tr(
 			"UI_LOADOUT_ROLE_REQUIRED_STORY"
 			if not module.story_unlock_flags.is_empty()
 			else "UI_LOADOUT_ROLE_REQUIRED"
 		)
+	elif (
+		order_definition != null
+		and order_definition.recommended_modules.has(module)
+	):
+		role_text = tr("UI_LOADOUT_ROLE_RECOMMENDED")
 	var state_text: String = tr("UI_LOADOUT_STATE_EMPTY")
 	if installed:
 		state_text = tr("UI_LOADOUT_STATE_INSTALLED")
@@ -688,6 +708,53 @@ func _translate_module_name(module: ShipModuleDefinition) -> String:
 	if module == null or module.display_name_key.is_empty():
 		return tr("UI_LOADOUT_VALUE_UNAVAILABLE")
 	return tr(String(module.display_name_key))
+
+
+func _resolve_slot_module(
+	slot_type: ShipModuleDefinition.SlotType
+) -> ShipModuleDefinition:
+	var order_module: ShipModuleDefinition = (
+		ShipLoadoutRules.get_module_for_slot(order_definition, slot_type)
+	)
+	if order_module != null:
+		return order_module
+	if _game_state == null or data_registry == null:
+		return null
+	var slot_id: StringName = ShipLoadoutRules.get_slot_id(slot_type)
+	var equipped_module_id: StringName = _game_state.ship_configuration.get(
+		slot_id,
+		&""
+	)
+	var equipped_module: ShipModuleDefinition = data_registry.find_module(
+		equipped_module_id
+	)
+	if (
+		equipped_module != null
+		and ShipLoadoutRules.get_configuration_slot_id(equipped_module) == slot_id
+	):
+		return equipped_module
+	for module: ShipModuleDefinition in data_registry.modules:
+		if (
+			module != null
+			and ShipLoadoutRules.get_configuration_slot_id(module) == slot_id
+			and _game_state.has_ship_module(module.id)
+		):
+			return module
+	return null
+
+
+func _resolve_module_by_id(module_id: StringName) -> ShipModuleDefinition:
+	var order_module: ShipModuleDefinition = ShipLoadoutRules.get_module_by_id(
+		order_definition,
+		module_id
+	)
+	if order_module != null:
+		return order_module
+	return (
+		data_registry.find_module(module_id)
+		if data_registry != null
+		else null
+	)
 
 
 func _format_resource_value(value: int) -> String:

@@ -5,6 +5,15 @@ extends Node
 @onready var _archive_terminal_label: Label = (
 	_archive_terminal_root.get_node("ArchiveTerminalLabel") as Label
 )
+@onready var _archive_terminal_screen: Polygon2D = (
+	_archive_terminal_root.get_node("Screen") as Polygon2D
+)
+@onready var _archive_terminal_lines: Line2D = (
+	_archive_terminal_root.get_node("ArchiveLines") as Line2D
+)
+@onready var _archive_terminal_status_light: Polygon2D = (
+	_archive_terminal_root.get_node("StatusLight") as Polygon2D
+)
 @onready var _ecology_corner_root: Node2D = %EcologyCornerStateRoot
 @onready var _relay_observatory_root: Node2D = %RelayObservatoryStateRoot
 
@@ -37,10 +46,7 @@ func set_game_state_override(game_state: GameStateModel) -> void:
 func refresh_state_roots() -> void:
 	if not is_node_ready():
 		return
-	_set_root_visible(
-		_archive_terminal_root,
-		StationStateRules.ARCHIVE_TERMINAL_ID
-	)
+	_refresh_archive_terminal_shell()
 	_set_root_visible(
 		_ecology_corner_root,
 		StationStateRules.ECOLOGY_CORNER_ID
@@ -54,6 +60,14 @@ func refresh_state_roots() -> void:
 func is_state_root_visible(state_id: StringName) -> bool:
 	var state_root: Node2D = get_state_root(state_id)
 	return state_root != null and state_root.visible
+
+
+func is_archive_terminal_powered() -> bool:
+	return _is_archive_terminal_active()
+
+
+func get_archive_terminal_label_text() -> String:
+	return "" if _archive_terminal_label == null else _archive_terminal_label.text
 
 
 func get_state_root(state_id: StringName) -> Node2D:
@@ -106,4 +120,35 @@ func _set_root_visible(root: Node2D, state_id: StringName) -> void:
 
 func _localize_state_labels() -> void:
 	if _archive_terminal_label != null:
-		_archive_terminal_label.text = tr("UI_STATION_ARCHIVE_TERMINAL")
+		_archive_terminal_label.text = tr(
+			"UI_STATION_ARCHIVE_TERMINAL"
+			if _is_archive_terminal_active()
+			else "UI_STATION_ARCHIVE_TERMINAL_OFFLINE"
+		)
+
+
+func _refresh_archive_terminal_shell() -> void:
+	if _archive_terminal_root == null:
+		return
+	var is_active: bool = _is_archive_terminal_active()
+	_archive_terminal_root.visible = true
+	if _archive_terminal_screen != null:
+		_archive_terminal_screen.color = (
+			Color("096078") if is_active else Color("111820")
+		)
+	if _archive_terminal_lines != null:
+		_archive_terminal_lines.visible = is_active
+	if _archive_terminal_status_light != null:
+		_archive_terminal_status_light.color = (
+			Color("e7a85b") if is_active else Color("46515b")
+		)
+	_localize_state_labels()
+
+
+func _is_archive_terminal_active() -> bool:
+	return (
+		_game_state != null
+		and _game_state.has_station_state(
+			StationStateRules.ARCHIVE_TERMINAL_ID
+		)
+	)

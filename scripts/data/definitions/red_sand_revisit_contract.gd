@@ -7,6 +7,10 @@ extends Resource
 @export var order: OrderDefinition
 @export var arrival_dialogue: DialogueSequence
 @export var optional_dialogue: DialogueSequence
+@export var cockpit_manual_dialogue: DialogueSequence
+@export var cockpit_travel_main_dialogue: DialogueSequence
+@export var cockpit_travel_radio_dialogue: DialogueSequence
+@export var cockpit_travel_cargo_dialogue: DialogueSequence
 @export var source_route: FlightRouteDefinition
 @export var route_variant_id: StringName = &""
 @export var route_entry_checkpoint_id: StringName = &""
@@ -20,6 +24,20 @@ var nominal_route_seconds: float = 1.0
 var changed_facility_route_distance: float = 0.0
 @export var route_stage_display_name_keys: Array[StringName] = []
 @export var route_stage_instruction_keys: Array[StringName] = []
+@export var route_hud_stage_format_key: StringName = &""
+@export var cockpit_travel_phase_name_keys: Array[StringName] = []
+@export var cockpit_travel_phase_detail_keys: Array[StringName] = []
+@export var cockpit_company_note_key: StringName = &""
+@export var cockpit_cargo_note_key: StringName = &""
+@export var cockpit_travel_completion_flag: StringName = &""
+@export var flight_landing_smooth_key: StringName = &""
+@export var flight_landing_rough_key: StringName = &""
+@export var arrival_landing_smooth_key: StringName = &""
+@export var arrival_landing_rough_key: StringName = &""
+@export var arrival_technician_prompt_key: StringName = &""
+@export var arrival_record_prompt_key: StringName = &""
+@export var arrival_return_prompt_key: StringName = &""
+@export var arrival_cooling_prompt_key: StringName = &""
 @export var available_state_id: StringName = &""
 @export var accepted_state_id: StringName = &""
 @export var completed_state_id: StringName = &""
@@ -51,6 +69,24 @@ func validate(registry: GameDataRegistry) -> PackedStringArray:
 		errors.append("Red Sand revisit arrival dialogue is missing.")
 	if optional_dialogue == null:
 		errors.append("Red Sand revisit optional dialogue is missing.")
+	var cockpit_dialogues: Array[DialogueSequence] = [
+		cockpit_manual_dialogue,
+		cockpit_travel_main_dialogue,
+		cockpit_travel_radio_dialogue,
+		cockpit_travel_cargo_dialogue,
+	]
+	var cockpit_dialogue_ids: Dictionary[StringName, bool] = {}
+	for dialogue: DialogueSequence in cockpit_dialogues:
+		if (
+			dialogue == null
+			or not M1ProgressRules.is_stable_id(dialogue.id)
+			or cockpit_dialogue_ids.has(dialogue.id)
+		):
+			errors.append(
+				"Red Sand revisit cockpit dialogues must be present and unique."
+			)
+			break
+		cockpit_dialogue_ids[dialogue.id] = true
 	if source_route == null or source_route.id != &"route_red_sand_m0":
 		errors.append("Red Sand revisit must reuse the validated M0 route source.")
 	if not M1ProgressRules.is_stable_id(route_variant_id):
@@ -90,6 +126,34 @@ func validate(registry: GameDataRegistry) -> PackedStringArray:
 			if key.is_empty():
 				errors.append("Red Sand revisit route-stage localization key is empty.")
 				break
+	if (
+		route_hud_stage_format_key.is_empty()
+		or cockpit_travel_phase_name_keys.size() != 4
+		or cockpit_travel_phase_detail_keys.size() != 4
+	):
+		errors.append("Red Sand revisit cockpit and route presentation is incomplete.")
+	else:
+		var presentation_keys: Array[StringName] = [
+			route_hud_stage_format_key,
+			cockpit_company_note_key,
+			cockpit_cargo_note_key,
+			flight_landing_smooth_key,
+			flight_landing_rough_key,
+			arrival_landing_smooth_key,
+			arrival_landing_rough_key,
+			arrival_technician_prompt_key,
+			arrival_record_prompt_key,
+			arrival_return_prompt_key,
+			arrival_cooling_prompt_key,
+		]
+		presentation_keys.append_array(cockpit_travel_phase_name_keys)
+		presentation_keys.append_array(cockpit_travel_phase_detail_keys)
+		for key: StringName in presentation_keys:
+			if key.is_empty():
+				errors.append(
+					"Red Sand revisit presentation contains an empty key."
+				)
+				break
 	var state_ids: Array[StringName] = [
 		available_state_id,
 		accepted_state_id,
@@ -114,6 +178,8 @@ func validate(registry: GameDataRegistry) -> PackedStringArray:
 		errors.append("Red Sand revisit completion dialogue flag is invalid.")
 	if not M1ProgressRules.is_stable_id(optional_dialogue_completion_flag):
 		errors.append("Red Sand revisit optional dialogue completion flag is invalid.")
+	if not M1ProgressRules.is_stable_id(cockpit_travel_completion_flag):
+		errors.append("Red Sand revisit cockpit travel completion flag is invalid.")
 	if (
 		not M1ProgressRules.is_known_planet(record_choice_relation_planet_id)
 		or order == null
@@ -179,6 +245,24 @@ func get_stage_instruction_key(source_segment_index: int) -> StringName:
 	return route_stage_instruction_keys[local_index]
 
 
+func get_cockpit_travel_phase_name_key(
+	phase: GameStateModel.TravelState
+) -> StringName:
+	var index: int = _get_cockpit_travel_phase_index(phase)
+	if index < 0 or index >= cockpit_travel_phase_name_keys.size():
+		return &""
+	return cockpit_travel_phase_name_keys[index]
+
+
+func get_cockpit_travel_phase_detail_key(
+	phase: GameStateModel.TravelState
+) -> StringName:
+	var index: int = _get_cockpit_travel_phase_index(phase)
+	if index < 0 or index >= cockpit_travel_phase_detail_keys.size():
+		return &""
+	return cockpit_travel_phase_detail_keys[index]
+
+
 func is_revisit_order(order_id: StringName) -> bool:
 	return order != null and order_id == order.id
 
@@ -209,3 +293,18 @@ func get_choice_relation_rewards(
 	):
 		rewards[record_choice_relation_planet_id] = keep_local_relation_bonus
 	return rewards
+
+
+func _get_cockpit_travel_phase_index(
+	phase: GameStateModel.TravelState
+) -> int:
+	match phase:
+		GameStateModel.TravelState.DEPARTURE:
+			return 0
+		GameStateModel.TravelState.CRUISE:
+			return 1
+		GameStateModel.TravelState.APPROACH:
+			return 2
+		GameStateModel.TravelState.COMPLETED:
+			return 3
+	return -1

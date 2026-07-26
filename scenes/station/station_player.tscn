@@ -1,6 +1,7 @@
 [gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/station/station_player.gd" id="1_player"]
+[ext_resource type="Font" path="res://data/ui/chinese_ui_font.tres" id="2_chinese_font"]
 
 [sub_resource type="CapsuleShape2D" id="CapsulePlayer"]
 radius = 7.0
@@ -11,12 +12,8 @@ radius = 44.0
 
 [sub_resource type="SpriteFrames" id="SpriteFramesPlaceholder"]
 
-[sub_resource type="SystemFont" id="SystemFontPrompt"]
-font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
-allow_system_fallback = true
-
 [sub_resource type="Theme" id="ThemePrompt"]
-default_font = SubResource("SystemFontPrompt")
+default_font = ExtResource("2_chinese_font")
 
 [sub_resource type="StyleBoxFlat" id="StylePromptPanel"]
 bg_color = Color(0.0313726, 0.0666667, 0.121569, 0.94)

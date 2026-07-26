@@ -4,13 +4,10 @@
 [ext_resource type="Resource" path="res://data/orders/red_sand_m0.tres" id="2_order"]
 [ext_resource type="Resource" path="res://data/m1_data_registry.tres" id="3_registry"]
 [ext_resource type="Resource" path="res://data/revisits/red_sand_revisit_contract.tres" id="4_revisit"]
-
-[sub_resource type="SystemFont" id="SystemFontResults"]
-font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
-allow_system_fallback = true
+[ext_resource type="Font" path="res://data/ui/chinese_ui_font.tres" id="5_chinese_font"]
 
 [sub_resource type="Theme" id="ThemeResults"]
-default_font = SubResource("SystemFontResults")
+default_font = ExtResource("5_chinese_font")
 
 [sub_resource type="StyleBoxFlat" id="StylePanel"]
 bg_color = Color(0.0705882, 0.0666667, 0.0980392, 0.97)

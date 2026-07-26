@@ -1,6 +1,7 @@
 [gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/debug/m1_debug_status.gd" id="1_status"]
+[ext_resource type="Font" path="res://data/ui/chinese_ui_font.tres" id="2_chinese_font"]
 
 [sub_resource type="StyleBoxFlat" id="StyleStatus"]
 bg_color = Color(0.0235294, 0.0470588, 0.0823529, 0.94)
@@ -14,12 +15,8 @@ corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
-[sub_resource type="SystemFont" id="SystemFontStatus"]
-font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
-allow_system_fallback = true
-
 [sub_resource type="Theme" id="ThemeStatus"]
-default_font = SubResource("SystemFontStatus")
+default_font = ExtResource("2_chinese_font")
 
 [node name="M1DebugStatus" type="PanelContainer"]
 unique_name_in_owner = true

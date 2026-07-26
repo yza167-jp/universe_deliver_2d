@@ -7,13 +7,10 @@
 [ext_resource type="Resource" path="res://data/dialogue/red_sand_arrival_optional.tres" id="5_optional"]
 [ext_resource type="Script" path="res://scripts/ui/scene_modal_coordinator.gd" id="6_modal"]
 [ext_resource type="Resource" path="res://data/revisits/red_sand_revisit_contract.tres" id="7_revisit"]
-
-[sub_resource type="SystemFont" id="SystemFontArrival"]
-font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
-allow_system_fallback = true
+[ext_resource type="Font" path="res://data/ui/chinese_ui_font.tres" id="8_chinese_font"]
 
 [sub_resource type="Theme" id="ThemeArrival"]
-default_font = SubResource("SystemFontArrival")
+default_font = ExtResource("8_chinese_font")
 
 [sub_resource type="RectangleShape2D" id="ShapeOuterHorizontal"]
 size = Vector2(960, 24)

@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_sequence.gd" id="1_sequence"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_line.gd" id="2_line"]
+[ext_resource type="Resource" path="res://data/characters/lao_pi.tres" id="3_lao_pi"]
+
+[sub_resource type="Resource" id="LineMaterial"]
+script = ExtResource("2_line")
+id = &"revisit_material"
+speaker = ExtResource("3_lao_pi")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_TRAVEL_CARGO_MATERIAL"
+portrait_expression = &"neutral"
+next_line_id = &"revisit_iya_request"
+
+[sub_resource type="Resource" id="LineIya"]
+script = ExtResource("2_line")
+id = &"revisit_iya_request"
+speaker = ExtResource("3_lao_pi")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_TRAVEL_CARGO_IYA"
+portrait_expression = &"friendly"
+
+[resource]
+script = ExtResource("1_sequence")
+id = &"dialogue_m1_red_sand_revisit_travel_cargo"
+start_line_id = &"revisit_material"
+lines = [SubResource("LineMaterial"), SubResource("LineIya")]

@@ -93,7 +93,11 @@ func _ready() -> void:
 		push_error("Red Sand route could not configure its surface frame.")
 		return
 	_settings_service = _resolve_settings_service()
-	if not route_visuals.configure(route_definition, route_origin_x):
+	if not route_visuals.configure(
+		route_definition,
+		route_origin_x,
+		revisit_contract if _is_revisit_route else null
+	):
 		push_error("Red Sand route could not build its graybox visuals.")
 		return
 	_sync_accessibility_visuals()

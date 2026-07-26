@@ -192,7 +192,13 @@ func refresh() -> void:
 			1.0
 		)
 		expected_seconds = _revisit_contract.nominal_route_seconds
-	_stage_label.text = tr("UI_RED_SAND_ROUTE_HUD_STAGE") % [
+	var stage_format_key: StringName = &"UI_RED_SAND_ROUTE_HUD_STAGE"
+	if (
+		_revisit_contract != null
+		and not _revisit_contract.route_hud_stage_format_key.is_empty()
+	):
+		stage_format_key = _revisit_contract.route_hud_stage_format_key
+	_stage_label.text = tr(stage_format_key) % [
 		display_segment_index + 1,
 		display_segment_count,
 		tr(display_name_key),
@@ -301,6 +307,12 @@ func show_landing_result(result_id: StringName, cargo_integrity: float) -> void:
 		if result_id == OrderRunState.LANDING_RESULT_SMOOTH
 		else &"UI_RED_SAND_LANDING_RESULT_ROUGH"
 	)
+	if _revisit_contract != null:
+		result_key = (
+			_revisit_contract.flight_landing_smooth_key
+			if result_id == OrderRunState.LANDING_RESULT_SMOOTH
+			else _revisit_contract.flight_landing_rough_key
+		)
 	_show_status(tr(result_key) % roundi(cargo_integrity), 6.0)
 
 

@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_sequence.gd" id="1_sequence"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_line.gd" id="2_line"]
+[ext_resource type="Resource" path="res://data/characters/lao_pi.tres" id="3_lao_pi"]
+
+[sub_resource type="Resource" id="LineServiceLane"]
+script = ExtResource("2_line")
+id = &"revisit_service_lane"
+speaker = ExtResource("3_lao_pi")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_COCKPIT_MANUAL_SERVICE_LANE"
+portrait_expression = &"neutral"
+next_line_id = &"revisit_signal"
+
+[sub_resource type="Resource" id="LineSignal"]
+script = ExtResource("2_line")
+id = &"revisit_signal"
+speaker = ExtResource("3_lao_pi")
+text_key = &"DIALOGUE_M1_RED_SAND_REVISIT_COCKPIT_MANUAL_SIGNAL"
+portrait_expression = &"thoughtful"
+
+[resource]
+script = ExtResource("1_sequence")
+id = &"dialogue_m1_red_sand_revisit_cockpit_manual"
+start_line_id = &"revisit_service_lane"
+lines = [SubResource("LineServiceLane"), SubResource("LineSignal")]

@@ -111,6 +111,10 @@ run_godot_checked \
   "White Noise qualification, navigation preview, loadout installation, and hard route guard" \
   --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t114_white_noise_preparation_smoke_runner.gd
 
+run_godot_checked \
+  "Gate E Round 2 loadout semantics, readable history, revisit presentation, and Chinese glyph coverage" \
+  --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t119_gate_e_round2_smoke_runner.gd
+
 for scenario_id in \
   gate_e \
   red_sand_revisit \

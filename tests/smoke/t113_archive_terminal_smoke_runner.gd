@@ -72,8 +72,8 @@ func _run_smoke() -> void:
 		await _cleanup()
 		_finish()
 		return
+	await _check_archive_activation_briefing()
 	await _check_archive_terminal_flow()
-	await _check_lao_pi_briefing()
 	await _check_save_and_continue()
 	await _cleanup()
 	_finish()
@@ -101,12 +101,15 @@ func _check_locked_station() -> void:
 		controller != null
 		and not controller.is_terminal_available()
 		and presenter != null
-		and not presenter.is_state_root_visible(
+		and presenter.is_state_root_visible(
 			StationStateRules.ARCHIVE_TERMINAL_ID
 		)
+		and not presenter.is_archive_terminal_powered()
+		and presenter.get_archive_terminal_label_text()
+		== "旧档案接口 · 未接通"
 		and terminal != null
 		and not terminal.can_interact(_station.get_station_player()),
-		"New Game exposed the archive terminal before its exact station-state reward.",
+		"New Game did not keep the archive shell visible, offline, and non-interactive.",
 	)
 	await _free_station()
 
@@ -171,7 +174,9 @@ func _prepare_completed_revisit() -> bool:
 			_contract.order,
 			settlement,
 			&"",
-			[],
+			[
+				StationTutorialController.ARCHIVE_BRIEFING_PENDING_FLAG,
+			],
 			_contract.get_choice_relation_rewards(_game_state),
 			[module]
 		),
@@ -232,8 +237,9 @@ func _check_archive_terminal_flow() -> void:
 		presenter != null
 		and presenter.is_state_root_visible(
 			StationStateRules.ARCHIVE_TERMINAL_ID
-		),
-		"The exact archive state did not reveal the terminal presentation.",
+		)
+		and presenter.is_archive_terminal_powered(),
+		"The exact archive state did not power the persistent terminal shell.",
 	)
 	_check(
 		terminal != null
@@ -342,7 +348,7 @@ func _check_archive_terminal_flow() -> void:
 	)
 
 
-func _check_lao_pi_briefing() -> void:
+func _check_archive_activation_briefing() -> void:
 	var lao_pi: LaoPiStation = _station.get_lao_pi()
 	var tutorial: StationTutorialController = (
 		_station.get_tutorial_controller()
@@ -355,23 +361,28 @@ func _check_lao_pi_briefing() -> void:
 	if lao_pi == null or tutorial == null or dialogue_ui == null:
 		return
 	_check(
-		lao_pi.interact(_station.get_station_player())
+		_game_state.has_story_flag(
+			StationTutorialController.ARCHIVE_BRIEFING_PENDING_FLAG
+		)
+		and not _game_state.has_story_flag(
+			StationTutorialController.ARCHIVE_BRIEFING_COMPLETION_FLAG
+		)
 		and tutorial.get_active_dialogue_id()
 		== &"dialogue_lao_pi_archive_terminal_briefing",
-		"Lao Pi did not offer the post-revisit White Noise archive briefing.",
+		"Returning from the revisit did not automatically start the one-time archive activation.",
 	)
 	await _finish_active_dialogue(tutorial, dialogue_ui, 6)
 	_check(
 		_game_state.has_story_flag(
 			StationTutorialController.ARCHIVE_BRIEFING_COMPLETION_FLAG
 		),
-		"Completing Lao Pi's archive briefing did not persist its one-time flag.",
+		"Completing the archive activation did not persist its one-time flag.",
 	)
 	_check(
 		lao_pi.interact(_station.get_station_player())
 		and tutorial.get_active_dialogue_id()
 		== &"dialogue_lao_pi_station_daily",
-		"The completed archive briefing did not return Lao Pi to daily dialogue.",
+		"The completed activation replayed instead of returning Lao Pi to daily dialogue.",
 	)
 	await _finish_active_dialogue(tutorial, dialogue_ui, 5)
 
@@ -392,10 +403,11 @@ func _check_save_and_continue() -> void:
 	)
 	_check(
 		not controller.is_terminal_available()
-		and not presenter.is_state_root_visible(
+		and presenter.is_state_root_visible(
 			StationStateRules.ARCHIVE_TERMINAL_ID
-		),
-		"Runtime reset retained the archive interaction or visible terminal.",
+		)
+		and not presenter.is_archive_terminal_powered(),
+		"Runtime reset did not return the persistent archive shell to its offline state.",
 	)
 	_check(
 		_save_service.load_progress(),
@@ -414,6 +426,22 @@ func _check_save_and_continue() -> void:
 			StationTutorialController.ARCHIVE_BRIEFING_COMPLETION_FLAG
 		),
 		"Continue did not restore the terminal, known records, and Lao Pi briefing state.",
+	)
+	await _free_station()
+	await _instantiate_station()
+	if _station == null:
+		return
+	controller = _station.get_archive_terminal_controller()
+	presenter = _station.get_station_state_presenter()
+	var tutorial: StationTutorialController = _station.get_tutorial_controller()
+	_check(
+		controller != null
+		and controller.is_terminal_available()
+		and presenter != null
+		and presenter.is_archive_terminal_powered()
+		and tutorial != null
+		and tutorial.get_active_dialogue_id().is_empty(),
+		"Loading an already activated archive replayed its activation dialogue.",
 	)
 	var browser: CodexBrowserUI = _station.get_archive_terminal_ui()
 	_check(

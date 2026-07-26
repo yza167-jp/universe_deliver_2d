@@ -25,13 +25,10 @@
 [ext_resource type="Script" path="res://scripts/station/station_archive_terminal_controller.gd" id="23_archive_controller"]
 [ext_resource type="PackedScene" path="res://scenes/ui/codex_browser.tscn" id="24_codex_browser"]
 [ext_resource type="Resource" path="res://data/dialogue/lao_pi_archive_terminal_briefing.tres" id="25_archive_dialogue"]
-
-[sub_resource type="SystemFont" id="SystemFontStation"]
-font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
-allow_system_fallback = true
+[ext_resource type="Font" path="res://data/ui/chinese_ui_font.tres" id="26_chinese_font"]
 
 [sub_resource type="Theme" id="ThemeStation"]
-default_font = SubResource("SystemFontStation")
+default_font = ExtResource("26_chinese_font")
 
 [sub_resource type="RectangleShape2D" id="ShapeOuterHorizontal"]
 size = Vector2(960, 48)
@@ -341,7 +338,6 @@ metadata/state_change_id = &"station_lighting_upgrade"
 
 [node name="ArchiveTerminalStateRoot" type="Node2D" parent="StateChangeAnchors/M1StationStateRoots"]
 unique_name_in_owner = true
-visible = false
 position = Vector2(350, 150)
 
 [node name="Anchor" type="Marker2D" parent="StateChangeAnchors/M1StationStateRoots/ArchiveTerminalStateRoot" groups=["station_state_anchor"]]

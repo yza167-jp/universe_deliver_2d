@@ -85,11 +85,19 @@ func _run_smoke() -> void:
 		station_label != null and station_label.text.contains("旧中继铭牌"),
 		"The M0 wall label lost the old relay plaque.",
 	)
-	for state_id: StringName in StationStateRules.STATE_IDS:
-		_check(
-			not presenter.is_state_root_visible(state_id),
-			"M0-only progress exposed an M1 station root: %s." % state_id,
+	_check(
+		presenter.is_state_root_visible(
+			StationStateRules.ARCHIVE_TERMINAL_ID
 		)
+		and not presenter.is_archive_terminal_powered()
+		and not presenter.is_state_root_visible(
+			StationStateRules.ECOLOGY_CORNER_ID
+		)
+		and not presenter.is_state_root_visible(
+			StationStateRules.RELAY_OBSERVATORY_ID
+		),
+		"M0-only progress did not preserve exactly the dormant archive shell.",
+	)
 	for interactable: Interactable2D in _station.get_interactables():
 		_check(
 			not StationStateRules.is_known_state_id(interactable.interaction_id),
@@ -184,6 +192,7 @@ func _run_smoke() -> void:
 		presenter.is_state_root_visible(
 			StationStateRules.ARCHIVE_TERMINAL_ID
 		)
+		and presenter.is_archive_terminal_powered()
 		and not presenter.is_state_root_visible(
 			StationStateRules.ECOLOGY_CORNER_ID
 		)
@@ -202,11 +211,19 @@ func _run_smoke() -> void:
 		)
 	_game_state.reset_runtime_state()
 	await process_frame
-	for state_id: StringName in StationStateRules.STATE_IDS:
-		_check(
-			not presenter.is_state_root_visible(state_id),
-			"New Game reset retained an M1 station root: %s." % state_id,
+	_check(
+		presenter.is_state_root_visible(
+			StationStateRules.ARCHIVE_TERMINAL_ID
 		)
+		and not presenter.is_archive_terminal_powered()
+		and not presenter.is_state_root_visible(
+			StationStateRules.ECOLOGY_CORNER_ID
+		)
+		and not presenter.is_state_root_visible(
+			StationStateRules.RELAY_OBSERVATORY_ID
+		),
+		"New Game reset did not restore exactly the dormant archive shell.",
+	)
 
 	await _cleanup()
 	_finish(original_locale)

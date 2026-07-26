@@ -454,10 +454,11 @@ func _check_station_save_and_continue(station: StationHub) -> void:
 	_check(
 		not _game_state.has_completed_order(_contract.order.id)
 		and presenter != null
-		and not presenter.is_state_root_visible(
+		and presenter.is_state_root_visible(
 			StationStateRules.ARCHIVE_TERMINAL_ID
-		),
-		"T-112 restart fixture did not clear runtime progress and station visuals."
+		)
+		and not presenter.is_archive_terminal_powered(),
+		"T-112 restart fixture did not clear runtime progress or power down the persistent archive shell."
 	)
 	_check(
 		_save_service.load_progress(),
@@ -476,7 +477,8 @@ func _check_station_save_and_continue(station: StationHub) -> void:
 		and presenter != null
 		and presenter.is_state_root_visible(
 			StationStateRules.ARCHIVE_TERMINAL_ID
-		),
+		)
+		and presenter.is_archive_terminal_powered(),
 		"T-112 Continue did not restore the exact branch, module, revisit, and station state."
 	)
 

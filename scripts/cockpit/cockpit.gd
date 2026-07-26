@@ -71,6 +71,7 @@ const MUTED_TEXT: Color = Color("9aa7b5")
 @export var travel_main_dialogue: DialogueSequence
 @export var travel_radio_dialogue: DialogueSequence
 @export var travel_cargo_dialogue: DialogueSequence
+@export var revisit_contract: RedSandRevisitContract
 
 @onready var _title_label: Label = %TitleLabel
 @onready var _instruction_label: Label = %InstructionLabel
@@ -700,6 +701,8 @@ func _build_company_panel_text() -> String:
 			tr("UI_COCKPIT_COMPANY_RISK_BRIEFING_FORMAT") % active_order.risk_level
 		)
 		lines.append(tr("UI_COCKPIT_COMPANY_RISK_NOTE"))
+	if _is_red_sand_revisit() and revisit_contract != null:
+		lines.append(tr(String(revisit_contract.cockpit_company_note_key)))
 	lines.append(travel_status)
 	return "\n".join(lines)
 
@@ -714,11 +717,14 @@ func _build_cargo_panel_text() -> String:
 	var cargo_name: String = tr("UI_COCKPIT_VALUE_UNAVAILABLE")
 	if cargo != null:
 		cargo_name = tr(String(cargo.display_name_key))
-	return "\n".join([
+	var lines: PackedStringArray = PackedStringArray([
 		tr("UI_COCKPIT_CARGO_LOADED_FORMAT") % cargo_name,
 		tr("UI_COCKPIT_CARGO_INTEGRITY_PLACEHOLDER"),
 		tr("UI_COCKPIT_CARGO_LOCK_STATUS"),
 	])
+	if _is_red_sand_revisit() and revisit_contract != null:
+		lines.append(tr(String(revisit_contract.cockpit_cargo_note_key)))
+	return "\n".join(lines)
 
 
 func _refresh_navigation_action() -> void:
@@ -808,12 +814,13 @@ func _queue_travel_main_dialogue_if_needed(phase: GameStateModel.TravelState) ->
 	if (
 		phase != GameStateModel.TravelState.CRUISE
 		or _game_state == null
-		or _game_state.has_story_flag(TRAVEL_MAIN_DIALOGUE_COMPLETED_FLAG)
+		or _game_state.has_story_flag(_get_travel_main_completion_flag())
 		or _travel_main_dialogue_pending
 		or _active_dialogue_context == DialogueContext.TRAVEL_REQUIRED
 	):
 		return
-	if travel_main_dialogue == null:
+	var required_dialogue: DialogueSequence = _get_travel_main_dialogue()
+	if required_dialogue == null:
 		push_error("Cockpit travel main dialogue is missing.")
 		return
 	_travel_main_dialogue_pending = true
@@ -826,7 +833,7 @@ func _try_start_pending_travel_main_dialogue() -> void:
 		return
 	if (
 		_game_state != null
-		and _game_state.has_story_flag(TRAVEL_MAIN_DIALOGUE_COMPLETED_FLAG)
+		and _game_state.has_story_flag(_get_travel_main_completion_flag())
 	):
 		_travel_main_dialogue_pending = false
 		_travel_controller.set_narrative_hold(false)
@@ -834,7 +841,7 @@ func _try_start_pending_travel_main_dialogue() -> void:
 	if is_input_locked() or _dialogue_ui == null or _dialogue_ui.visible:
 		return
 	if _start_dialogue_sequence(
-		travel_main_dialogue,
+		_get_travel_main_dialogue(),
 		&"lao_pi_seat",
 		DialogueContext.TRAVEL_REQUIRED,
 		true
@@ -972,6 +979,12 @@ func _resolve_active_order() -> OrderDefinition:
 
 
 func _get_travel_phase_key(phase: GameStateModel.TravelState) -> StringName:
+	if _is_red_sand_revisit() and revisit_contract != null:
+		var revisit_key: StringName = (
+			revisit_contract.get_cockpit_travel_phase_name_key(phase)
+		)
+		if not revisit_key.is_empty():
+			return revisit_key
 	match phase:
 		GameStateModel.TravelState.DEPARTURE:
 			return &"UI_COCKPIT_TRAVEL_PHASE_DEPARTURE"
@@ -985,6 +998,12 @@ func _get_travel_phase_key(phase: GameStateModel.TravelState) -> StringName:
 
 
 func _get_travel_detail_key(phase: GameStateModel.TravelState) -> StringName:
+	if _is_red_sand_revisit() and revisit_contract != null:
+		var revisit_key: StringName = (
+			revisit_contract.get_cockpit_travel_phase_detail_key(phase)
+		)
+		if not revisit_key.is_empty():
+			return revisit_key
 	match phase:
 		GameStateModel.TravelState.DEPARTURE:
 			return &"UI_COCKPIT_TRAVEL_DETAIL_DEPARTURE"
@@ -1040,7 +1059,7 @@ func _get_travel_error_key(error: StringName) -> StringName:
 
 func _start_lao_pi_dialogue() -> bool:
 	return _start_dialogue_sequence(
-		lao_pi_dialogue,
+		_get_manual_lao_pi_dialogue(),
 		&"lao_pi_seat",
 		DialogueContext.MANUAL_LAO_PI,
 		_is_active_travel_phase()
@@ -1081,7 +1100,9 @@ func _on_dialogue_finished() -> void:
 	var required_dialogue_incomplete: bool = (
 		completed_context == DialogueContext.TRAVEL_REQUIRED
 		and _game_state != null
-		and not _game_state.has_story_flag(TRAVEL_MAIN_DIALOGUE_COMPLETED_FLAG)
+		and not _game_state.has_story_flag(
+			_get_travel_main_completion_flag()
+		)
 	)
 	_dialogue_active = false
 	_active_dialogue_context = DialogueContext.NONE
@@ -1101,10 +1122,12 @@ func _activate_radio_hotspot() -> bool:
 		_radio_on
 		and _is_active_travel_phase()
 		and not _travel_main_dialogue_pending
-		and not _is_dialogue_sequence_fully_read(travel_radio_dialogue)
+		and not _is_dialogue_sequence_fully_read(
+			_get_travel_radio_dialogue()
+		)
 	):
 		_start_dialogue_sequence(
-			travel_radio_dialogue,
+			_get_travel_radio_dialogue(),
 			&"radio",
 			DialogueContext.TRAVEL_RADIO,
 			true
@@ -1116,15 +1139,55 @@ func _activate_cargo_hotspot() -> bool:
 	if (
 		_is_active_travel_phase()
 		and not _travel_main_dialogue_pending
-		and not _is_dialogue_sequence_fully_read(travel_cargo_dialogue)
+		and not _is_dialogue_sequence_fully_read(
+			_get_travel_cargo_dialogue()
+		)
 	):
 		return _start_dialogue_sequence(
-			travel_cargo_dialogue,
+			_get_travel_cargo_dialogue(),
 			&"cargo_indicator",
 			DialogueContext.TRAVEL_CARGO,
 			true
 		)
 	return _open_device_panel(&"cargo_indicator")
+
+
+func _is_red_sand_revisit() -> bool:
+	return (
+		revisit_contract != null
+		and _active_order != null
+		and revisit_contract.is_revisit_order(_active_order.id)
+	)
+
+
+func _get_manual_lao_pi_dialogue() -> DialogueSequence:
+	if _is_red_sand_revisit():
+		return revisit_contract.cockpit_manual_dialogue
+	return lao_pi_dialogue
+
+
+func _get_travel_main_dialogue() -> DialogueSequence:
+	if _is_red_sand_revisit():
+		return revisit_contract.cockpit_travel_main_dialogue
+	return travel_main_dialogue
+
+
+func _get_travel_radio_dialogue() -> DialogueSequence:
+	if _is_red_sand_revisit():
+		return revisit_contract.cockpit_travel_radio_dialogue
+	return travel_radio_dialogue
+
+
+func _get_travel_cargo_dialogue() -> DialogueSequence:
+	if _is_red_sand_revisit():
+		return revisit_contract.cockpit_travel_cargo_dialogue
+	return travel_cargo_dialogue
+
+
+func _get_travel_main_completion_flag() -> StringName:
+	if _is_red_sand_revisit():
+		return revisit_contract.cockpit_travel_completion_flag
+	return TRAVEL_MAIN_DIALOGUE_COMPLETED_FLAG
 
 
 func _toggle_radio() -> bool:

@@ -37,6 +37,7 @@ const SURFACE_FRAME_BASE_POSITION_META: StringName = &"surface_frame_base_positi
 ) as Parallax2D
 
 var _route_definition: FlightRouteDefinition
+var _revisit_contract: RedSandRevisitContract
 var _route_origin_x: float = 0.0
 var _orbit_transition: RedSandOrbitTransitionModel
 var _planet_alpha: float = 1.0
@@ -57,12 +58,14 @@ func _notification(what: int) -> void:
 
 func configure(
 	route_definition: FlightRouteDefinition,
-	route_origin_x: float
+	route_origin_x: float,
+	revisit_contract: RedSandRevisitContract = null
 ) -> bool:
 	if route_definition == null or not route_definition.validate().is_empty():
 		return false
 	_route_definition = route_definition
 	_route_origin_x = route_origin_x
+	_revisit_contract = revisit_contract
 	_orbit_transition = _create_orbit_transition()
 	_build_graybox_route()
 	reset_to_distance(0.0)
@@ -387,7 +390,7 @@ func _build_segment_graybox(segment: FlightRouteSegment, index: int) -> void:
 	var stage_label: Label = Label.new()
 	stage_label.name = "StageLabel%02d" % (index + 1)
 	stage_label.position = Vector2(start_x + 18.0, STAGE_LABEL_Y)
-	stage_label.text = tr(segment.display_name_key)
+	stage_label.text = tr(_get_stage_display_name_key(index))
 	stage_label.add_theme_font_size_override("font_size", 18)
 	stage_label.add_theme_color_override(
 		"font_color",
@@ -695,4 +698,18 @@ func _refresh_stage_labels() -> void:
 		var index: int = int(child.get_meta(&"route_segment_index"))
 		if index < 0 or index >= _route_definition.segments.size():
 			continue
-		(child as Label).text = tr(_route_definition.segments[index].display_name_key)
+		(child as Label).text = tr(_get_stage_display_name_key(index))
+
+
+func _get_stage_display_name_key(index: int) -> StringName:
+	if (
+		_revisit_contract != null
+		and index >= 0
+		and index < _route_definition.segments.size()
+	):
+		var revisit_key: StringName = (
+			_revisit_contract.get_stage_display_name_key(index)
+		)
+		if not revisit_key.is_empty():
+			return revisit_key
+	return _route_definition.segments[index].display_name_key

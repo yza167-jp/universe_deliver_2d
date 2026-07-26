@@ -147,9 +147,17 @@ func refresh_landing_feedback() -> void:
 	var feedback_key: StringName = &""
 	match run_state.landing_result:
 		OrderRunState.LANDING_RESULT_SMOOTH:
-			feedback_key = &"UI_RED_SAND_ARRIVAL_LANDING_SMOOTH"
+			feedback_key = (
+				revisit_contract.arrival_landing_smooth_key
+				if _is_revisit and revisit_contract != null
+				else &"UI_RED_SAND_ARRIVAL_LANDING_SMOOTH"
+			)
 		OrderRunState.LANDING_RESULT_ROUGH:
-			feedback_key = &"UI_RED_SAND_ARRIVAL_LANDING_ROUGH"
+			feedback_key = (
+				revisit_contract.arrival_landing_rough_key
+				if _is_revisit and revisit_contract != null
+				else &"UI_RED_SAND_ARRIVAL_LANDING_ROUGH"
+			)
 		_:
 			_landing_feedback_label.visible = false
 			_landing_feedback_label.text = ""
@@ -486,6 +494,10 @@ func _configure_variant_presentation() -> void:
 	if _is_revisit and revisit_contract != null:
 		main_dialogue_sequence = revisit_contract.arrival_dialogue
 		optional_dialogue_sequence = revisit_contract.optional_dialogue
+		_technician.prompt_key = revisit_contract.arrival_technician_prompt_key
+		_record_terminal.prompt_key = revisit_contract.arrival_record_prompt_key
+		_return_beacon.prompt_key = revisit_contract.arrival_return_prompt_key
+		_cooling_equipment.prompt_key = revisit_contract.arrival_cooling_prompt_key
 	if _cooling_equipment != null:
 		_cooling_equipment.visible = _is_revisit
 		_cooling_equipment.interaction_enabled = _is_revisit

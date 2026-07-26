@@ -212,6 +212,18 @@ func get_order_name_text() -> String:
 	return "" if _order_name_label == null else _order_name_label.text
 
 
+func get_parties_text() -> String:
+	return "" if _parties_label == null else _parties_label.text
+
+
+func get_route_text() -> String:
+	return "" if _route_label == null else _route_label.text
+
+
+func get_reward_text() -> String:
+	return "" if _reward_label == null else _reward_label.text
+
+
 func get_environment_text() -> String:
 	return "" if _environment_label == null else _environment_label.text
 
@@ -248,6 +260,10 @@ func is_express_timing_visible() -> bool:
 
 func get_customer_history_text() -> String:
 	return "" if _customer_history_label == null else _customer_history_label.text
+
+
+func get_accept_button_text() -> String:
+	return "" if _accept_button == null else _accept_button.text
 
 
 ## Compatibility getter retained for the M0 smoke surface.
@@ -419,11 +435,15 @@ func _rebuild_directory() -> void:
 	_selectable_entries.clear()
 	_entry_buttons.clear()
 	_history_count = 0
+	for entry: M1OrderCatalogEntry in _entries:
+		if entry.is_visible and entry.is_history():
+			_history_count += 1
 	var category_order: Array[M1OrderCatalogEntry.DisplayCategory] = [
 		M1OrderCatalogEntry.DisplayCategory.CURRENT_ACCEPTED,
 		M1OrderCatalogEntry.DisplayCategory.CURRENT_MAINLINE,
 		M1OrderCatalogEntry.DisplayCategory.OPTIONAL,
 		M1OrderCatalogEntry.DisplayCategory.NEXT_CLUE,
+		M1OrderCatalogEntry.DisplayCategory.HISTORY,
 	]
 	for category: M1OrderCatalogEntry.DisplayCategory in category_order:
 		var category_entries: Array[M1OrderCatalogEntry] = []
@@ -435,16 +455,6 @@ func _rebuild_directory() -> void:
 		_add_category_label(category)
 		for entry: M1OrderCatalogEntry in category_entries:
 			_add_entry_button(entry)
-	for entry: M1OrderCatalogEntry in _entries:
-		if entry.is_history():
-			_history_count += 1
-	if _history_count > 0:
-		_add_category_label(M1OrderCatalogEntry.DisplayCategory.HISTORY)
-		var history_label: Label = Label.new()
-		history_label.text = tr("UI_ORDER_HISTORY_SUMMARY_FORMAT") % _history_count
-		history_label.add_theme_color_override("font_color", Color("9aa7b5"))
-		history_label.add_theme_font_size_override("font_size", 11)
-		_directory_list.add_child(history_label)
 	_catalog_summary_label.text = tr("UI_ORDER_CATALOG_SUMMARY_FORMAT") % [
 		_selectable_entries.size(),
 		_history_count,
@@ -596,9 +606,13 @@ func _refresh_detail(entry: M1OrderCatalogEntry) -> void:
 			order.cargo,
 			unavailable
 		)
-		_customer_history_label.text = _build_customer_history_text(
-			order.customer_history_keys,
-			unavailable
+		_customer_history_label.text = (
+			_build_order_history_detail(entry, unavailable)
+			if entry.is_history()
+			else _build_customer_history_text(
+				order.customer_history_keys,
+				unavailable
+			)
 		)
 	else:
 		_parties_label.text = unavailable
@@ -613,12 +627,14 @@ func _refresh_detail(entry: M1OrderCatalogEntry) -> void:
 		_cargo_name_label.text = unavailable
 		_cargo_description_label.text = unavailable
 		_customer_history_label.text = unavailable
-	_accept_button.disabled = not entry.accept_enabled
+	_accept_button.disabled = (
+		entry.is_history() or not entry.accept_enabled
+	)
 	_accept_button.text = _get_accept_button_text(entry)
 	if entry.status == GameStateModel.OrderStatus.ACCEPTED:
 		_feedback_label.text = tr("UI_ORDER_FEEDBACK_ACCEPTED")
-	elif entry.status == GameStateModel.OrderStatus.COMPLETED:
-		_feedback_label.text = tr("UI_ORDER_FEEDBACK_COMPLETED")
+	elif entry.is_history():
+		_feedback_label.text = tr("UI_ORDER_HISTORY_READ_ONLY")
 	elif not entry.lock_hint_key.is_empty():
 		_feedback_label.text = tr(String(entry.lock_hint_key))
 	elif entry.accept_enabled:
@@ -681,7 +697,7 @@ func _get_accept_button_text(entry: M1OrderCatalogEntry) -> String:
 		GameStateModel.OrderStatus.COMPLETED,
 		GameStateModel.OrderStatus.ARCHIVED,
 	]:
-		return tr("UI_ORDER_COMPLETED_BUTTON")
+		return tr("UI_ORDER_HISTORY_READ_ONLY_BUTTON")
 	return tr("UI_ORDER_ACCEPT")
 
 
@@ -822,3 +838,44 @@ func _build_customer_history_text(
 			tr("UI_ORDER_LIST_ENTRY_FORMAT") % _translate_key(key, fallback)
 		)
 	return "\n".join(entries)
+
+
+func _build_order_history_detail(
+	entry: M1OrderCatalogEntry,
+	fallback: String
+) -> String:
+	if entry == null or entry.order == null:
+		return fallback
+	var lines: PackedStringArray = []
+	var customer_history: String = _build_customer_history_text(
+		entry.order.customer_history_keys,
+		""
+	)
+	if not customer_history.is_empty():
+		lines.append(customer_history)
+	var result_key: StringName = &""
+	if entry.order_id == M1CatalogModel.M0_ORDER_ID:
+		result_key = &"UI_ORDER_HISTORY_RESULT_M0"
+	elif entry.order_id == M1CatalogModel.RED_SAND_REVISIT_ORDER_ID:
+		if (
+			_game_state != null
+			and _game_state.has_story_flag(
+				&"story_m1_red_sand_retrofit_records_kept_local"
+			)
+		):
+			result_key = &"UI_ORDER_HISTORY_RESULT_REVISIT_LOCAL"
+		elif (
+			_game_state != null
+			and _game_state.has_story_flag(
+				&"story_m1_red_sand_retrofit_records_uploaded_full"
+			)
+		):
+			result_key = &"UI_ORDER_HISTORY_RESULT_REVISIT_UPLOADED"
+		else:
+			result_key = &"UI_ORDER_HISTORY_RESULT_REVISIT"
+	if not result_key.is_empty():
+		lines.append(
+			tr("UI_ORDER_HISTORY_RESULT_FORMAT") % tr(String(result_key))
+		)
+	lines.append(tr("UI_ORDER_HISTORY_SETTLEMENT_NOT_RETAINED"))
+	return fallback if lines.is_empty() else "\n".join(lines)
