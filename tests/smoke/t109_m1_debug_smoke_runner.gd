@@ -288,19 +288,35 @@ func _check_target_scene(
 			and express_hud.is_timing_visible(),
 			"Express scenario did not open Flight Lab with one isolated timed fixture."
 		)
-	elif scenario_id == M1DebugScenarioCatalog.SCENARIO_WHITE_NOISE_ROUTE:
+	elif scenario_id in [
+		M1DebugScenarioCatalog.SCENARIO_WHITE_NOISE_ROUTE,
+		M1DebugScenarioCatalog.SCENARIO_WHITE_NOISE_ROUTE_UNSHIELDED,
+	]:
 		var fixture: OrderDefinition = _controller.get_express_fixture()
+		var expected_fixture_id: StringName = (
+			M1DebugScenarioCatalog.DEBUG_WHITE_NOISE_ROUTE_ORDER_ID
+			if scenario_id
+			== M1DebugScenarioCatalog.SCENARIO_WHITE_NOISE_ROUTE
+			else M1DebugScenarioCatalog.DEBUG_WHITE_NOISE_ROUTE_UNSHIELDED_ORDER_ID
+		)
+		var expected_shielding: bool = (
+			scenario_id
+			== M1DebugScenarioCatalog.SCENARIO_WHITE_NOISE_ROUTE
+		)
 		_check(
 			active_scene is WhiteNoiseFlight
 			and fixture != null
-			and fixture.id
-			== M1DebugScenarioCatalog.DEBUG_WHITE_NOISE_ROUTE_ORDER_ID
+			and fixture.id == expected_fixture_id
 			and fixture.destination_planet != null
 			and fixture.destination_planet.flight_scene_path
 			== M1DebugScenarioCatalog.WHITE_NOISE_ROUTE_SCENE_PATH
 			and _game_state.current_order_id == fixture.id
+			and (
+				active_scene as WhiteNoiseFlight
+			).get_flight_ship().is_high_voltage_shielding_enabled()
+			== expected_shielding
 			and not express_hud.has_active_express_order(),
-			"White Noise scenario did not open one isolated non-express route fixture."
+			"White Noise scenario did not open its isolated shield comparison fixture."
 		)
 	elif scenario_id == M1DebugScenarioCatalog.SCENARIO_RED_SAND_REVISIT:
 		var revisit_route: RedSandFlight = active_scene as RedSandFlight
@@ -344,7 +360,7 @@ func _finish() -> void:
 	TranslationServer.set_locale(_original_locale)
 	if _failures.is_empty():
 		print(
-			"[t109-m1-debug] PASS: eight deterministic scenarios, exact reset, "
+			"[t109-m1-debug] PASS: nine deterministic scenarios, exact reset, "
 			+ "catalog/lab targets, compact status, save isolation, and "
 			+ "registered-only guards."
 		)

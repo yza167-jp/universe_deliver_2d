@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://scripts/flight/white_noise_flight.gd" id="1_flight"]
 [ext_resource type="Script" path="res://scripts/flight/white_noise_route_visuals.gd" id="2_visuals"]
@@ -12,6 +12,8 @@
 [ext_resource type="Resource" path="res://data/m1_data_registry.tres" id="10_registry"]
 [ext_resource type="PackedScene" path="res://scenes/ui/flight_debug_hud.tscn" id="11_debug_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/white_noise_route_hud.tscn" id="12_route_hud"]
+[ext_resource type="Script" path="res://scripts/flight/white_noise_storm_controller.gd" id="13_storm_controller"]
+[ext_resource type="Resource" path="res://data/tuning/white_noise_storm_profile_m1.tres" id="14_storm_profile"]
 
 [sub_resource type="RectangleShape2D" id="ShapeShip"]
 size = Vector2(38, 16)
@@ -121,6 +123,21 @@ shape = SubResource("ShapeShip")
 unique_name_in_owner = true
 position = Vector2(320, 180)
 enabled = true
+
+[node name="StormFeedback" type="CanvasLayer" parent="."]
+layer = 24
+
+[node name="StormController" type="Control" parent="StormFeedback"]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("13_storm_controller")
+profile = ExtResource("14_storm_profile")
 
 [node name="FlightDebugHUD" parent="." instance=ExtResource("11_debug_hud")]
 unique_name_in_owner = true

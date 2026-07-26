@@ -391,7 +391,18 @@ T-120 的独立 `--m1-debug=white_noise_route` 入口从白噪章节、导航资
 专项测试覆盖六段 `34000 m` 路线、`88 / 118 / 154 s` 节奏合同、1.28g 数据
 对齐、三条冰裂谷局部通道与统一汇合、检查点恢复、有限着陆台、30/60/120 FPS
 固定步长、640×360 HUD/高对比路线提示和正式订单/星球仍为
-`REGISTERED_ONLY`。极光暴雪在本任务只提供视觉占位和环境 profile。
+`REGISTERED_ONLY`。
+
+T-121 在 `17000–23000 m` 原极光占位段接入
+`WhiteNoiseStormProfile / WhiteNoiseInterferenceModel /
+WhiteNoiseStormController`。危险按 `2.4 / 12.0 / 2.8 s` 最短时长与三个单调
+路线门槛确定推进，活跃期每 `4.0 s` 通过既有高压、护盾优先入口结算一次
+`18` 基础伤害。已安装屏蔽罩从模块 Resource 读取 `0.45 / 0.60`，未安装对照
+保持 `1.0 / 1.0`；控制、Input Map、存档与核心 HUD 不受干扰修改。
+`--m1-debug=white_noise_route` 保持已安装状态，新增隔离入口
+`--m1-debug=white_noise_route_unshielded` 只移除当前夹具的安装项，不改变正式
+Resource。路线提示、高对比和慢动作继续消费既有 SettingsService，帮助/系统
+暂停、重试、F6、离开窗口与场景释放均清理计时、反馈和时间倍率。
 
 ## 13. 不在 M1 的系统
 

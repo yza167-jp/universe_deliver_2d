@@ -20,12 +20,14 @@ const ASSIST_PRESETS: Array[float] = [
 @onready var debug_hud: FlightDebugHUD = %FlightDebugHUD
 @onready var route_hud: WhiteNoiseRouteHUD = %WhiteNoiseRouteHUD
 @onready var route_visuals: WhiteNoiseRouteVisuals = %RouteVisuals
+@onready var storm_controller: WhiteNoiseStormController = %StormController
 
 @export var route_definition: WhiteNoiseRouteDefinition
 @export var planet_definition: PlanetDefinition
 @export var data_registry: GameDataRegistry
 
 var game_state_override: GameStateModel
+var settings_service_override: SettingsServiceModel
 var _active_segment_index: int = 0
 var _maximum_route_distance: float = 0.0
 var _active_branch_id: StringName = &""
@@ -35,6 +37,7 @@ var _auto_retry_remaining: float = NO_RETRY_PENDING
 var _controls_help_open: bool = false
 var _was_tree_paused: bool = false
 var _active_assist_index: int = 1
+var _settings_service: SettingsServiceModel
 
 
 func _ready() -> void:
@@ -50,9 +53,18 @@ func _ready() -> void:
 	flight_ship.set_assist_strength(FlightAssistMode.LIMITED)
 	_active_assist_index = 1
 	_configure_ship_loadout()
+	_settings_service = _resolve_settings_service()
 	debug_hud.bind_ship(flight_ship)
 	debug_hud.set_route_guide_visible(false)
 	route_hud.bind(self, flight_ship)
+	if not storm_controller.bind(
+		self,
+		flight_ship,
+		route_hud,
+		route_visuals,
+		_settings_service
+	):
+		return
 	_connect_ship_signals()
 	_configure_checkpoint(0)
 	restart_from_checkpoint(false)
@@ -61,10 +73,11 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if flight_ship == null or route_definition == null:
 		return
-	if not _controls_help_open:
+	if not _controls_help_open and not get_tree().paused:
 		advance_route_state()
 		_enforce_route_bounds()
 		_update_branch_state()
+		storm_controller.advance(delta, _maximum_route_distance)
 		_try_complete_landing()
 		_update_auto_retry(delta)
 		_sync_camera()
@@ -109,6 +122,10 @@ func get_route_hud() -> WhiteNoiseRouteHUD:
 
 func get_route_visuals() -> WhiteNoiseRouteVisuals:
 	return route_visuals
+
+
+func get_storm_controller() -> WhiteNoiseStormController:
+	return storm_controller
 
 
 func get_route_definition() -> WhiteNoiseRouteDefinition:
@@ -191,6 +208,7 @@ func restart_from_checkpoint(is_automatic: bool = false) -> bool:
 		_branch_rejoined = (
 			_maximum_route_distance >= route_definition.get_branch_join_distance()
 		)
+	storm_controller.reset_for_route(_maximum_route_distance)
 	_sync_camera()
 	route_hud.refresh()
 	if is_automatic:
@@ -261,9 +279,19 @@ func debug_set_route_state(
 		true
 	)
 	_configure_checkpoint(_active_segment_index)
+	storm_controller.reset_for_route(clamped_distance)
 	_sync_camera()
 	route_hud.refresh()
 	return true
+
+
+func debug_set_storm_state(
+	state: WhiteNoiseInterferenceModel.State,
+	elapsed_seconds: float = 0.0
+) -> bool:
+	if storm_controller == null:
+		return false
+	return storm_controller.debug_set_state(state, elapsed_seconds)
 
 
 func _enter_segment(segment_index: int) -> void:
@@ -439,6 +467,12 @@ func _resolve_game_state() -> GameStateModel:
 	return get_node_or_null("/root/GameState") as GameStateModel
 
 
+func _resolve_settings_service() -> SettingsServiceModel:
+	if settings_service_override != null:
+		return settings_service_override
+	return get_node_or_null("/root/SettingsService") as SettingsServiceModel
+
+
 func _validate_configuration() -> bool:
 	if (
 		route_definition == null
@@ -447,6 +481,8 @@ func _validate_configuration() -> bool:
 		or flight_camera == null
 		or route_hud == null
 		or route_visuals == null
+		or storm_controller == null
+		or storm_controller.profile == null
 	):
 		push_error("White Noise route configuration is incomplete.")
 		return false
@@ -468,6 +504,26 @@ func _validate_configuration() -> bool:
 				"White Noise environment '%s' does not match planet gravity %.1f."
 				% [segment.environment_profile.id, authoritative_gravity]
 			)
+	var storm_errors: PackedStringArray = storm_controller.profile.validate()
+	errors.append_array(storm_errors)
+	var storm_segment: FlightRouteSegment = route_definition.get_segment(
+		storm_controller.profile.trigger_distance
+	)
+	if (
+		storm_segment == null
+		or storm_segment.id != &"white_noise_aurora_blizzard"
+		or not is_equal_approx(
+			storm_segment.start_distance,
+			storm_controller.profile.trigger_distance
+		)
+		or not is_equal_approx(
+			storm_segment.end_distance,
+			storm_controller.profile.end_distance
+		)
+	):
+		errors.append(
+			"White Noise storm profile must match the aurora route window."
+		)
 	if not errors.is_empty():
 		push_error("White Noise route rejected: %s" % "; ".join(errors))
 		return false

@@ -18,6 +18,9 @@ const STATION_SCENE_PATH: String = "res://scenes/station/station_hub.tscn"
 const SCENARIO_RED_SAND_REVISIT: StringName = &"red_sand_revisit"
 const SCENARIO_WHITE_NOISE_CATALOG: StringName = &"white_noise_catalog"
 const SCENARIO_WHITE_NOISE_ROUTE: StringName = &"white_noise_route"
+const SCENARIO_WHITE_NOISE_ROUTE_UNSHIELDED: StringName = (
+	&"white_noise_route_unshielded"
+)
 const SCENARIO_CANOPY_CATALOG: StringName = &"canopy_catalog"
 const SCENARIO_TIDAL_CATALOG: StringName = &"tidal_catalog"
 const SCENARIO_LOW_ALTITUDE_DROP: StringName = &"low_altitude_drop"
@@ -28,6 +31,7 @@ const SCENARIO_IDS: Array[StringName] = [
 	SCENARIO_RED_SAND_REVISIT,
 	SCENARIO_WHITE_NOISE_CATALOG,
 	SCENARIO_WHITE_NOISE_ROUTE,
+	SCENARIO_WHITE_NOISE_ROUTE_UNSHIELDED,
 	SCENARIO_CANOPY_CATALOG,
 	SCENARIO_TIDAL_CATALOG,
 	SCENARIO_LOW_ALTITUDE_DROP,
@@ -48,6 +52,9 @@ const ORDER_TIDAL_EXPRESS: StringName = &"side_tidal_beacon_before_eye"
 const DEBUG_EXPRESS_ORDER_ID: StringName = &"debug_m1_express_order"
 const DEBUG_WHITE_NOISE_ROUTE_ORDER_ID: StringName = (
 	&"debug_m1_white_noise_route"
+)
+const DEBUG_WHITE_NOISE_ROUTE_UNSHIELDED_ORDER_ID: StringName = (
+	&"debug_m1_white_noise_route_unshielded"
 )
 
 const STORY_M0_COMPLETED: StringName = &"story_red_sand_order_completed"
@@ -341,6 +348,8 @@ func _create_definition(
 			return _build_white_noise_catalog()
 		SCENARIO_WHITE_NOISE_ROUTE:
 			return _build_white_noise_route()
+		SCENARIO_WHITE_NOISE_ROUTE_UNSHIELDED:
+			return _build_white_noise_route_unshielded()
 		SCENARIO_CANOPY_CATALOG:
 			return _build_canopy_catalog()
 		SCENARIO_TIDAL_CATALOG:
@@ -414,6 +423,14 @@ func _build_white_noise_route() -> M1DebugScenarioDefinition:
 	definition.target_stage = SceneRouterService.Stage.FLIGHT
 	definition.target_scene_path = WHITE_NOISE_ROUTE_SCENE_PATH
 	definition.preview_only = false
+	return definition
+
+
+func _build_white_noise_route_unshielded() -> M1DebugScenarioDefinition:
+	var definition: M1DebugScenarioDefinition = _build_white_noise_route()
+	definition.scenario_id = SCENARIO_WHITE_NOISE_ROUTE_UNSHIELDED
+	definition.active_order_id = DEBUG_WHITE_NOISE_ROUTE_UNSHIELDED_ORDER_ID
+	definition.equipped_module_ids = []
 	return definition
 
 
@@ -595,7 +612,10 @@ func _validate_debug_active_order(
 				"Red Sand revisit debug must open the formal short route."
 			)
 		return
-	if definition.active_order_id == DEBUG_WHITE_NOISE_ROUTE_ORDER_ID:
+	if definition.active_order_id in [
+		DEBUG_WHITE_NOISE_ROUTE_ORDER_ID,
+		DEBUG_WHITE_NOISE_ROUTE_UNSHIELDED_ORDER_ID,
+	]:
 		var white_noise_order: OrderDefinition = registry.find_order(
 			definition.fixture_source_order_id
 		)

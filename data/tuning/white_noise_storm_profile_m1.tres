@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="WhiteNoiseStormProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/definitions/white_noise_storm_profile.gd" id="1_profile"]
+
+[resource]
+script = ExtResource("1_profile")
+id = &"white_noise_electromagnetic_blizzard_m1"
+trigger_distance = 17000.0
+warning_end_distance = 17700.0
+recovery_start_distance = 22000.0
+end_distance = 23000.0
+warning_duration_seconds = 2.4
+active_duration_seconds = 12.0
+recovery_duration_seconds = 2.8
+interference_intensity = 0.86
+high_voltage_damage = 18.0
+cargo_damage = 3.0
+pulse_interval_seconds = 4.0
+visibility_intensity = 0.78
+noncritical_hud_update_seconds = 0.34
+slow_motion_time_scale = 0.55

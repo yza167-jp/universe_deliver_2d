@@ -812,7 +812,7 @@ Resource 与安全检查点驱动。六段边界为：
 0–4500       轨道/高空接近
 4500–9500    开阔冰原
 9500–17000   冰裂谷与三路分流
-17000–23000  极光和电磁暴雪视觉占位
+17000–23000  极光和确定性电磁暴雪
 23000–28500  地下档案入口
 28500–34000  最终进场与有限着陆台
 ```
@@ -824,10 +824,9 @@ white_noise_scenic`，三路共享 `17000 m` 汇合点；通道使用两条可�
 阶段重试恢复当前环境、资源下限、速度和对应安全通道。
 
 `WhiteNoiseRouteVisuals` 生成冰原上缘、冰洞顶面、局部分流障碍、极光/风雪
-占位线、竖向档案门框、下降信标和有限着陆台。着陆段从 `28500 m` 开始，
+灰盒线、竖向档案门框、下降信标和有限着陆台。着陆段从 `28500 m` 开始，
 平台可碰撞前缘为 `32750 m`，接触目标为 `33700 m`，因此最终阶段提供
 `5200 m` 观察、减速和下降距离；路线完成只停在灰盒完成状态，不误入赤砂抵达。
-T-121 之前，极光暴雪不修改 HUD、控制、护盾或资源。
 
 飞船继续使用 M0 `FlightLabShip`、`FlightTuning`、三档重力补偿、伤害、
 Boost/倒车、检查点和 `FlightDebugHUD`。白噪六个 profile 都把
@@ -842,6 +841,28 @@ Input Map action。
 临时设为可玩、指向独立场景；正式 Resource 继续 `REGISTERED_ONLY` 且没有
 `flight_scene_path`。F6 重建同一内存快照，SaveService 与 SettingsService
 保持既有隔离合同。
+
+T-121 使用三层局部职责，不把白噪特例塞入核心飞船：
+
+- `WhiteNoiseStormProfile` Resource 集中保存 `17000 / 17700 / 22000 /
+  23000 m` 距离门槛，`2.4 / 12.0 / 2.8 s` 最短时长、`0.86` 干扰、
+  `18 / 3` 高压与货损请求、`4.0 s` 脉冲间隔和 `0.78` 可见度压力。
+- `WhiteNoiseInterferenceModel` 只处理确定性的
+  `CLEAR / WARNING / ACTIVE / RECOVERY`、单调路线距离和脉冲序号；它不访问
+  SceneTree、Input 或玩家存档。
+- 场景内 `WhiteNoiseStormController` 消费模型，调用
+  `FlightLabShip.apply_high_voltage_damage()`，同步 HUD、有限屏幕线条与
+  `WhiteNoiseRouteVisuals`。核心资源和危险文字始终在高层 CanvasLayer 上可读。
+
+已安装屏蔽罩时，控制器只从 `FlightLabShip` 已配置的模块能力取得干扰
+`0.45`；高压结算则由飞船继续读取同一模块 Resource 的 `0.60`。路线提示和
+高对比通过现有 SettingsService 驱动世界航标，慢动作只在 WARNING 临时使用
+`0.55` 时间倍率。帮助/系统暂停不调用危险 advance；检查点、F6、离开窗口和
+场景退出都会重建或清理模型、脉冲反馈与时间倍率。
+
+`--m1-debug=white_noise_route` 保持安装屏蔽罩的正常对照；
+`--m1-debug=white_noise_route_unshielded` 复用同一深拷贝订单夹具、但让 Defense
+槽恢复默认模块。两者都不修改正式白噪订单或星球的 `REGISTERED_ONLY` 状态。
 
 ### 8.7 赤砂星固定危险与环境反馈
 
@@ -1250,8 +1271,8 @@ Delivery Lab 与 Flight Lab。持久 UI 只显示 scenario、章节、订单、�
 
 保存迁移等验证继续使用测试专用临时路径。`scripts/check_m1_foundation.sh` 作为
 可独立运行的聚合入口，逐项标记 v2 迁移、多星球系统、目录导航、收藏与站点、
-低空投放、加急订单、赤砂回访闭环、档案终端、白噪资格准备、白噪路线与八个
-M1 调试启动和
+低空投放、加急订单、赤砂回访闭环、档案终端、白噪资格准备、白噪路线、暴雪
+机制与九个 M1 调试启动和
 M0 完整闭环；该入口由 `scripts/check_project.sh` 调用。
 
 Gate E 入口 `--m1-debug=gate_e` 使用同一隔离合同，从首单完成后的
@@ -1260,8 +1281,10 @@ Gate E 入口 `--m1-debug=gate_e` 使用同一隔离合同，从首单完成后�
 驾驶舱、短路线、抵达、结算和返站顺序试玩；该入口仍不接触玩家主档。
 
 T-120 新增的 `--m1-debug=white_noise_route` 使用已经获得且安装特高压电屏蔽罩、
-白噪章节与导航资格的确定快照，接取独立调试订单并直接打开白噪灰盒场景。它只
-验证路线、重力、分流、碰撞、检查点和着陆，不代表正式白噪主线已经开放。
+白噪章节与导航资格的确定快照，接取独立调试订单并直接打开白噪灰盒场景。
+T-121 的 `--m1-debug=white_noise_route_unshielded` 只提供同一暴雪序列的未安装
+隔离对照。两者共同验证路线、重力、分流、碰撞、检查点、着陆与屏蔽差异，不代表
+正式白噪主线已经开放。
 
 ## 18. 依赖策略
 

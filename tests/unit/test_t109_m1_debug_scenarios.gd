@@ -31,13 +31,14 @@ func _test_scenario_catalog(
 			M1DebugScenarioCatalog.SCENARIO_RED_SAND_REVISIT,
 			M1DebugScenarioCatalog.SCENARIO_WHITE_NOISE_CATALOG,
 			M1DebugScenarioCatalog.SCENARIO_WHITE_NOISE_ROUTE,
+			M1DebugScenarioCatalog.SCENARIO_WHITE_NOISE_ROUTE_UNSHIELDED,
 			M1DebugScenarioCatalog.SCENARIO_CANOPY_CATALOG,
 			M1DebugScenarioCatalog.SCENARIO_TIDAL_CATALOG,
 			M1DebugScenarioCatalog.SCENARIO_LOW_ALTITUDE_DROP,
 			M1DebugScenarioCatalog.SCENARIO_EXPRESS_ORDER,
 			M1DebugScenarioCatalog.SCENARIO_GATE_E,
 		],
-		"The M1 debug catalog must expose its eight scenarios in stable order.",
+		"The M1 debug catalog must expose its nine scenarios in stable order.",
 		failures
 	)
 	for scenario_id: StringName in scenario_ids:
@@ -249,7 +250,10 @@ func _test_registered_only_guards(
 				"The implemented revisit scenario must pass authoritative acceptance.",
 				failures
 			)
-		elif scenario_id == M1DebugScenarioCatalog.SCENARIO_WHITE_NOISE_ROUTE:
+		elif scenario_id in [
+			M1DebugScenarioCatalog.SCENARIO_WHITE_NOISE_ROUTE,
+			M1DebugScenarioCatalog.SCENARIO_WHITE_NOISE_ROUTE_UNSHIELDED,
+		]:
 			expect_true(
 				focused_order != null
 				and not state.accept_order(focused_order)

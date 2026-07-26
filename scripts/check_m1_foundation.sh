@@ -123,11 +123,16 @@ run_godot_checked \
   "White Noise isolated route entry and registered-only boundary" \
   --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t120_white_noise_debug_smoke_runner.gd
 
+run_godot_checked \
+  "White Noise deterministic blizzard, shielding contrast, accessibility, and isolation" \
+  --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t121_white_noise_blizzard_smoke_runner.gd
+
 for scenario_id in \
   gate_e \
   red_sand_revisit \
   white_noise_catalog \
   white_noise_route \
+  white_noise_route_unshielded \
   canopy_catalog \
   tidal_catalog \
   low_altitude_drop \

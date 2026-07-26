@@ -16,6 +16,13 @@ const ARCHIVE_END_DISTANCE: float = 28500.0
 @export var route_definition: WhiteNoiseRouteDefinition
 
 var _collision_bodies: Array[StaticBody2D] = []
+var _route_hints_enabled: bool = LocalSettingsData.DEFAULT_ROUTE_HINTS_ENABLED
+var _high_contrast_enabled: bool = (
+	LocalSettingsData.DEFAULT_HIGH_CONTRAST_TERRAIN
+)
+var _storm_interference_strength: float = 0.0
+var _storm_phase_progress: float = 0.0
+var _storm_state_name: StringName = &"CLEAR"
 
 
 func _ready() -> void:
@@ -30,7 +37,7 @@ func _draw() -> void:
 	_draw_orbital_approach()
 	_draw_icefield()
 	_draw_branch_corridors()
-	_draw_aurora_blizzard_placeholder()
+	_draw_aurora_blizzard()
 	_draw_archive_entrance()
 	_draw_landing_approach()
 
@@ -49,6 +56,55 @@ func get_landing_pad_y() -> float:
 
 func get_collision_body_count() -> int:
 	return _collision_bodies.size()
+
+
+func set_accessibility(
+	route_hints_enabled: bool,
+	high_contrast_enabled: bool
+) -> void:
+	if (
+		_route_hints_enabled == route_hints_enabled
+		and _high_contrast_enabled == high_contrast_enabled
+	):
+		return
+	_route_hints_enabled = route_hints_enabled
+	_high_contrast_enabled = high_contrast_enabled
+	queue_redraw()
+
+
+func set_storm_feedback(
+	interference_strength: float,
+	phase_progress: float,
+	state_name: StringName
+) -> void:
+	var sanitized_strength: float = clampf(interference_strength, 0.0, 1.0)
+	var sanitized_progress: float = clampf(phase_progress, 0.0, 1.0)
+	if (
+		absf(_storm_interference_strength - sanitized_strength) < 0.02
+		and absf(_storm_phase_progress - sanitized_progress) < 0.02
+		and _storm_state_name == state_name
+	):
+		return
+	_storm_interference_strength = sanitized_strength
+	_storm_phase_progress = sanitized_progress
+	_storm_state_name = state_name
+	queue_redraw()
+
+
+func are_route_hints_visible() -> bool:
+	return _route_hints_enabled
+
+
+func is_high_contrast_enabled() -> bool:
+	return _high_contrast_enabled
+
+
+func get_blizzard_interference_strength() -> float:
+	return _storm_interference_strength
+
+
+func get_archive_signal_clarity() -> float:
+	return clampf(1.0 - _storm_interference_strength * 0.62, 0.4, 1.0)
 
 
 func _draw_segment_backdrops() -> void:
@@ -93,16 +149,25 @@ func _draw_icefield() -> void:
 	draw_line(
 		Vector2(start_x, ICE_FLOOR_Y),
 		Vector2(end_x, ICE_FLOOR_Y),
-		Color(0.86, 0.98, 1.0, 1.0),
-		4.0
+		(
+			Color(1.0, 0.98, 0.54, 1.0)
+			if _high_contrast_enabled
+			else Color(0.86, 0.98, 1.0, 1.0)
+		),
+		6.0 if _high_contrast_enabled else 4.0
 	)
-	draw_dashed_line(
-		Vector2(start_x + 180.0, 450.0),
-		Vector2(ROUTE_ORIGIN_X + CAVE_START_DISTANCE - 120.0, 450.0),
-		Color(0.41, 0.92, 0.88, 0.9),
-		3.0,
-		24.0
-	)
+	if _route_hints_enabled:
+		draw_dashed_line(
+			Vector2(start_x + 180.0, 450.0),
+			Vector2(ROUTE_ORIGIN_X + CAVE_START_DISTANCE - 120.0, 450.0),
+			(
+				Color(1.0, 0.87, 0.28, 1.0)
+				if _high_contrast_enabled
+				else Color(0.41, 0.92, 0.88, 0.9)
+			),
+			4.0 if _high_contrast_enabled else 3.0,
+			24.0
+		)
 	for index: int in 120:
 		var ridge_x: float = start_x + float(index * 245)
 		var ridge_height: float = float(18 + ((index * 29) % 52))
@@ -112,8 +177,12 @@ func _draw_icefield() -> void:
 				Vector2(ridge_x, ICE_FLOOR_Y - ridge_height),
 				Vector2(ridge_x + 52.0, ICE_FLOOR_Y),
 			]),
-			Color(0.71, 0.9, 0.95, 0.8),
-			3.0
+			(
+				Color(0.93, 1.0, 1.0, 1.0)
+				if _high_contrast_enabled
+				else Color(0.71, 0.9, 0.95, 0.8)
+			),
+			4.0 if _high_contrast_enabled else 3.0
 		)
 
 
@@ -128,8 +197,12 @@ func _draw_branch_corridors() -> void:
 	draw_line(
 		Vector2(cave_start_x, 140.0),
 		Vector2(cave_end_x, 140.0),
-		Color(0.73, 0.96, 1.0, 1.0),
-		4.0
+		(
+			Color(1.0, 0.98, 0.54, 1.0)
+			if _high_contrast_enabled
+			else Color(0.73, 0.96, 1.0, 1.0)
+		),
+		6.0 if _high_contrast_enabled else 4.0
 	)
 	var obstacle_start_x: float = (
 		ROUTE_ORIGIN_X + BRANCH_OBSTACLE_START_DISTANCE
@@ -146,8 +219,12 @@ func _draw_branch_corridors() -> void:
 		draw_line(
 			Vector2(obstacle_start_x, obstacle_y - 20.0),
 			Vector2(obstacle_start_x + obstacle_width, obstacle_y - 20.0),
-			Color(0.84, 0.98, 1.0, 1.0),
-			3.0
+			(
+				Color(1.0, 0.98, 0.54, 1.0)
+				if _high_contrast_enabled
+				else Color(0.84, 0.98, 1.0, 1.0)
+			),
+			5.0 if _high_contrast_enabled else 3.0
 		)
 	var split_x: float = (
 		ROUTE_ORIGIN_X + route_definition.get_branch_split_distance()
@@ -155,16 +232,21 @@ func _draw_branch_corridors() -> void:
 	var join_x: float = (
 		ROUTE_ORIGIN_X + route_definition.get_branch_join_distance()
 	)
-	for branch: WhiteNoiseRouteBranch in route_definition.branches:
-		if branch == null:
-			continue
-		draw_dashed_line(
-			Vector2(split_x, branch.retry_y),
-			Vector2(join_x, branch.retry_y),
-			branch.guide_color,
-			3.0,
-			22.0
-		)
+	if _route_hints_enabled:
+		for branch: WhiteNoiseRouteBranch in route_definition.branches:
+			if branch == null:
+				continue
+			draw_dashed_line(
+				Vector2(split_x, branch.retry_y),
+				Vector2(join_x, branch.retry_y),
+				(
+					Color(1.0, 0.87, 0.28, 1.0)
+					if _high_contrast_enabled
+					else branch.guide_color
+				),
+				4.0 if _high_contrast_enabled else 3.0,
+				22.0
+			)
 	draw_line(
 		Vector2(join_x, 125.0),
 		Vector2(join_x, 610.0),
@@ -173,16 +255,21 @@ func _draw_branch_corridors() -> void:
 	)
 
 
-func _draw_aurora_blizzard_placeholder() -> void:
+func _draw_aurora_blizzard() -> void:
 	var start_x: float = ROUTE_ORIGIN_X + 17000.0
 	var end_x: float = ROUTE_ORIGIN_X + 23000.0
+	var storm_alpha_scale: float = lerpf(
+		0.72,
+		1.0,
+		_storm_interference_strength
+	)
 	for band_index: int in 5:
 		var band_y: float = 90.0 + float(band_index * 64)
 		var color := Color(
 			0.2 + float(band_index) * 0.05,
 			0.88,
 			0.82 - float(band_index) * 0.06,
-			0.34
+			0.34 * storm_alpha_scale
 		)
 		draw_polyline(
 			PackedVector2Array([
@@ -203,11 +290,36 @@ func _draw_aurora_blizzard_placeholder() -> void:
 			Color(0.86, 0.98, 1.0, 0.48),
 			2.0
 		)
+	if _route_hints_enabled:
+		var guide_color := (
+			Color(1.0, 0.84, 0.2, 1.0)
+			if _high_contrast_enabled
+			else Color(0.41, 0.96, 0.88, 0.94)
+		)
+		draw_dashed_line(
+			Vector2(start_x, 300.0),
+			Vector2(end_x, 300.0),
+			guide_color,
+			5.0 if _high_contrast_enabled else 3.0,
+			26.0
+		)
+		for marker_index: int in 6:
+			var marker_x: float = start_x + 620.0 + float(marker_index * 930)
+			draw_polyline(
+				PackedVector2Array([
+					Vector2(marker_x - 18.0, 286.0),
+					Vector2(marker_x, 300.0),
+					Vector2(marker_x - 18.0, 314.0),
+				]),
+				guide_color,
+				4.0 if _high_contrast_enabled else 3.0
+			)
 
 
 func _draw_archive_entrance() -> void:
 	var start_x: float = ROUTE_ORIGIN_X + ARCHIVE_START_DISTANCE
 	var end_x: float = ROUTE_ORIGIN_X + ARCHIVE_END_DISTANCE
+	var signal_clarity: float = get_archive_signal_clarity()
 	draw_rect(
 		Rect2(start_x, -100.0, end_x - start_x, 230.0),
 		Color(0.12, 0.29, 0.42, 1.0),
@@ -220,13 +332,14 @@ func _draw_archive_entrance() -> void:
 		5.0
 	)
 	var gate_x: float = ROUTE_ORIGIN_X + 26700.0
-	draw_dashed_line(
-		Vector2(start_x, 300.0),
-		Vector2(end_x, 300.0),
-		Color(0.41, 0.92, 0.88, 0.9),
-		3.0,
-		24.0
-	)
+	if _route_hints_enabled:
+		draw_dashed_line(
+			Vector2(start_x, 300.0),
+			Vector2(end_x, 300.0),
+			Color(0.41, 0.92, 0.88, 0.9 * signal_clarity),
+			4.0 if _high_contrast_enabled else 3.0,
+			24.0
+		)
 	draw_rect(
 		Rect2(gate_x - 90.0, 170.0, 180.0, 390.0),
 		Color(0.08, 0.17, 0.24, 1.0),
@@ -234,7 +347,7 @@ func _draw_archive_entrance() -> void:
 	)
 	draw_rect(
 		Rect2(gate_x - 74.0, 190.0, 148.0, 352.0),
-		Color(0.12, 0.43, 0.5, 0.72),
+		Color(0.12, 0.43, 0.5, 0.72 * signal_clarity),
 		false,
 		6.0
 	)
@@ -246,7 +359,7 @@ func _draw_archive_entrance() -> void:
 				8.0,
 				320.0
 			),
-			Color(0.41, 0.92, 0.9, 0.45),
+			Color(0.41, 0.92, 0.9, 0.45 * signal_clarity),
 			true
 		)
 
@@ -269,16 +382,17 @@ func _draw_landing_approach() -> void:
 			Color(0.95, 0.83, 0.33, 0.48),
 			3.0
 		)
-	draw_dashed_line(
-		Vector2(ROUTE_ORIGIN_X + 28500.0, 300.0),
-		Vector2(
-			ROUTE_ORIGIN_X + LANDING_CONTACT_DISTANCE,
-			LANDING_PAD_Y - 22.0
-		),
-		Color(0.95, 0.83, 0.33, 0.92),
-		3.0,
-		24.0
-	)
+	if _route_hints_enabled:
+		draw_dashed_line(
+			Vector2(ROUTE_ORIGIN_X + 28500.0, 300.0),
+			Vector2(
+				ROUTE_ORIGIN_X + LANDING_CONTACT_DISTANCE,
+				LANDING_PAD_Y - 22.0
+			),
+			Color(0.95, 0.83, 0.33, 0.92),
+			4.0 if _high_contrast_enabled else 3.0,
+			24.0
+		)
 	var pad_start_x: float = ROUTE_ORIGIN_X + LANDING_PAD_START_DISTANCE
 	var pad_end_x: float = ROUTE_ORIGIN_X + 34000.0
 	draw_rect(
