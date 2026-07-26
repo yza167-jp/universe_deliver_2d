@@ -27,6 +27,7 @@ var _is_revealing: bool = false
 var _history_lines: PackedStringArray = []
 var _controls_initialized: bool = false
 var _settings_service: SettingsServiceModel
+var _pending_choice_buttons: Array[Button] = []
 
 
 func _ready() -> void:
@@ -213,12 +214,20 @@ func _build_choice_buttons() -> void:
 
 
 func _clear_choice_buttons() -> void:
+	if choice_container == null:
+		return
 	for child: Node in choice_container.get_children():
-		## A pressed Button is locked until its signal callback returns. Detach it
-		## immediately so container state stays current, then defer destruction.
 		choice_container.remove_child(child)
-		child.call_deferred("queue_free")
+		_pending_choice_buttons.append(child as Button)
 	choice_container.visible = false
+	call_deferred("_flush_pending_choice_buttons")
+
+
+func _flush_pending_choice_buttons() -> void:
+	for button in _pending_choice_buttons:
+		if is_instance_valid(button):
+			button.call_deferred("queue_free")
+	_pending_choice_buttons.clear()
 
 
 func _refresh_controls() -> void:
