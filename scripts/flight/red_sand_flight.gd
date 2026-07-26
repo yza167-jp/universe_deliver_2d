@@ -771,6 +771,13 @@ func _update_altitude_reference(delta: float) -> void:
 	if segment == null:
 		return
 	var route_distance: float = _get_altitude_reference_route_distance()
+	var validate_world_sample: bool = _surface_frame_raycast_deferred_frames <= 0
+	if (
+		landing_zone != null
+		and segment.id == &"red_sand_landing_approach"
+		and route_distance >= landing_zone.get_pad_trailing_edge_route_distance()
+	):
+		validate_world_sample = false
 	var profile_ground_y: float = _get_canonical_ground_route_y(route_distance)
 	var profile_valid: bool = (
 		_active_segment_index >= FlightAltitudeReferenceProvider.ATMOSPHERE_FINAL_SEGMENT_INDEX
@@ -788,7 +795,7 @@ func _update_altitude_reference(delta: float) -> void:
 		flight_ship,
 		self,
 		delta,
-		_surface_frame_raycast_deferred_frames <= 0
+		validate_world_sample
 	)
 	_surface_frame_raycast_deferred_frames = maxi(
 		_surface_frame_raycast_deferred_frames - 1,
@@ -959,6 +966,7 @@ func _update_altitude_invariant(delta: float) -> void:
 		or not _altitude_reference_provider.is_current_source_valid()
 		or not _altitude_reference_provider.has_numeric_altitude()
 		or flight_ship.is_on_floor()
+		or not _altitude_reference_provider.get_failure_reason().is_empty()
 	):
 		_reset_altitude_invariant_window()
 		return
