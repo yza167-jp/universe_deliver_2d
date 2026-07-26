@@ -147,9 +147,9 @@ func _test_revisit_and_white_noise_boundaries(
 		)
 		and white_order != null
 		and white_order.content_readiness
-		== OrderDefinition.ContentReadiness.REGISTERED_ONLY
+		== OrderDefinition.ContentReadiness.PLAYABLE
 		and not game_state.can_accept_order(white_order),
-		"Gate E must expose only the revisit while preserving the White Noise route guard.",
+		"Gate E must expose only the revisit even after White Noise production content ships.",
 		failures
 	)
 	expect_true(

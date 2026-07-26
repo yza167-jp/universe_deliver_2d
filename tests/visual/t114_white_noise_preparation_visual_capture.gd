@@ -51,7 +51,7 @@ func _capture_frames() -> void:
 	_game_state.reset_runtime_state()
 	print(
 		"[t114-visual] PASS: saved order risk preview, qualified loadout, "
-		+ "and cockpit route-pending frames."
+		+ "and formal-route preview frames."
 	)
 	quit(0)
 

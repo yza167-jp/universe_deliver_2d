@@ -8,6 +8,7 @@ const M0_ORDER_ID: StringName = &"order_red_sand_m0"
 @export var order: OrderDefinition
 @export var data_registry: GameDataRegistry
 @export var revisit_contract: RedSandRevisitContract
+@export var white_noise_settlement_contract: WhiteNoiseSettlementContract
 
 @onready var _eyebrow_label: Label = %EyebrowLabel
 @onready var _title_label: Label = %TitleLabel
@@ -60,6 +61,15 @@ func present_settlement() -> bool:
 	):
 		_render_unavailable()
 		return false
+	if _is_white_noise_main() and (
+		white_noise_settlement_contract == null
+		or not white_noise_settlement_contract.validate(
+			data_registry
+		).is_empty()
+		or not white_noise_settlement_contract.is_delivery_ready(game_state)
+	):
+		_render_unavailable()
+		return false
 	var run_state: OrderRunState = game_state.get_active_order_run_state()
 	_settlement_result = OrderSettlementCalculator.calculate(order, run_state)
 	if _settlement_result == null:
@@ -77,6 +87,10 @@ func present_settlement() -> bool:
 		settlement_flags = [
 			StationTutorialController.ARCHIVE_BRIEFING_PENDING_FLAG,
 		]
+	elif _is_white_noise_main():
+		settlement_flags = (
+			white_noise_settlement_contract.get_settlement_flags()
+		)
 	var additional_relation_rewards: Dictionary[StringName, int] = {}
 	var reward_modules_to_equip: Array[ShipModuleDefinition] = []
 	if _is_red_sand_revisit():
@@ -90,13 +104,34 @@ func present_settlement() -> bool:
 			_render_unavailable()
 			return false
 		reward_modules_to_equip.append(reward_module)
+	elif _is_white_noise_main():
+		additional_relation_rewards = (
+			white_noise_settlement_contract.get_choice_relation_rewards(
+				game_state
+			)
+		)
+	var additional_codex_rewards: Array[StringName] = []
+	var additional_demo_ending_flags: Dictionary[StringName, Variant] = {}
+	if _is_white_noise_main():
+		additional_codex_rewards = (
+			white_noise_settlement_contract.get_choice_codex_rewards(
+				game_state
+			)
+		)
+		additional_demo_ending_flags = (
+			white_noise_settlement_contract.get_demo_ending_flags(
+				game_state
+			)
+		)
 	_settlement_is_committed = game_state.settle_current_order(
 		order,
 		_settlement_result,
 		station_upgrade_id,
 		settlement_flags,
 		additional_relation_rewards,
-		reward_modules_to_equip
+		reward_modules_to_equip,
+		additional_codex_rewards,
+		additional_demo_ending_flags
 	)
 	if not _settlement_is_committed:
 		_render_unavailable()
@@ -178,6 +213,10 @@ func _render_settlement() -> void:
 		eyebrow_key = &"UI_RESULTS_EYEBROW"
 	elif _is_red_sand_revisit():
 		eyebrow_key = &"UI_M1_RED_SAND_REVISIT_RESULTS_EYEBROW"
+	elif _is_white_noise_main():
+		eyebrow_key = (
+			white_noise_settlement_contract.results_eyebrow_key
+		)
 	_eyebrow_label.text = tr(eyebrow_key)
 	_title_label.text = tr("UI_RESULTS_TITLE_FORMAT") % tr(String(order.display_name_key))
 	_base_reward_value.text = tr("UI_RESULTS_CREDITS_FORMAT") % _settlement_result.base_reward
@@ -218,6 +257,19 @@ func _render_settlement() -> void:
 		)
 		_next_step_label.text = tr(
 			"UI_M1_RED_SAND_REVISIT_RESULTS_NEXT_STEP"
+		)
+	elif _is_white_noise_main():
+		_narrative_label.text = tr(
+			white_noise_settlement_contract.get_result_narrative_key(
+				game_state
+			)
+		)
+		_station_change_panel.visible = true
+		_station_change_label.text = tr(
+			white_noise_settlement_contract.station_change_key
+		)
+		_next_step_label.text = tr(
+			white_noise_settlement_contract.next_step_key
 		)
 	else:
 		_narrative_label.text = tr("UI_RESULTS_NARRATIVE_GENERIC")
@@ -292,6 +344,14 @@ func _is_red_sand_revisit() -> bool:
 		order != null
 		and revisit_contract != null
 		and revisit_contract.is_revisit_order(order.id)
+	)
+
+
+func _is_white_noise_main() -> bool:
+	return (
+		order != null
+		and white_noise_settlement_contract != null
+		and white_noise_settlement_contract.is_white_noise_order(order.id)
 	)
 
 

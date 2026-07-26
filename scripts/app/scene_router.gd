@@ -65,6 +65,26 @@ func request_stage(requested_stage: int) -> bool:
 	return _change_stage(requested_stage)
 
 
+## Production scene override for content whose destination owns a dedicated scene.
+func request_stage_scene(requested_stage: int, scene_path: String) -> bool:
+	if not is_valid_stage(requested_stage):
+		return _reject_transition(requested_stage, "Requested stage is not defined.")
+	if current_stage == INVALID_STAGE:
+		return _reject_transition(requested_stage, "Scene flow has not started.")
+	if not is_transition_allowed(current_stage, requested_stage):
+		return _reject_transition(
+			requested_stage,
+			"Transition %s -> %s is not allowed."
+			% [get_stage_name(current_stage), get_stage_name(requested_stage)]
+		)
+	if not _is_valid_project_scene_path(scene_path):
+		return _reject_transition(
+			requested_stage,
+			"Requested production scene path is invalid."
+		)
+	return _change_stage(requested_stage, scene_path)
+
+
 ## Development-only escape hatch for opening any M0 stage without replaying the full flow.
 func debug_switch_to_stage(requested_stage: int) -> bool:
 	if not OS.is_debug_build():
@@ -80,8 +100,8 @@ func debug_switch_to_stage_scene(requested_stage: int, scene_path: String) -> bo
 		return _reject_transition(requested_stage, "Direct stage switching is debug-only.")
 	if not is_valid_stage(requested_stage):
 		return _reject_transition(requested_stage, "Requested debug stage is not defined.")
-	if scene_path.is_empty():
-		return _reject_transition(requested_stage, "Requested debug scene path is empty.")
+	if not _is_valid_project_scene_path(scene_path):
+		return _reject_transition(requested_stage, "Requested debug scene path is invalid.")
 	return _change_stage(requested_stage, scene_path)
 
 
@@ -200,3 +220,11 @@ func _reject_transition(requested_stage: int, reason: String) -> bool:
 	last_error = reason
 	transition_rejected.emit(current_stage, requested_stage, reason)
 	return false
+
+
+static func _is_valid_project_scene_path(scene_path: String) -> bool:
+	return (
+		scene_path.begins_with("res://")
+		and scene_path.ends_with(".tscn")
+		and ResourceLoader.exists(scene_path, "PackedScene")
+	)

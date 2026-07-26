@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="WhiteNoiseSettlementContract" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/definitions/white_noise_settlement_contract.gd" id="1_contract"]
+[ext_resource type="Resource" path="res://data/orders/m1_white_noise_archive_core.tres" id="2_order"]
+[ext_resource type="Resource" path="res://data/arrivals/white_noise_arrival_contract.tres" id="3_arrival"]
+[ext_resource type="Resource" path="res://data/codex/anomaly_white_noise_minimum_index.tres" id="4_minimum"]
+[ext_resource type="Resource" path="res://data/codex/anomaly_white_noise_sealed_index.tres" id="5_sealed"]
+[ext_resource type="Resource" path="res://data/codex/anomaly_white_noise_shared_custody.tres" id="6_custody"]
+
+[resource]
+script = ExtResource("1_contract")
+id = &"white_noise_settlement_contract"
+order = ExtResource("2_order")
+arrival_contract = ExtResource("3_arrival")
+flight_scene_path = "res://scenes/flight/white_noise_flight.tscn"
+arrival_scene_path = "res://scenes/arrival/white_noise_arrival.tscn"
+minimum_index_codex = ExtResource("4_minimum")
+keep_sealed_codex = ExtResource("5_sealed")
+local_custody_codex = ExtResource("6_custody")
+choice_settled_flag = &"story_m1_white_noise_choice_settled"
+archive_terminal_updated_flag = &"story_m1_white_noise_archive_terminal_updated"
+canopy_precursor_flag = &"story_m1_canopy_precursor_discovered"
+revisit_state_id = &"revisit_white_noise_memory_followup_available"
+ending_flag_id = &"ending_archive_choice"
+minimum_index_ending_value = &"archive_minimum_index"
+keep_sealed_ending_value = &"archive_keep_sealed"
+local_custody_ending_value = &"archive_local_custody"
+relation_planet_id = &"planet_white_noise"
+privacy_relation_bonus = 1
+results_eyebrow_key = &"UI_M1_WHITE_NOISE_RESULTS_EYEBROW"
+minimum_index_narrative_key = &"UI_M1_WHITE_NOISE_RESULTS_NARRATIVE_MINIMUM"
+keep_sealed_narrative_key = &"UI_M1_WHITE_NOISE_RESULTS_NARRATIVE_SEALED"
+local_custody_narrative_key = &"UI_M1_WHITE_NOISE_RESULTS_NARRATIVE_CUSTODY"
+station_change_key = &"UI_M1_WHITE_NOISE_RESULTS_STATION_CHANGE"
+next_step_key = &"UI_M1_WHITE_NOISE_RESULTS_NEXT_STEP"

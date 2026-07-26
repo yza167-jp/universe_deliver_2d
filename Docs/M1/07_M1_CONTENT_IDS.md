@@ -14,9 +14,9 @@
   `order_red_sand_m0`。
 - Stretch `side_red_sand_unlisted_filters` 与 `cargo_red_sand_water_filters` 不进入
   必做注册表。
-- M0 首单和已完成闭环的赤砂回访为 `PLAYABLE`。白噪、穹林、群潮的 3 份主线与
-  3 份必做支线仍为 `REGISTERED_ONLY`：可供目录、依赖和内容开发引用，但在对应
-  正式订单流程完成前不能接取或出发。T-120 的隔离白噪路线夹具不改变正式
+- M0 首单、赤砂回访和 T-125 已完成闭环的白噪主单为 `PLAYABLE`。穹林、群潮
+  主线与 3 份必做支线仍为 `REGISTERED_ONLY`：可供目录、依赖和内容开发引用，
+  但在对应正式订单流程完成前不能接取或出发。隔离白噪路线夹具不改变正式
   Resource；内容落地任务必须显式将对应订单与星球切换为 `PLAYABLE`。
 
 ## 星球与环境占位
@@ -24,12 +24,13 @@
 | Planet ID | Gravity scale | Environment profile | Readiness |
 |---|---:|---|---|
 | `planet_red_sand` | 1.00 | 既有赤砂环境 | `PLAYABLE` |
-| `planet_white_noise` | 1.28 | `environment_white_noise_placeholder` | `REGISTERED_ONLY` |
+| `planet_white_noise` | 1.28 | `environment_white_noise_placeholder` | `PLAYABLE` |
 | `planet_canopy_world` | 0.83 | `environment_canopy_world_placeholder` | `REGISTERED_ONLY` |
 | `planet_tidal_archipelago` | 0.98 | `environment_tidal_archipelago_placeholder` | `REGISTERED_ONLY` |
 
-表中的白噪 profile 仍是正式星球注册占位；穹林和群潮环境也只提供保守参数。
-三个新星球 Resource 均没有 `flight_scene_path`。
+表中的白噪 profile 仍是 production placeholder，但正式星球已指向
+`res://scenes/flight/white_noise_flight.tscn`。穹林和群潮环境只提供保守参数，
+且两个 Resource 均没有 `flight_scene_path`。
 
 ### 白噪路线 T-120 灰盒合同
 
@@ -107,7 +108,7 @@ T-111 已实现屏蔽罩能力读取：安装时
 | Order ID | Type / Delivery | Credit | Route | Risk | Module rule | Readiness |
 |---|---|---:|---:|---:|---|---|
 | `order_m1_red_sand_shielding_retrofit` | Revisit / Landing | 140 | 12000 m | 2 | M0 drive + atmosphere required | `PLAYABLE` |
-| `order_m1_white_noise_archive_core` | Main / Landing | 180 | 1.25 | 4 | high-voltage shielding required | `REGISTERED_ONLY` |
+| `order_m1_white_noise_archive_core` | Main / Landing | 180 | 34000 m | 4 | high-voltage shielding required | `PLAYABLE` |
 | `order_m1_canopy_ecology_cargo` | Main / Landing | 200 | 1.15 | 3 | biosignal isolation recommended | `REGISTERED_ONLY` |
 | `order_m1_tidal_weather_core` | Main / Landing | 240 | 1.30 | 4 | crosswind stabilizer recommended | `REGISTERED_ONLY` |
 | `side_white_noise_returned_memory` | Side / Landing | 80 | 0.65 | 2 | archive permission required | `REGISTERED_ONLY` |
@@ -136,10 +137,31 @@ T-111 已实现屏蔽罩能力读取：安装时
   `module_high_voltage_shielding`、`station_state_archive_terminal`、
   `planet_white_noise` 导航节点、`chapter_m1_white_noise` 与赤砂回访完成状态。
 
-上述赤砂路线值已由 T-112 的实际场景、路线、交付与结算闭环落实。T-114 只
-解锁白噪导航节点和订单预览；T-120 增加独立灰盒调试场景，但
-`planet_white_noise` 与 `order_m1_white_noise_archive_core` 仍保持
-`REGISTERED_ONLY`，正式星球仍没有 `flight_scene_path`。
+上述赤砂路线值已由 T-112 的实际场景、路线、交付与结算闭环落实。T-114
+解锁白噪导航节点和订单预览，T-120 增加独立灰盒调试场景；T-125 完成正式
+白噪闭环后，`planet_white_noise` 与 `order_m1_white_noise_archive_core`
+升级为 `PLAYABLE`，正式星球固定使用独立白噪 `flight_scene_path`。
+
+### 白噪主单 T-125 结算合同
+
+- 合同 ID：`white_noise_settlement_contract`。
+- 精确路线：`res://scenes/flight/white_noise_flight.tscn`。
+- 精确目的地：`res://scenes/arrival/white_noise_arrival.tscn`。
+- 结算剧情标记：
+  `story_m1_white_noise_choice_settled`、
+  `story_m1_white_noise_archive_terminal_updated`、
+  `story_m1_canopy_precursor_discovered`。
+- 回访状态：
+  `revisit_white_noise_memory_followup_available`。
+- 结尾键：`ending_archive_choice`；合法值为
+  `archive_minimum_index`、`archive_keep_sealed`、
+  `archive_local_custody`。
+- 选择专属图鉴：
+  `codex_anomaly_white_noise_minimum_index`、
+  `codex_anomaly_white_noise_sealed_index`、
+  `codex_anomaly_white_noise_shared_custody`。
+- 固定奖励包括白噪关系 `+1`、档案许可、白噪基础图鉴、霜纹索引纪念品、
+  穹林章节/导航与白噪回访种子；封存/共同保管当前各有可调额外关系 `+1`。
 
 新增目的地 ID：
 
@@ -167,6 +189,9 @@ T-111 已实现屏蔽罩能力读取：安装时
 - `codex_cargo_white_noise_archive_core`
 - `codex_character_white_noise_memory_owner`
 - `codex_cargo_returned_memory_case`
+- `codex_anomaly_white_noise_minimum_index`
+- `codex_anomaly_white_noise_sealed_index`
+- `codex_anomaly_white_noise_shared_custody`
 - `souvenir_white_noise_frost_index`
 
 穹林：

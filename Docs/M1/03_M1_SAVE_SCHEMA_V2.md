@@ -273,6 +273,29 @@ ending_relay_signal_detected
 
 这些变量只用于 M1 结尾对白、图鉴和未来 M2 起点，不在 M1 创建多套结局关卡。
 
+T-125 已正式使用 `ending_archive_choice`，合法稳定值只有：
+
+```text
+archive_minimum_index
+archive_keep_sealed
+archive_local_custody
+```
+
+同一白噪主单结算还原子写入：
+
+```text
+story_m1_white_noise_choice_settled
+story_m1_white_noise_archive_terminal_updated
+story_m1_canopy_precursor_discovered
+revisit_state[planet_white_noise] =
+  revisit_white_noise_memory_followup_available
+```
+
+选择值、选择专属图鉴、档案许可、纪念品、穹林章节/导航和订单奖励共享
+`reward_applied_order_ids` 的同一事务边界。附加图鉴或结尾值非法时整次结算拒绝；
+货物完整度为 `0%` 只影响信用点计算，不撤销白噪订单完成或穹林主线资格。
+保存后再次加载、重入结算或重复调用完成入口均不得重复发放这些奖励。
+
 ## 9. 自动测试
 
 至少覆盖：

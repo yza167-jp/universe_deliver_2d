@@ -1,10 +1,11 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/app/order_results.gd" id="1_results"]
 [ext_resource type="Resource" path="res://data/orders/red_sand_m0.tres" id="2_order"]
 [ext_resource type="Resource" path="res://data/m1_data_registry.tres" id="3_registry"]
 [ext_resource type="Resource" path="res://data/revisits/red_sand_revisit_contract.tres" id="4_revisit"]
 [ext_resource type="Font" path="res://data/ui/chinese_ui_font.tres" id="5_chinese_font"]
+[ext_resource type="Resource" path="res://data/settlements/white_noise_settlement_contract.tres" id="6_white_settlement"]
 
 [sub_resource type="Theme" id="ThemeResults"]
 default_font = ExtResource("5_chinese_font")
@@ -63,6 +64,7 @@ script = ExtResource("1_results")
 order = ExtResource("2_order")
 data_registry = ExtResource("3_registry")
 revisit_contract = ExtResource("4_revisit")
+white_noise_settlement_contract = ExtResource("6_white_settlement")
 
 [node name="Background" type="ColorRect" parent="."]
 layout_mode = 1

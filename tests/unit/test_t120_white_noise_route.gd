@@ -34,7 +34,7 @@ func run() -> Array[String]:
 	_test_route_contract(route, planet, failures)
 	_test_branches(route, failures)
 	_test_localization(route, failures)
-	_test_registered_only_boundary(planet, order, failures)
+	_test_playable_boundary(planet, order, failures)
 	_test_debug_scenario(failures)
 	_test_fixed_delta_motion(route, failures)
 	return failures
@@ -160,18 +160,18 @@ func _test_localization(
 		)
 
 
-func _test_registered_only_boundary(
+func _test_playable_boundary(
 	planet: PlanetDefinition,
 	order: OrderDefinition,
 	failures: Array[String]
 ) -> void:
 	expect_true(
 		planet.content_readiness
-		== PlanetDefinition.ContentReadiness.REGISTERED_ONLY
-		and planet.flight_scene_path.is_empty()
+		== PlanetDefinition.ContentReadiness.PLAYABLE
+		and planet.flight_scene_path == SCENE_PATH
 		and order.content_readiness
-		== OrderDefinition.ContentReadiness.REGISTERED_ONLY,
-		"T-120 debug route must not make formal White Noise content playable.",
+		== OrderDefinition.ContentReadiness.PLAYABLE,
+		"T-125 must promote only the validated White Noise route to PLAYABLE.",
 		failures
 	)
 	var state := GameStateModel.new()
@@ -180,10 +180,18 @@ func _test_registered_only_boundary(
 		M1ProgressRules.PLANET_RED_SAND,
 		M1ProgressRules.PLANET_WHITE_NOISE,
 	]
+	state.ship_upgrade_ids.append(
+		M1ProgressRules.MODULE_HIGH_VOLTAGE_SHIELDING
+	)
+	state.story_flags[
+		M1ProgressRules.STORY_RED_SAND_SHIELDING_RETROFIT_COMPLETED
+	] = true
+	state.completed_order_ids[
+		M1ProgressRules.ORDER_RED_SAND_SHIELDING_RETROFIT
+	] = true
 	expect_true(
-		not state.accept_order(order)
-		and state.last_order_error == GameStateModel.ORDER_ERROR_REGISTERED_ONLY,
-		"Formal White Noise order acceptance must remain guarded.",
+		state.accept_order(order),
+		"Qualified progress must accept the formal White Noise order after T-125.",
 		failures
 	)
 	state.free()

@@ -549,7 +549,9 @@ func complete_order(
 	station_upgrade_id: StringName = &"",
 	additional_flags: Array[StringName] = [],
 	additional_relation_rewards: Dictionary[StringName, int] = {},
-	reward_modules_to_equip: Array[ShipModuleDefinition] = []
+	reward_modules_to_equip: Array[ShipModuleDefinition] = [],
+	additional_codex_rewards: Array[StringName] = [],
+	additional_demo_ending_flags: Dictionary[StringName, Variant] = {}
 ) -> bool:
 	last_order_error = &""
 	if not _has_required_order_data(order):
@@ -574,7 +576,9 @@ func complete_order(
 		or not _has_valid_order_completion_modifiers(
 			order,
 			additional_relation_rewards,
-			reward_modules_to_equip
+			reward_modules_to_equip,
+			additional_codex_rewards,
+			additional_demo_ending_flags
 		)
 	):
 		last_order_error = ORDER_ERROR_INVALID_REWARD
@@ -635,6 +639,9 @@ func complete_order(
 	for entry_id: StringName in order.codex_rewards:
 		if not codex_entry_ids.has(entry_id):
 			codex_entry_ids.append(entry_id)
+	for entry_id: StringName in additional_codex_rewards:
+		if not codex_entry_ids.has(entry_id):
+			codex_entry_ids.append(entry_id)
 	for souvenir_id: StringName in order.souvenir_rewards:
 		if not souvenir_ids.has(souvenir_id):
 			souvenir_ids.append(souvenir_id)
@@ -672,6 +679,10 @@ func complete_order(
 	for additional_flag: StringName in additional_flags:
 		if not additional_flag.is_empty():
 			story_flags[additional_flag] = true
+	for ending_flag_id: StringName in additional_demo_ending_flags:
+		demo_ending_flags[ending_flag_id] = (
+			additional_demo_ending_flags[ending_flag_id]
+		)
 	for planet_id: StringName in order.planet_unlock_rewards:
 		if not unlocked_planet_ids.has(planet_id):
 			unlocked_planet_ids.append(planet_id)
@@ -800,7 +811,9 @@ func settle_current_order(
 	station_upgrade_id: StringName,
 	settlement_flags: Array[StringName] = [],
 	additional_relation_rewards: Dictionary[StringName, int] = {},
-	reward_modules_to_equip: Array[ShipModuleDefinition] = []
+	reward_modules_to_equip: Array[ShipModuleDefinition] = [],
+	additional_codex_rewards: Array[StringName] = [],
+	additional_demo_ending_flags: Dictionary[StringName, Variant] = {}
 ) -> bool:
 	last_order_error = &""
 	if (
@@ -856,7 +869,9 @@ func settle_current_order(
 		station_upgrade_id,
 		settlement_flags,
 		additional_relation_rewards,
-		reward_modules_to_equip
+		reward_modules_to_equip,
+		additional_codex_rewards,
+		additional_demo_ending_flags
 	):
 		return false
 	settlement.total_reward = credits - credits_before
@@ -1355,7 +1370,9 @@ func _has_valid_order_rewards(order: OrderDefinition) -> bool:
 func _has_valid_order_completion_modifiers(
 	order: OrderDefinition,
 	additional_relation_rewards: Dictionary[StringName, int],
-	reward_modules_to_equip: Array[ShipModuleDefinition]
+	reward_modules_to_equip: Array[ShipModuleDefinition],
+	additional_codex_rewards: Array[StringName],
+	additional_demo_ending_flags: Dictionary[StringName, Variant]
 ) -> bool:
 	if order == null:
 		return false
@@ -1383,7 +1400,35 @@ func _has_valid_order_completion_modifiers(
 		):
 			return false
 		occupied_slots[slot_id] = true
+	var seen_codex_ids: Dictionary[StringName, bool] = {}
+	for entry_id: StringName in additional_codex_rewards:
+		if (
+			not M1ProgressRules.is_valid_codex_entry_id(entry_id)
+			or order.codex_rewards.has(entry_id)
+			or seen_codex_ids.has(entry_id)
+		):
+			return false
+		seen_codex_ids[entry_id] = true
+	for ending_flag_id: StringName in additional_demo_ending_flags:
+		if (
+			not M1ProgressRules.is_stable_id(ending_flag_id)
+			or not _is_valid_demo_ending_flag_value(
+				additional_demo_ending_flags.get(ending_flag_id)
+			)
+		):
+			return false
 	return true
+
+
+func _is_valid_demo_ending_flag_value(value: Variant) -> bool:
+	match typeof(value):
+		TYPE_BOOL, TYPE_INT:
+			return true
+		TYPE_FLOAT:
+			return is_finite(float(value))
+		TYPE_STRING, TYPE_STRING_NAME:
+			return M1ProgressRules.is_stable_id(StringName(String(value)))
+	return false
 
 
 func _can_apply_order_progression_rewards(

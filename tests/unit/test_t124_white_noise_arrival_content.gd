@@ -31,7 +31,7 @@ func run() -> Array[String]:
 	_test_contract_and_dialogues(contract, localization, failures)
 	_test_three_rejoining_choices(contract, order, failures)
 	_test_relay_claim_boundary(localization, failures)
-	_test_registered_only_boundary(order, failures)
+	_test_playable_boundary(order, failures)
 	return failures
 
 
@@ -174,16 +174,18 @@ func _test_relay_claim_boundary(
 	)
 
 
-func _test_registered_only_boundary(
+func _test_playable_boundary(
 	order: OrderDefinition,
 	failures: Array[String]
 ) -> void:
 	expect_true(
 		order.content_readiness
-		== OrderDefinition.ContentReadiness.REGISTERED_ONLY
+		== OrderDefinition.ContentReadiness.PLAYABLE
 		and order.destination_planet != null
 		and order.destination_planet.content_readiness
-		== PlanetDefinition.ContentReadiness.REGISTERED_ONLY,
-		"T-124 must not open the formal White Noise order or planet before T-125.",
+		== PlanetDefinition.ContentReadiness.PLAYABLE
+		and order.destination_planet.flight_scene_path
+		== "res://scenes/flight/white_noise_flight.tscn",
+		"T-125 must open the already-validated T-124 destination through its dedicated route.",
 		failures
 	)

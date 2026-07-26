@@ -5,7 +5,7 @@ const REGISTRY_PATH: String = "res://data/m1_data_registry.tres"
 const VIEWPORT_RECT: Rect2 = Rect2(0.0, 0.0, 640.0, 360.0)
 const M0_ORDER_ID: StringName = &"order_red_sand_m0"
 const REGISTERED_ORDER_ID: StringName = (
-	&"order_m1_white_noise_archive_core"
+	&"order_m1_canopy_ecology_cargo"
 )
 
 var _failures: PackedStringArray = []

@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="GameDataRegistry" load_steps=64 format=3]
+[gd_resource type="Resource" script_class="GameDataRegistry" load_steps=67 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/game_data_registry.gd" id="1_registry"]
 [ext_resource type="Resource" path="res://data/planets/red_sand.tres" id="2_planet_red"]
@@ -63,6 +63,9 @@
 [ext_resource type="Resource" path="res://data/souvenirs/canopy_route_chime.tres" id="61_souvenir_canopy"]
 [ext_resource type="Resource" path="res://data/souvenirs/tidal_weather_vane.tres" id="62_souvenir_tidal"]
 [ext_resource type="Resource" path="res://data/codex/anomaly_relay_echo.tres" id="63_codex_relay_echo"]
+[ext_resource type="Resource" path="res://data/codex/anomaly_white_noise_minimum_index.tres" id="64_codex_white_minimum"]
+[ext_resource type="Resource" path="res://data/codex/anomaly_white_noise_sealed_index.tres" id="65_codex_white_sealed"]
+[ext_resource type="Resource" path="res://data/codex/anomaly_white_noise_shared_custody.tres" id="66_codex_white_custody"]
 
 [resource]
 script = ExtResource("1_registry")
@@ -72,7 +75,7 @@ orders = [ExtResource("6_order_m0"), ExtResource("7_order_revisit"), ExtResource
 cargo_items = [ExtResource("14_cargo_m0"), ExtResource("15_cargo_revisit"), ExtResource("16_cargo_white"), ExtResource("17_cargo_canopy"), ExtResource("18_cargo_tidal"), ExtResource("19_cargo_memory"), ExtResource("20_cargo_spore"), ExtResource("21_cargo_beacon")]
 modules = [ExtResource("22_module_drive"), ExtResource("23_module_shield"), ExtResource("24_module_laser"), ExtResource("25_module_backup"), ExtResource("26_module_voltage"), ExtResource("27_module_biosignal"), ExtResource("28_module_crosswind")]
 characters = [ExtResource("29_character_dispatch"), ExtResource("30_character_iya"), ExtResource("31_character_lao_pi"), ExtResource("32_character_archivist"), ExtResource("33_character_memory"), ExtResource("34_character_route"), ExtResource("35_character_clinic"), ExtResource("36_character_weather"), ExtResource("37_character_representative"), ExtResource("38_character_archive_company"), ExtResource("39_character_weather_company")]
-codex_entries = [ExtResource("40_codex_red_planet"), ExtResource("41_codex_iya"), ExtResource("42_codex_plaque"), ExtResource("43_codex_revisit_cargo"), ExtResource("63_codex_relay_echo"), ExtResource("44_codex_white_planet"), ExtResource("45_codex_archivist"), ExtResource("46_codex_white_cargo"), ExtResource("47_codex_memory"), ExtResource("48_codex_memory_cargo"), ExtResource("49_codex_canopy_planet"), ExtResource("50_codex_route"), ExtResource("51_codex_canopy_cargo"), ExtResource("52_codex_clinic"), ExtResource("53_codex_spore"), ExtResource("54_codex_tidal_planet"), ExtResource("55_codex_weather"), ExtResource("56_codex_tidal_cargo"), ExtResource("57_codex_representative"), ExtResource("58_codex_beacon")]
+codex_entries = [ExtResource("40_codex_red_planet"), ExtResource("41_codex_iya"), ExtResource("42_codex_plaque"), ExtResource("43_codex_revisit_cargo"), ExtResource("63_codex_relay_echo"), ExtResource("44_codex_white_planet"), ExtResource("45_codex_archivist"), ExtResource("46_codex_white_cargo"), ExtResource("47_codex_memory"), ExtResource("48_codex_memory_cargo"), ExtResource("64_codex_white_minimum"), ExtResource("65_codex_white_sealed"), ExtResource("66_codex_white_custody"), ExtResource("49_codex_canopy_planet"), ExtResource("50_codex_route"), ExtResource("51_codex_canopy_cargo"), ExtResource("52_codex_clinic"), ExtResource("53_codex_spore"), ExtResource("54_codex_tidal_planet"), ExtResource("55_codex_weather"), ExtResource("56_codex_tidal_cargo"), ExtResource("57_codex_representative"), ExtResource("58_codex_beacon")]
 souvenirs = [ExtResource("59_souvenir_plaque"), ExtResource("60_souvenir_white"), ExtResource("61_souvenir_canopy"), ExtResource("62_souvenir_tidal")]
 order_aliases = {
 &"order_red_sand_cooling_core": &"order_red_sand_m0"

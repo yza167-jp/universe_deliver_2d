@@ -74,10 +74,12 @@ func _test_content_contract(
 			ids[sequence.id] = true
 	expect_true(
 		content.order.content_readiness
-		== OrderDefinition.ContentReadiness.REGISTERED_ONLY
+		== OrderDefinition.ContentReadiness.PLAYABLE
 		and content.order.destination_planet.content_readiness
-		== PlanetDefinition.ContentReadiness.REGISTERED_ONLY,
-		"T-122 must not make the formal White Noise order or planet playable.",
+		== PlanetDefinition.ContentReadiness.PLAYABLE
+		and content.order.destination_planet.flight_scene_path
+		== "res://scenes/flight/white_noise_flight.tscn",
+		"T-125 must expose the formal route without changing T-122 content.",
 		failures
 	)
 

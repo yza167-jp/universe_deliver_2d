@@ -180,11 +180,11 @@ func _validate_formal_boundary() -> void:
 		planet != null
 		and order != null
 		and planet.content_readiness
-		== PlanetDefinition.ContentReadiness.REGISTERED_ONLY
-		and planet.flight_scene_path.is_empty()
+		== PlanetDefinition.ContentReadiness.PLAYABLE
+		and planet.flight_scene_path == SCENE_PATH
 		and order.content_readiness
-		== OrderDefinition.ContentReadiness.REGISTERED_ONLY,
-		"T-123 presentation changed the formal playable boundary."
+		== OrderDefinition.ContentReadiness.PLAYABLE,
+		"T-125 did not preserve the dedicated T-123 presentation route."
 	)
 
 

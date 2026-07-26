@@ -132,12 +132,12 @@ func _test_preparation_state_matrix(
 	)
 	expect_true(
 		installed.state
-		== M1DestinationPreparationStatus.State.QUALIFIED_ROUTE_PENDING
-		and installed.hint_key == &"UI_M1_WHITE_NOISE_PREP_ROUTE_PENDING"
+		== M1DestinationPreparationStatus.State.READY
+		and installed.hint_key == &"UI_M1_WHITE_NOISE_PREP_READY"
 		and installed.is_navigation_unlocked
 		and installed.is_route_qualified
-		and not installed.is_formal_route_available,
-		"Installed shielding must distinguish qualification from the unopened formal route.",
+		and installed.is_formal_route_available,
+		"Installed shielding must expose the dedicated route after T-125.",
 		failures
 	)
 	missing_state.free()
@@ -168,22 +168,21 @@ func _test_catalog_and_departure_contract(
 		order_entry != null
 		and order_entry.is_visible
 		and order_entry.is_name_disclosed
-		and not order_entry.accept_enabled
-		and order_entry.lock_reason
-		== GameStateModel.ORDER_ERROR_REGISTERED_ONLY
+		and order_entry.accept_enabled
+		and order_entry.lock_reason.is_empty()
 		and order_entry.lock_hint_key
-		== &"UI_M1_WHITE_NOISE_PREP_ROUTE_PENDING"
+		== &"UI_M1_WHITE_NOISE_PREP_READY"
 		and order_entry.preparation_status != null
 		and order_entry.preparation_status.state
-		== M1DestinationPreparationStatus.State.QUALIFIED_ROUTE_PENDING,
-		"The order preview must disclose qualification while preserving its REGISTERED_ONLY guard.",
+		== M1DestinationPreparationStatus.State.READY,
+		"The order preview must expose the qualified White Noise mainline.",
 		failures
 	)
 	expect_true(
 		planet_entry != null
 		and planet_entry.is_discovered
 		and planet_entry.is_progression_unlocked
-		and not planet_entry.is_content_playable
+		and planet_entry.is_content_playable
 		and not planet_entry.is_departure_selectable
 		and planet_entry.preparation_status != null
 		and (
@@ -195,23 +194,23 @@ func _test_catalog_and_departure_contract(
 	)
 	expect_true(
 		order.content_readiness
-		== OrderDefinition.ContentReadiness.REGISTERED_ONLY
+		== OrderDefinition.ContentReadiness.PLAYABLE
 		and order.destination_planet.content_readiness
-		== PlanetDefinition.ContentReadiness.REGISTERED_ONLY
-		and order.destination_planet.flight_scene_path.is_empty(),
-		"T-114 must not turn the White Noise packet into a playable route.",
+		== PlanetDefinition.ContentReadiness.PLAYABLE
+		and order.destination_planet.flight_scene_path
+		== "res://scenes/flight/white_noise_flight.tscn",
+		"T-125 must promote the prepared packet to its dedicated playable route.",
 		failures
 	)
 	_force_active_order(game_state, order)
 	expect_true(
-		game_state.get_departure_confirmation_error(order)
-		== GameStateModel.LOADOUT_ERROR_ORDER_REGISTERED_ONLY
-		and not game_state.confirm_departure(order)
-		and not game_state.begin_travel(
+		game_state.get_departure_confirmation_error(order).is_empty()
+		and game_state.confirm_departure(order)
+		and game_state.begin_travel(
 			order,
 			M1ProgressRules.PLANET_WHITE_NOISE
 		),
-		"A corrupted active White Noise order must still fail every formal departure guard.",
+		"The qualified White Noise order must pass the formal departure guard.",
 		failures
 	)
 	game_state.free()
@@ -276,6 +275,7 @@ func _test_localization_contract(failures: Array[String]) -> void:
 		&"UI_M1_WHITE_NOISE_PREP_MODULE_NOT_OBTAINED",
 		&"UI_M1_WHITE_NOISE_PREP_MODULE_NOT_INSTALLED",
 		&"UI_M1_WHITE_NOISE_PREP_ROUTE_PENDING",
+		&"UI_M1_WHITE_NOISE_PREP_READY",
 		&"UI_M1_WHITE_NOISE_RISK_SUMMARY",
 	]:
 		expect_true(

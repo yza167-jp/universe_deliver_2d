@@ -99,7 +99,7 @@ func _test_valid_registry_and_counts(
 		failures
 	)
 	expect_true(
-		registry.codex_entries.size() == 20 and registry.souvenirs.size() == 4,
+		registry.codex_entries.size() == 23 and registry.souvenirs.size() == 4,
 		"M1 registry must use typed codex and souvenir catalogs.",
 		failures
 	)
@@ -200,11 +200,24 @@ func _test_planet_registration_contract(
 			"M1 planet '%s' gravity must stay within its Packet range." % planet_id,
 			failures
 		)
+		var should_be_playable: bool = (
+			planet_id == M1ProgressRules.PLANET_WHITE_NOISE
+		)
 		expect_true(
-			planet.content_readiness == PlanetDefinition.ContentReadiness.REGISTERED_ONLY
-			and planet.flight_scene_path.is_empty()
-			and not planet.is_playable(),
-			"M1 planet '%s' must be registered without borrowing a playable route."
+			planet.content_readiness
+			== (
+				PlanetDefinition.ContentReadiness.PLAYABLE
+				if should_be_playable
+				else PlanetDefinition.ContentReadiness.REGISTERED_ONLY
+			)
+			and (
+				planet.flight_scene_path
+				== "res://scenes/flight/white_noise_flight.tscn"
+				if should_be_playable
+				else planet.flight_scene_path.is_empty()
+			)
+			and planet.is_playable() == should_be_playable,
+			"M1 planet '%s' has the wrong implementation readiness."
 			% planet_id,
 			failures
 		)
@@ -405,8 +418,10 @@ func _test_order_contracts(
 				order.content_readiness
 				== (
 					OrderDefinition.ContentReadiness.PLAYABLE
-					if order.id
-					== &"order_m1_red_sand_shielding_retrofit"
+					if order.id in [
+						&"order_m1_red_sand_shielding_retrofit",
+						&"order_m1_white_noise_archive_core",
+					]
 					else OrderDefinition.ContentReadiness.REGISTERED_ONLY
 				)
 			)
@@ -544,14 +559,14 @@ func _test_negative_validation(
 		failures
 	)
 
-	var white_order: OrderDefinition = source.find_order(
-		&"order_m1_white_noise_archive_core"
+	var canopy_order: OrderDefinition = source.find_order(
+		&"order_m1_canopy_ecology_cargo"
 	)
-	var original_order_readiness: int = white_order.content_readiness
-	white_order.content_readiness = OrderDefinition.ContentReadiness.PLAYABLE
+	var original_canopy_order_readiness: int = canopy_order.content_readiness
+	canopy_order.content_readiness = OrderDefinition.ContentReadiness.PLAYABLE
 	var order_readiness_errors: PackedStringArray = GameDataValidator.validate(source)
-	white_order.content_readiness = (
-		original_order_readiness as OrderDefinition.ContentReadiness
+	canopy_order.content_readiness = (
+		original_canopy_order_readiness as OrderDefinition.ContentReadiness
 	)
 	expect_true(
 		_contains_error(
@@ -561,6 +576,10 @@ func _test_negative_validation(
 		"M1 validation must reject claiming an unbuilt order is playable.",
 		failures
 	)
+	var white_order: OrderDefinition = source.find_order(
+		&"order_m1_white_noise_archive_core"
+	)
+	var original_order_readiness: int = white_order.content_readiness
 	white_order.content_readiness = 99 as OrderDefinition.ContentReadiness
 	var invalid_order_readiness_errors: PackedStringArray = (
 		GameDataValidator.validate(source)
@@ -593,22 +612,22 @@ func _test_negative_validation(
 		failures
 	)
 
-	var white_planet: PlanetDefinition = source.find_planet(
-		&"planet_white_noise"
+	var canopy_planet: PlanetDefinition = source.find_planet(
+		&"planet_canopy_world"
 	)
-	var original_readiness: int = white_planet.content_readiness
-	var original_scene_path: String = white_planet.flight_scene_path
-	white_planet.content_readiness = PlanetDefinition.ContentReadiness.PLAYABLE
-	white_planet.flight_scene_path = "res://scenes/flight/flight_level.tscn"
+	var original_readiness: int = canopy_planet.content_readiness
+	var original_scene_path: String = canopy_planet.flight_scene_path
+	canopy_planet.content_readiness = PlanetDefinition.ContentReadiness.PLAYABLE
+	canopy_planet.flight_scene_path = "res://scenes/flight/flight_level.tscn"
 	var readiness_errors: PackedStringArray = GameDataValidator.validate(source)
-	white_planet.content_readiness = (
+	canopy_planet.content_readiness = (
 		original_readiness as PlanetDefinition.ContentReadiness
 	)
-	white_planet.flight_scene_path = original_scene_path
+	canopy_planet.flight_scene_path = original_scene_path
 	expect_true(
 		_contains_error(
 			readiness_errors,
-			"must remain REGISTERED_ONLY"
+			"must remain registered-only"
 		),
 		"M1 validation must reject claiming an unbuilt planet route is playable.",
 		failures

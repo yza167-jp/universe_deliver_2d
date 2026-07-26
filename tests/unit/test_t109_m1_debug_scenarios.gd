@@ -213,23 +213,32 @@ func _test_registered_only_guards(
 		var focused_planet: PlanetDefinition = registry.find_planet(
 			definition.focus_planet_id
 		)
+		var implemented_order: bool = (
+			focused_order != null
+			and focused_order.id in [
+				M1DebugScenarioCatalog.ORDER_RED_SAND_REVISIT,
+				M1DebugScenarioCatalog.ORDER_WHITE_NOISE,
+			]
+		)
 		expect_true(
 			focused_order != null
 			and focused_order.content_readiness
 			== (
 				OrderDefinition.ContentReadiness.PLAYABLE
-				if scenario_id in [
-					M1DebugScenarioCatalog.SCENARIO_RED_SAND_REVISIT,
-					M1DebugScenarioCatalog.SCENARIO_GATE_E,
-				]
+				if implemented_order
 				else OrderDefinition.ContentReadiness.REGISTERED_ONLY
 			)
 			and focused_planet != null
 			and (
-				definition.focus_planet_id
-				== M1ProgressRules.PLANET_RED_SAND
-				or focused_planet.content_readiness
-				== PlanetDefinition.ContentReadiness.REGISTERED_ONLY
+				focused_planet.content_readiness
+				== (
+					PlanetDefinition.ContentReadiness.PLAYABLE
+					if definition.focus_planet_id in [
+						M1ProgressRules.PLANET_RED_SAND,
+						M1ProgressRules.PLANET_WHITE_NOISE,
+					]
+					else PlanetDefinition.ContentReadiness.REGISTERED_ONLY
+				)
 			),
 			"Scenario readiness must match implemented content: %s." % scenario_id,
 			failures
@@ -251,15 +260,15 @@ func _test_registered_only_guards(
 				failures
 			)
 		elif scenario_id in [
+			M1DebugScenarioCatalog.SCENARIO_WHITE_NOISE_CATALOG,
 			M1DebugScenarioCatalog.SCENARIO_WHITE_NOISE_ROUTE,
 			M1DebugScenarioCatalog.SCENARIO_WHITE_NOISE_ROUTE_UNSHIELDED,
 		]:
 			expect_true(
 				focused_order != null
-				and not state.accept_order(focused_order)
 				and state.last_order_error
-				== GameStateModel.ORDER_ERROR_REGISTERED_ONLY,
-				"The route fixture must not change formal White Noise readiness.",
+				!= GameStateModel.ORDER_ERROR_REGISTERED_ONLY,
+				"White Noise debug fixtures must preserve formal PLAYABLE readiness.",
 				failures
 			)
 		else:

@@ -534,6 +534,13 @@ M0 从 `0 m` 开始的完整路线不走这些分支。
 自动安装的剧情模块；所有附加参数在任何 mutation 前验证，避免信用点、模块、
 章节、回访或站点状态部分写入。
 
+`WhiteNoiseSettlementContract` 是 T-125 正式白噪主线的单一交接合同。它引用
+正式订单、`WhiteNoiseArrivalContract`、精确飞行/抵达场景、三条选择图鉴、
+一次性剧情标记、白噪回访状态、`ending_archive_choice` 值与结算文案 Key。
+`OrderResults` 只在 active order 精确匹配时消费该合同，并把选择附加关系、
+单条图鉴和稳定结尾值作为受校验参数加入同一次奖励账本事务；任何引用非法时
+信用点、许可、章节、导航和收藏均不得部分写入。
+
 ### 6.3 `CargoDefinition`
 
 ```text
@@ -837,10 +844,10 @@ Input Map action。
 
 集中调试入口 `--m1-debug=white_noise_route` 由
 `M1DebugScenarioCatalog/Controller` 构建当前进程内的
-`debug_m1_white_noise_route` 夹具。它深拷贝正式白噪订单与星球并只在夹具上
-临时设为可玩、指向独立场景；正式 Resource 继续 `REGISTERED_ONLY` 且没有
-`flight_scene_path`。F6 重建同一内存快照，SaveService 与 SettingsService
-保持既有隔离合同。
+`debug_m1_white_noise_route` 夹具。它深拷贝正式白噪订单与星球，并只在夹具内
+覆盖前置状态与隔离运行数据；T-125 已让正式 Resource 保持 `PLAYABLE` 并精确
+指向独立场景。F6 重建同一内存快照，SaveService 与 SettingsService 保持既有
+隔离合同，调试夹具不会回写正式 Resource 或玩家存档。
 
 T-121 使用三层局部职责，不把白噪特例塞入核心飞船：
 
@@ -862,7 +869,7 @@ T-121 使用三层局部职责，不把白噪特例塞入核心飞船：
 
 `--m1-debug=white_noise_route` 保持安装屏蔽罩的正常对照；
 `--m1-debug=white_noise_route_unshielded` 复用同一深拷贝订单夹具、但让 Defense
-槽恢复默认模块。两者都不修改正式白噪订单或星球的 `REGISTERED_ONLY` 状态。
+槽恢复默认模块。两者都不修改正式白噪订单或星球的 `PLAYABLE` 状态。
 
 T-123 在上述路线控制和碰撞之外只增加两个场景局部呈现职责：
 
@@ -1026,9 +1033,9 @@ T-124 的 `WhiteNoiseArrival` 继续沿用该边界：
 - 主交付对白使用阻塞模态并必须停在三个真实 `Button` 选择；所有选择在对白内
   汇入共同结束行。设备/索引观察使用 `lock_world_input=false`，允许移动并用
   `ui_accept` 或超时关闭，同时抑制当前交互提示与重复触发。
-- 返航升降梯在 T-124 只发出 `return_requested`，不会请求 RESULTS、完成订单或
-  发放奖励。T-125 才把该信号接入统一结算与正式场景路由，因此正式白噪
-  Order/Planet Resource 此时继续 `REGISTERED_ONLY`。
+- 返航升降梯自身仍只发出 `return_requested`；T-125 的场景适配层在真实
+  `ARRIVAL` 阶段且交付就绪时通过 Scene Router 请求 `RESULTS`。独立 T-124
+  场景烟雾没有生产 Router 时保留状态提示回退，不完成订单或提前发奖。
 - 角色候选 Resource 继续使用 `*_NAME_PROVISIONAL` 显示键；这两段目的地对白
   通过局部 `CharacterDefinition` 说话人显示职务称谓，不把候选名静默锁定。
 
@@ -1051,6 +1058,13 @@ T-122 在通用驾驶舱外增加订单级 `WhiteNoiseMainOrderContent` Resource
 订单终端以 `CargoDefinition.company_description_key` 和
 `story_description_key` 为同一货物的两份权威文本，分别标成公司记录与实际
 用途，避免 UI 自行推断文明冲突。
+
+T-125 让驾驶舱在旅行完成时从 active order 的目的星球读取精确
+`flight_scene_path`，并调用 `SceneRouterService.request_stage_scene()`。
+该入口先执行普通阶段白名单，再验证 `res://*.tscn` 路径并替换场景；因此白噪
+可以进入独立正式路线，而 M0/赤砂仍在路径缺失时使用既有默认
+`flight_level.tscn`。白噪路线以相同入口进入精确抵达场景，不能借调试覆盖绕过
+阶段迁移合同。
 
 ## 11. 存档
 
@@ -1313,7 +1327,7 @@ Delivery Lab 与 Flight Lab。持久 UI 只显示 scenario、章节、订单、�
 保存迁移等验证继续使用测试专用临时路径。`scripts/check_m1_foundation.sh` 作为
 可独立运行的聚合入口，逐项标记 v2 迁移、多星球系统、目录导航、收藏与站点、
 低空投放、加急订单、赤砂回访闭环、档案终端、白噪资格准备、白噪路线、暴雪
-机制、白噪冰下档案目的地与九个 M1 调试启动和
+机制、白噪冰下档案目的地、白噪正式结算/返站/存档闭环、九个 M1 调试启动和
 M0 完整闭环；该入口由 `scripts/check_project.sh` 调用。
 
 Gate E 入口 `--m1-debug=gate_e` 使用同一隔离合同，从首单完成后的
@@ -1324,8 +1338,8 @@ Gate E 入口 `--m1-debug=gate_e` 使用同一隔离合同，从首单完成后�
 T-120 新增的 `--m1-debug=white_noise_route` 使用已经获得且安装特高压电屏蔽罩、
 白噪章节与导航资格的确定快照，接取独立调试订单并直接打开白噪灰盒场景。
 T-121 的 `--m1-debug=white_noise_route_unshielded` 只提供同一暴雪序列的未安装
-隔离对照。两者共同验证路线、重力、分流、碰撞、检查点、着陆与屏蔽差异，不代表
-正式白噪主线已经开放。
+隔离对照。两者共同验证路线、重力、分流、碰撞、检查点、着陆与屏蔽差异；
+T-125 开放正式白噪主线后仍只作为不读写玩家存档的诊断入口。
 
 ## 18. 依赖策略
 

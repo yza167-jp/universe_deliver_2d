@@ -775,7 +775,22 @@ func _on_travel_completed(destination_id: StringName, _was_skipped: bool) -> voi
 	if _scene_router == null or _scene_router.current_stage != SceneRouterService.Stage.COCKPIT:
 		_show_notification(&"UI_COCKPIT_TRAVEL_READY_FOR_FLIGHT")
 		return
-	if not _scene_router.request_stage(SceneRouterService.Stage.FLIGHT):
+	_active_order = _resolve_active_order()
+	var flight_scene_path: String = ""
+	if (
+		_active_order != null
+		and _active_order.destination_planet != null
+	):
+		flight_scene_path = _active_order.destination_planet.flight_scene_path
+	var transition_succeeded: bool = (
+		_scene_router.request_stage(SceneRouterService.Stage.FLIGHT)
+		if flight_scene_path.is_empty()
+		else _scene_router.request_stage_scene(
+			SceneRouterService.Stage.FLIGHT,
+			flight_scene_path
+		)
+	)
+	if not transition_succeeded:
 		push_error("Cockpit could not transition to FLIGHT: %s" % _scene_router.last_error)
 
 

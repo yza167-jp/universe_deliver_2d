@@ -296,7 +296,7 @@ func _check_return_handoff(player: StationPlayer) -> void:
 	await _approach_and_interact(player, return_lift)
 	_check(
 		_return_request_count == 1
-		and _arrival.get_status_text().contains("T-125")
+		and _arrival.get_status_text().contains("接入订单结算")
 		and _game_state.get_order_status(_fixture_order.id)
 		== GameStateModel.OrderStatus.ACCEPTED
 		and not _game_state.has_completed_order(_fixture_order.id)
@@ -307,10 +307,10 @@ func _check_return_handoff(player: StationPlayer) -> void:
 	var formal_order: OrderDefinition = load(ORDER_PATH) as OrderDefinition
 	_check(
 		formal_order.content_readiness
-		== OrderDefinition.ContentReadiness.REGISTERED_ONLY
+		== OrderDefinition.ContentReadiness.PLAYABLE
 		and formal_order.destination_planet.content_readiness
-		== PlanetDefinition.ContentReadiness.REGISTERED_ONLY,
-		"T-124 smoke must leave the formal order and planet registered-only."
+		== PlanetDefinition.ContentReadiness.PLAYABLE,
+		"T-125 must open the formal route without changing T-124 destination behavior."
 	)
 
 

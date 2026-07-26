@@ -4,6 +4,7 @@ const FORMAL_PLANET_PATH: String = "res://data/planets/white_noise.tres"
 const FORMAL_ORDER_PATH: String = (
 	"res://data/orders/m1_white_noise_archive_core.tres"
 )
+const SCENE_PATH: String = "res://scenes/flight/white_noise_flight.tscn"
 
 
 func run() -> Array[String]:
@@ -73,11 +74,11 @@ func _test_formal_content_boundary(failures: Array[String]) -> void:
 		planet != null
 		and order != null
 		and planet.content_readiness
-		== PlanetDefinition.ContentReadiness.REGISTERED_ONLY
-		and planet.flight_scene_path.is_empty()
+		== PlanetDefinition.ContentReadiness.PLAYABLE
+		and planet.flight_scene_path == SCENE_PATH
 		and order.content_readiness
-		== OrderDefinition.ContentReadiness.REGISTERED_ONLY,
-		"T-123 presentation must not make formal White Noise content playable.",
+		== OrderDefinition.ContentReadiness.PLAYABLE,
+		"T-125 must expose the formal White Noise route with T-123 presentation intact.",
 		failures
 	)
 

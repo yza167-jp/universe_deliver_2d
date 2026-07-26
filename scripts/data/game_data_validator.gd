@@ -24,6 +24,14 @@ const M1_NEW_PLANET_IDS: Array[StringName] = [
 	&"planet_canopy_world",
 	&"planet_tidal_archipelago",
 ]
+const M1_PLAYABLE_PLANET_IDS: Array[StringName] = [
+	&"planet_white_noise",
+]
+const M1_PLAYABLE_ORDER_IDS: Array[StringName] = [
+	M1_ACTUAL_M0_ORDER_ID,
+	M1_RED_SAND_REVISIT_ORDER_ID,
+	M1_WHITE_NOISE_ORDER_ID,
+]
 const M1_REQUIRED_ORDER_IDS: Array[StringName] = [
 	M1_ACTUAL_M0_ORDER_ID,
 	M1_RED_SAND_REVISIT_ORDER_ID,
@@ -551,14 +559,24 @@ static func _validate_m1_packet_contract(
 		var planet: PlanetDefinition = registry.find_planet(planet_id)
 		if planet == null:
 			continue
-		if planet.content_readiness != PlanetDefinition.ContentReadiness.REGISTERED_ONLY:
+		if planet_id in M1_PLAYABLE_PLANET_IDS:
+			if (
+				planet.content_readiness
+				!= PlanetDefinition.ContentReadiness.PLAYABLE
+				or planet.flight_scene_path
+				!= "res://scenes/flight/white_noise_flight.tscn"
+			):
+				errors.append(
+					"M1 White Noise planet must expose its dedicated playable route."
+				)
+		elif (
+			planet.content_readiness
+			!= PlanetDefinition.ContentReadiness.REGISTERED_ONLY
+			or not planet.flight_scene_path.is_empty()
+		):
 			errors.append(
-				"M1 planet '%s' must remain REGISTERED_ONLY until its route task lands."
+				"M1 future planet '%s' must remain registered-only."
 				% planet_id
-			)
-		if not planet.flight_scene_path.is_empty():
-			errors.append(
-				"M1 planet '%s' must not borrow a playable flight scene." % planet_id
 			)
 	for order_id: StringName in M1_REQUIRED_ORDER_IDS:
 		var order: OrderDefinition = registry.find_order(order_id)
@@ -566,10 +584,7 @@ static func _validate_m1_packet_contract(
 			errors.append("M1 registry is missing required order '%s'." % order_id)
 			continue
 		if (
-			order_id in [
-				M1_ACTUAL_M0_ORDER_ID,
-				M1_RED_SAND_REVISIT_ORDER_ID,
-			]
+			order_id in M1_PLAYABLE_ORDER_IDS
 			and order.content_readiness
 			!= OrderDefinition.ContentReadiness.PLAYABLE
 		):
@@ -577,10 +592,7 @@ static func _validate_m1_packet_contract(
 				"M1 implemented order '%s' must remain PLAYABLE." % order_id
 			)
 		elif (
-			order_id not in [
-				M1_ACTUAL_M0_ORDER_ID,
-				M1_RED_SAND_REVISIT_ORDER_ID,
-			]
+			order_id not in M1_PLAYABLE_ORDER_IDS
 			and order.content_readiness
 			!= OrderDefinition.ContentReadiness.REGISTERED_ONLY
 		):
@@ -684,17 +696,31 @@ static func _validate_m1_packet_contract(
 			"M1 high-voltage shielding must have one free mainline reward source."
 		)
 	var white_noise_order: OrderDefinition = registry.find_order(M1_WHITE_NOISE_ORDER_ID)
-	if (
-		white_noise_order != null
-		and not _order_module_list_has_id(
+	if white_noise_order != null:
+		if not _order_module_list_has_id(
 			white_noise_order.required_modules,
 			M1_HIGH_VOLTAGE_MODULE_ID
-		)
-	):
-		errors.append(
-			"M1 White Noise main order must require '%s'."
-			% M1_HIGH_VOLTAGE_MODULE_ID
-		)
+		):
+			errors.append(
+				"M1 White Noise main order must require '%s'."
+				% M1_HIGH_VOLTAGE_MODULE_ID
+			)
+		if (
+			not is_equal_approx(white_noise_order.route_distance, 34000.0)
+			or white_noise_order.chapter_reward
+			!= M1ProgressRules.CHAPTER_M1_CANOPY_WORLD
+			or not white_noise_order.planet_unlock_rewards.has(
+				M1ProgressRules.PLANET_CANOPY_WORLD
+			)
+			or white_noise_order.revisit_state_rewards.get(
+				M1ProgressRules.PLANET_WHITE_NOISE,
+				&""
+			)
+			!= M1ProgressRules.REVISIT_WHITE_NOISE_MEMORY_FOLLOWUP_AVAILABLE
+		):
+			errors.append(
+				"M1 White Noise main order must expose its T-125 progression rewards."
+			)
 	var canopy_side_order: OrderDefinition = registry.find_order(M1_CANOPY_SIDE_ORDER_ID)
 	if (
 		canopy_side_order != null

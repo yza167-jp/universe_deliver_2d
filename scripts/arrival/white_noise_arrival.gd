@@ -19,6 +19,9 @@ const CAMERA_CENTER_Y: float = BASE_VIEWPORT_SIZE.y * 0.5
 const STATUS_DURATION_SECONDS: float = 6.0
 const MODAL_DIALOGUE: StringName = &"white_noise_arrival_dialogue"
 const MODAL_OBSERVATION: StringName = &"white_noise_arrival_observation"
+const MODAL_RETURN_TRANSITION: StringName = (
+	&"white_noise_arrival_return_transition"
+)
 const DELIVERY_INSPECTION_TRIGGER_ID: StringName = (
 	&"white_noise_arrival_delivery_cradle_inspected"
 )
@@ -49,6 +52,8 @@ const SIGNAL_AMBER: Color = Color("e7bd67")
 const FROST_WHITE: Color = Color("d6edf0")
 
 @export var arrival_contract: WhiteNoiseArrivalContract
+@export var settlement_contract: WhiteNoiseSettlementContract
+@export var data_registry: GameDataRegistry
 
 @onready var _player: StationPlayer = %StationPlayer
 @onready var _modal_coordinator: SceneModalCoordinator = %SceneModalCoordinator
@@ -65,6 +70,7 @@ const FROST_WHITE: Color = Color("d6edf0")
 
 var game_state_override: GameStateModel
 var dialogue_ui_override: DialogueUI
+var scene_router_override: SceneRouterService
 
 var _dialogue_ui: DialogueUI
 var _active_dialogue_kind: DialogueKind = DialogueKind.NONE
@@ -253,6 +259,8 @@ func _begin_arrival_flow() -> void:
 		or _dialogue_ui == null
 		or arrival_contract == null
 		or not arrival_contract.validate().is_empty()
+		or settlement_contract == null
+		or not settlement_contract.validate(data_registry).is_empty()
 	):
 		_modal_coordinator.end_modal(MODAL_DIALOGUE)
 		push_error("White Noise arrival could not resolve its contract or UI.")
@@ -404,7 +412,23 @@ func _on_return_lift_interacted(_actor: Node) -> void:
 		_show_status(&"UI_WHITE_NOISE_ARRIVAL_STATUS_RETURN_BLOCKED")
 		return
 	return_requested.emit()
-	_show_status(&"UI_WHITE_NOISE_ARRIVAL_STATUS_RETURN_READY")
+	var scene_router: SceneRouterService = _resolve_scene_router()
+	if (
+		scene_router == null
+		or scene_router.current_stage != SceneRouterService.Stage.ARRIVAL
+	):
+		_show_status(&"UI_WHITE_NOISE_ARRIVAL_STATUS_RETURN_READY")
+		return
+	if not _modal_coordinator.begin_modal(MODAL_RETURN_TRANSITION):
+		return
+	_objective_label.text = tr(
+		"UI_WHITE_NOISE_ARRIVAL_OBJECTIVE_RETURNING"
+	)
+	if scene_router.request_stage(SceneRouterService.Stage.RESULTS):
+		return
+	_modal_coordinator.end_modal(MODAL_RETURN_TRANSITION)
+	_objective_label.text = tr("UI_WHITE_NOISE_ARRIVAL_OBJECTIVE")
+	_show_status(&"UI_WHITE_NOISE_ARRIVAL_STATUS_RETURN_ERROR")
 
 
 func _can_observe() -> bool:
@@ -455,6 +479,12 @@ func _resolve_game_state() -> GameStateModel:
 	if game_state_override != null:
 		return game_state_override
 	return get_node_or_null("/root/GameState") as GameStateModel
+
+
+func _resolve_scene_router() -> SceneRouterService:
+	if scene_router_override != null:
+		return scene_router_override
+	return get_node_or_null("/root/SceneRouter") as SceneRouterService
 
 
 func _get_active_run_state() -> OrderRunState:

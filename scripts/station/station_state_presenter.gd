@@ -1,6 +1,10 @@
 class_name StationStatePresenter
 extends Node
 
+const WHITE_NOISE_ARCHIVE_UPDATED_FLAG: StringName = (
+	&"story_m1_white_noise_archive_terminal_updated"
+)
+
 @onready var _archive_terminal_root: Node2D = %ArchiveTerminalStateRoot
 @onready var _archive_terminal_label: Label = (
 	_archive_terminal_root.get_node("ArchiveTerminalLabel") as Label
@@ -66,6 +70,10 @@ func is_archive_terminal_powered() -> bool:
 	return _is_archive_terminal_active()
 
 
+func is_archive_terminal_white_noise_synced() -> bool:
+	return _is_archive_terminal_white_noise_synced()
+
+
 func get_archive_terminal_label_text() -> String:
 	return "" if _archive_terminal_label == null else _archive_terminal_label.text
 
@@ -121,9 +129,13 @@ func _set_root_visible(root: Node2D, state_id: StringName) -> void:
 func _localize_state_labels() -> void:
 	if _archive_terminal_label != null:
 		_archive_terminal_label.text = tr(
-			"UI_STATION_ARCHIVE_TERMINAL"
-			if _is_archive_terminal_active()
-			else "UI_STATION_ARCHIVE_TERMINAL_OFFLINE"
+			"UI_STATION_ARCHIVE_TERMINAL_WHITE_NOISE_SYNCED"
+			if _is_archive_terminal_white_noise_synced()
+			else (
+				"UI_STATION_ARCHIVE_TERMINAL"
+				if _is_archive_terminal_active()
+				else "UI_STATION_ARCHIVE_TERMINAL_OFFLINE"
+			)
 		)
 
 
@@ -134,13 +146,26 @@ func _refresh_archive_terminal_shell() -> void:
 	_archive_terminal_root.visible = true
 	if _archive_terminal_screen != null:
 		_archive_terminal_screen.color = (
-			Color("096078") if is_active else Color("111820")
+			Color("185a78")
+			if _is_archive_terminal_white_noise_synced()
+			else (
+				Color("096078") if is_active else Color("111820")
+			)
 		)
 	if _archive_terminal_lines != null:
 		_archive_terminal_lines.visible = is_active
+		_archive_terminal_lines.default_color = (
+			Color("d786bd")
+			if _is_archive_terminal_white_noise_synced()
+			else Color("77c9c4")
+		)
 	if _archive_terminal_status_light != null:
 		_archive_terminal_status_light.color = (
-			Color("e7a85b") if is_active else Color("46515b")
+			Color("65e2dd")
+			if _is_archive_terminal_white_noise_synced()
+			else (
+				Color("e7a85b") if is_active else Color("46515b")
+			)
 		)
 	_localize_state_labels()
 
@@ -150,5 +175,14 @@ func _is_archive_terminal_active() -> bool:
 		_game_state != null
 		and _game_state.has_station_state(
 			StationStateRules.ARCHIVE_TERMINAL_ID
+		)
+	)
+
+
+func _is_archive_terminal_white_noise_synced() -> bool:
+	return (
+		_is_archive_terminal_active()
+		and _game_state.has_story_flag(
+			WHITE_NOISE_ARCHIVE_UPDATED_FLAG
 		)
 	)

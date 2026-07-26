@@ -607,7 +607,17 @@ func _refresh_departure_state() -> void:
 			)
 		)
 		if preparation != null and preparation.is_visible:
-			_apply_preparation_state(preparation)
+			if (
+				preparation.state
+				== M1DestinationPreparationStatus.State.READY
+			):
+				_apply_departure_state(
+					"UI_LOADOUT_STATUS_WAITING_ORDER",
+					"UI_LOADOUT_FEEDBACK_WAITING_ORDER",
+					true
+				)
+			else:
+				_apply_preparation_state(preparation)
 			return
 		_apply_departure_state(
 			"UI_LOADOUT_STATUS_WAITING_ORDER",

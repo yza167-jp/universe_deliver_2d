@@ -67,8 +67,8 @@ func _check_order_terminal() -> void:
 		and terminal.get_cargo_text().contains("批量访问接口")
 		and terminal.get_customer_history_text().contains("最小访问原则")
 		and terminal.get_customer_history_text().contains("具体家庭与个人记忆")
-		and terminal.get_feedback_text().contains("正式航路仍在校准")
-		and not terminal.is_accept_enabled()
+		and terminal.get_feedback_text().contains("均已就绪")
+		and terminal.is_accept_enabled()
 		and VIEWPORT_RECT.encloses(terminal.get_panel_rect()),
 		"The departure brief did not expose risks, cargo framing, local use, and history in 640x360."
 	)

@@ -156,13 +156,22 @@ func _refresh_order_and_destination() -> void:
 		if route_authorized
 		else "UI_COCKPIT_NAV_LOCKED"
 	)
+	var route_content_playable: bool = (
+		_display_order.is_playable()
+		and (
+			(
+				_current_planet_entry != null
+				and _current_planet_entry.is_content_playable
+			)
+			or (
+				_preparation_status != null
+				and _preparation_status.is_formal_route_available
+			)
+		)
+	)
 	_content_label.text = tr("UI_COCKPIT_NAV_CONTENT_FORMAT") % tr(
 		"UI_COCKPIT_NAV_CONTENT_PLAYABLE"
-		if (
-			_current_planet_entry != null
-			and _current_planet_entry.is_content_playable
-			and _display_order.is_playable()
-		)
+		if route_content_playable
 		else "UI_COCKPIT_NAV_CONTENT_REGISTERED"
 	)
 	_environment_label.text = (
@@ -224,6 +233,8 @@ func _refresh_route() -> void:
 	if _active_order == null:
 		if (
 			_preparation_status != null
+			and _preparation_status.state
+			!= M1DestinationPreparationStatus.State.READY
 			and _display_order != null
 			and not _preparation_status.hint_key.is_empty()
 		):

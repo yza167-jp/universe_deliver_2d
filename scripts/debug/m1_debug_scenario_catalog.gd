@@ -623,12 +623,12 @@ func _validate_debug_active_order(
 			white_noise_order == null
 			or white_noise_order.id != ORDER_WHITE_NOISE
 			or white_noise_order.content_readiness
-			!= OrderDefinition.ContentReadiness.REGISTERED_ONLY
+			!= OrderDefinition.ContentReadiness.PLAYABLE
 			or white_noise_order.is_express
 			or definition.catalog_focus_order_id != white_noise_order.id
 		):
 			errors.append(
-				"White Noise route fixture must preserve its registered-only formal order."
+				"White Noise route fixture must preserve its playable formal order."
 			)
 		if (
 			definition.target_stage != SceneRouterService.Stage.FLIGHT

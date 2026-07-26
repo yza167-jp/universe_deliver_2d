@@ -10,5 +10,6 @@ display_name_key = &"PLANET_WHITE_NOISE_NAME_PROVISIONAL"
 description_key = &"PLANET_WHITE_NOISE_DESCRIPTION"
 gravity_scale = 1.28
 flight_environment_profile = ExtResource("2_environment")
-content_readiness = 0
+content_readiness = 1
+flight_scene_path = "res://scenes/flight/white_noise_flight.tscn"
 required_story_flags = Array[StringName]([&"story_m1_red_sand_shielding_retrofit_completed"])

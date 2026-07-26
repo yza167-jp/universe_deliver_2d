@@ -110,15 +110,16 @@ func _run_smoke() -> void:
 		_registry.find_order(
 			M1DebugScenarioCatalog.ORDER_WHITE_NOISE
 		).content_readiness
-		== OrderDefinition.ContentReadiness.REGISTERED_ONLY
+		== OrderDefinition.ContentReadiness.PLAYABLE
 		and _registry.find_planet(
 			M1ProgressRules.PLANET_WHITE_NOISE
 		).content_readiness
-		== PlanetDefinition.ContentReadiness.REGISTERED_ONLY
+		== PlanetDefinition.ContentReadiness.PLAYABLE
 		and _registry.find_planet(
 			M1ProgressRules.PLANET_WHITE_NOISE
-		).flight_scene_path.is_empty(),
-		"The White Noise route fixture mutated formal registered content."
+		).flight_scene_path
+		== M1DebugScenarioCatalog.WHITE_NOISE_ROUTE_SCENE_PATH,
+		"The White Noise route fixture mutated formal playable content."
 	)
 
 	await _cleanup()
@@ -225,14 +226,20 @@ func _check_target_scene(
 		)
 		if catalog_view != null:
 			var terminal: OrderTerminalUI = catalog_view.get_order_terminal()
+			var expects_playable_order: bool = (
+				scenario_id
+				== M1DebugScenarioCatalog.SCENARIO_WHITE_NOISE_CATALOG
+			)
 			_check(
 				terminal != null
 				and terminal.visible
 				and terminal.get_selected_order_id()
 				== definition.catalog_focus_order_id
-				and not terminal.is_accept_enabled(),
-				"Preview scenario %s did not focus a locked registered order."
-				% scenario_id
+				and terminal.is_accept_enabled() == expects_playable_order,
+				(
+					"Preview scenario %s did not preserve the focused "
+					+ "order's formal readiness."
+				) % scenario_id
 			)
 	elif scenario_id == M1DebugScenarioCatalog.SCENARIO_GATE_E:
 		var revisit_order: OrderDefinition = _registry.find_order(
@@ -362,7 +369,7 @@ func _finish() -> void:
 		print(
 			"[t109-m1-debug] PASS: nine deterministic scenarios, exact reset, "
 			+ "catalog/lab targets, compact status, save isolation, and "
-			+ "registered-only guards."
+			+ "formal readiness guards."
 		)
 		quit(0)
 		return

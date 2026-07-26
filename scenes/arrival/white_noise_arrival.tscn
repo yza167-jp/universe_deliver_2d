@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/arrival/white_noise_arrival.gd" id="1_arrival"]
 [ext_resource type="PackedScene" path="res://scenes/station/station_player.tscn" id="2_player"]
@@ -6,6 +6,8 @@
 [ext_resource type="Script" path="res://scripts/ui/scene_modal_coordinator.gd" id="4_modal"]
 [ext_resource type="Resource" path="res://data/arrivals/white_noise_arrival_contract.tres" id="5_contract"]
 [ext_resource type="Font" path="res://data/ui/chinese_ui_font.tres" id="6_chinese_font"]
+[ext_resource type="Resource" path="res://data/settlements/white_noise_settlement_contract.tres" id="7_settlement"]
+[ext_resource type="Resource" path="res://data/m1_data_registry.tres" id="8_registry"]
 
 [sub_resource type="Theme" id="ThemeArrival"]
 default_font = ExtResource("6_chinese_font")
@@ -63,6 +65,8 @@ content_margin_bottom = 7.0
 [node name="WhiteNoiseArrival" type="Node2D"]
 script = ExtResource("1_arrival")
 arrival_contract = ExtResource("5_contract")
+settlement_contract = ExtResource("7_settlement")
+data_registry = ExtResource("8_registry")
 
 [node name="CollisionBodies" type="Node2D" parent="."]
 

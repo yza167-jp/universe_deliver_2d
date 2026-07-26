@@ -26,7 +26,7 @@ script = ExtResource("1_order")
 id = &"order_m1_white_noise_archive_core"
 display_name_key = &"ORDER_M1_WHITE_NOISE_ARCHIVE_CORE_NAME_PROVISIONAL"
 order_type = 0
-content_readiness = 0
+content_readiness = 1
 required_chapter = &"chapter_m1_white_noise"
 unlock_conditions = [SubResource("UnlockPlanet"), SubResource("UnlockModule")]
 sender = ExtResource("3_sender")
@@ -41,10 +41,15 @@ relation_rewards = {
 &"planet_white_noise": 1
 }
 permission_rewards = Array[StringName]([&"permission_white_noise_archive_access"])
-codex_rewards = Array[StringName]([&"codex_planet_white_noise", &"codex_character_white_noise_archivist", &"codex_cargo_white_noise_archive_core"])
+codex_rewards = Array[StringName]([&"codex_planet_white_noise", &"codex_character_white_noise_archivist", &"codex_character_white_noise_memory_owner", &"codex_cargo_white_noise_archive_core"])
 souvenir_rewards = Array[StringName]([&"souvenir_white_noise_frost_index"])
+planet_unlock_rewards = Array[StringName]([&"planet_canopy_world"])
+chapter_reward = &"chapter_m1_canopy_world"
+revisit_state_rewards = {
+&"planet_white_noise": &"revisit_white_noise_memory_followup_available"
+}
 repeat_policy = 0
-route_distance = 1.25
+route_distance = 34000.0
 risk_level = 4
 required_modules = [ExtResource("7_drive"), ExtResource("8_high_voltage")]
 recommended_modules = [ExtResource("9_backup"), ExtResource("10_laser")]

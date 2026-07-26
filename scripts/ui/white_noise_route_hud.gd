@@ -218,7 +218,7 @@ func show_retry() -> void:
 
 
 func show_route_complete() -> void:
-	_show_status(tr("UI_WHITE_NOISE_ROUTE_COMPLETE_DEBUG"), 3600.0)
+	_show_status(tr("UI_WHITE_NOISE_ROUTE_COMPLETE"), 3600.0)
 
 
 func show_controls_help() -> void:

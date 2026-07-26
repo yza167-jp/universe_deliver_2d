@@ -64,6 +64,9 @@ const REVISIT_RED_SAND_MATERIALS_PENDING: StringName = (
 	&"revisit_red_sand_materials_pending"
 )
 const REVISIT_RED_SAND_COMPLETED: StringName = &"revisit_red_sand_completed"
+const REVISIT_WHITE_NOISE_MEMORY_FOLLOWUP_AVAILABLE: StringName = (
+	&"revisit_white_noise_memory_followup_available"
+)
 
 const RELATION_MINIMUM: int = -2
 const RELATION_MAXIMUM: int = 3

@@ -139,6 +139,10 @@ run_godot_checked \
   "White Noise bounded archive destination, local choice, relay fragment, and modal recovery" \
   --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t124_white_noise_arrival_smoke_runner.gd
 
+run_godot_checked \
+  "White Noise production route, atomic settlement, station growth, save, and Continue" \
+  --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t125_white_noise_main_flow_smoke_runner.gd
+
 for scenario_id in \
   gate_e \
   red_sand_revisit \

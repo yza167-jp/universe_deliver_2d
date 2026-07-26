@@ -23,10 +23,11 @@ func _initialize() -> void:
 		or definition.target_scene_path
 		!= M1DebugScenarioCatalog.WHITE_NOISE_ROUTE_SCENE_PATH
 		or formal_order.content_readiness
-		!= OrderDefinition.ContentReadiness.REGISTERED_ONLY
+		!= OrderDefinition.ContentReadiness.PLAYABLE
 		or formal_planet.content_readiness
-		!= PlanetDefinition.ContentReadiness.REGISTERED_ONLY
-		or not formal_planet.flight_scene_path.is_empty()
+		!= PlanetDefinition.ContentReadiness.PLAYABLE
+		or formal_planet.flight_scene_path
+		!= M1DebugScenarioCatalog.WHITE_NOISE_ROUTE_SCENE_PATH
 	):
 		printerr(
 			"[t120-debug-smoke] FAIL: debug entry changed formal White Noise readiness."
@@ -51,7 +52,7 @@ func _initialize() -> void:
 		quit(1)
 		return
 	print(
-		"[t120-debug-smoke] PASS: centralized isolated entry keeps formal "
-		+ "planet and order REGISTERED_ONLY."
+		"[t120-debug-smoke] PASS: isolated entry preserves formal "
+		+ "White Noise PLAYABLE resources."
 	)
 	quit(0)

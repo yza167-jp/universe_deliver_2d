@@ -78,7 +78,7 @@ func _check_order_terminal(station: StationHub) -> void:
 		"T-114 order terminal interaction was rejected."
 	)
 	await _settle_frames(2)
-	_check(
+	var terminal_is_valid: bool = (
 		terminal.visible
 		and terminal.get_selected_order_id()
 		== M1CatalogModel.WHITE_NOISE_ORDER_ID
@@ -88,9 +88,25 @@ func _check_order_terminal(station: StationHub) -> void:
 		and terminal.get_environment_text().contains("低能见度")
 		and terminal.get_required_modules_text().contains("已拥有，未安装")
 		and terminal.get_feedback_text().contains("安装到防护槽")
-		and not terminal.is_accept_enabled()
-		and VIEWPORT_RECT.encloses(terminal.get_panel_rect()),
-		"The order preview did not show risk, module state, route guard, or 640x360 containment."
+		and terminal.is_accept_enabled()
+		and VIEWPORT_RECT.encloses(terminal.get_panel_rect())
+	)
+	_check(
+		terminal_is_valid,
+		(
+			"The order preview did not show risk, module state, "
+			+ "installation guidance, or 640x360 containment: selected=%s "
+			+ "name=%s environment=%s required=%s feedback=%s "
+			+ "accept=%s rect=%s."
+		) % [
+			terminal.get_selected_order_id(),
+			terminal.get_order_name_text(),
+			terminal.get_environment_text(),
+			terminal.get_required_modules_text(),
+			terminal.get_feedback_text(),
+			terminal.is_accept_enabled(),
+			terminal.get_panel_rect(),
+		]
 	)
 	terminal.close_terminal()
 	await process_frame
@@ -135,10 +151,13 @@ func _check_workbench(
 	)
 	_check(
 		loadout.is_high_voltage_shielding_visual_visible()
-		and loadout.get_status_text() == "资格已满足 · 航路待开放"
-		and loadout.get_feedback_text().contains("正式航路仍在校准")
+		and loadout.get_status_text() == "等待订单"
+		and loadout.get_feedback_text().contains("先在订单终端接取")
 		and not loadout.is_confirm_enabled(),
-		"Installed shielding did not change the shared state to qualified-route-pending."
+		(
+			"Installed shielding preview did not explain that departure "
+			+ "confirmation remains gated on order acceptance."
+		)
 	)
 	loadout.close_loadout()
 	await process_frame
@@ -156,22 +175,40 @@ func _check_cockpit() -> void:
 	await _settle_frames(2)
 	var panel: CockpitNavigationPanel = cockpit.get_navigation_panel()
 	var text: String = cockpit.get_device_panel_body()
-	_check(
+	var cockpit_is_valid: bool = (
 		panel != null
 		and panel.get_preparation_status() != null
 		and panel.get_preparation_status().state
-		== M1DestinationPreparationStatus.State.QUALIFIED_ROUTE_PENDING
+		== M1DestinationPreparationStatus.State.READY
 		and text.contains("主线预览")
 		and text.contains("白噪星")
 		and text.contains("1.28g 强重力")
 		and text.contains("电磁暴雪")
 		and text.contains("低能见度")
 		and text.contains("特高压电屏蔽罩（已安装）")
-		and text.contains("正式航路仍在校准")
-		and text.contains("导航已解锁 · 航路待开放")
+		and text.contains("航路内容：可用")
+		and text.contains("需要先领取订单")
 		and not cockpit.is_navigation_action_enabled()
-		and not cockpit.start_configured_travel(),
-		"The cockpit did not share the qualified preview or preserve the hard departure guard."
+		and not cockpit.start_configured_travel()
+	)
+	_check(
+		cockpit_is_valid,
+		(
+			"The cockpit did not expose the playable preview while "
+			+ "preserving the active-order departure gate: "
+			+ "preparation=%s action=%s body=%s."
+		) % [
+			(
+				panel.get_preparation_status().state
+				if (
+					panel != null
+					and panel.get_preparation_status() != null
+				)
+				else -1
+			),
+			cockpit.is_navigation_action_enabled(),
+			text,
+		]
 	)
 	await _cleanup_node(cockpit)
 
@@ -223,7 +260,7 @@ func _finish() -> void:
 		print(
 			"[t114-white-noise-preparation] PASS: order preview, risk brief, "
 			+ "owned/install states, persistent navigation unlock, cockpit preview, "
-			+ "REGISTERED_ONLY guard, and 640x360 containment."
+			+ "formal-route readiness, and 640x360 containment."
 		)
 		quit(0)
 		return

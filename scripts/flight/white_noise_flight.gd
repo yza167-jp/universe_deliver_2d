@@ -8,6 +8,7 @@ const ASSIST_CYCLE_ACTION: StringName = &"flight_assist_cycle"
 const ROUTE_ORIGIN_X: float = WhiteNoiseRouteVisuals.ROUTE_ORIGIN_X
 const BASE_PLANET_GRAVITY: float = 200.0
 const NO_RETRY_PENDING: float = -1.0
+const NO_ARRIVAL_TRANSITION_PENDING: float = -1.0
 const ROUTE_COMPLETE_HOLD_DISTANCE: float = 180.0
 const ASSIST_PRESETS: Array[float] = [
 	FlightAssistMode.OFF,
@@ -28,15 +29,19 @@ const ASSIST_PRESETS: Array[float] = [
 @export var route_definition: WhiteNoiseRouteDefinition
 @export var planet_definition: PlanetDefinition
 @export var data_registry: GameDataRegistry
+@export var settlement_contract: WhiteNoiseSettlementContract
 
 var game_state_override: GameStateModel
 var settings_service_override: SettingsServiceModel
+var scene_router_override: SceneRouterService
 var _active_segment_index: int = 0
 var _maximum_route_distance: float = 0.0
 var _active_branch_id: StringName = &""
 var _branch_rejoined: bool = false
 var _route_completed: bool = false
 var _auto_retry_remaining: float = NO_RETRY_PENDING
+var _arrival_transition_remaining: float = NO_ARRIVAL_TRANSITION_PENDING
+var _landing_result: StringName = &""
 var _controls_help_open: bool = false
 var _was_tree_paused: bool = false
 var _active_assist_index: int = 1
@@ -85,6 +90,7 @@ func _process(delta: float) -> void:
 		storm_controller.advance(delta, _maximum_route_distance)
 		_try_complete_landing()
 		_update_auto_retry(delta)
+		_update_arrival_transition(delta)
 		_sync_camera()
 		debug_hud.refresh()
 		route_hud.refresh()
@@ -181,6 +187,14 @@ func is_retry_pending() -> bool:
 	return _auto_retry_remaining >= 0.0
 
 
+func is_arrival_transition_pending() -> bool:
+	return _arrival_transition_remaining >= 0.0
+
+
+func get_landing_result() -> StringName:
+	return _landing_result
+
+
 func advance_route_state() -> bool:
 	if route_definition == null or flight_ship == null:
 		return false
@@ -201,7 +215,9 @@ func restart_from_checkpoint(is_automatic: bool = false) -> bool:
 	if flight_ship == null or not flight_ship.restore_checkpoint():
 		return false
 	_auto_retry_remaining = NO_RETRY_PENDING
+	_arrival_transition_remaining = NO_ARRIVAL_TRANSITION_PENDING
 	_route_completed = false
+	_landing_result = &""
 	_active_segment_index = route_definition.get_segment_index(
 		get_route_distance()
 	)
@@ -282,6 +298,9 @@ func debug_set_route_state(
 	flight_ship.position = Vector2(ROUTE_ORIGIN_X + clamped_distance, ship_y)
 	flight_ship.velocity = Vector2.ZERO
 	flight_ship.rotation = 0.0
+	_arrival_transition_remaining = NO_ARRIVAL_TRANSITION_PENDING
+	_route_completed = false
+	_landing_result = &""
 	_maximum_route_distance = clamped_distance
 	_active_segment_index = route_definition.get_segment_index(clamped_distance)
 	flight_ship.set_environment_profile(
@@ -330,13 +349,16 @@ func _configure_checkpoint(segment_index: int) -> bool:
 		)
 		if branch != null:
 			checkpoint_y = branch.retry_y
-	return flight_ship.configure_safe_checkpoint(
+	var was_configured: bool = flight_ship.configure_safe_checkpoint(
 		segment.checkpoint_id,
 		Vector2(checkpoint_x, checkpoint_y),
 		Vector2(120.0, 0.0),
 		0.0,
 		segment.checkpoint_fuel_floor
 	)
+	if was_configured:
+		_sync_order_run_checkpoint(segment.checkpoint_id)
+	return was_configured
 
 
 func _get_safe_retry_y(segment_index: int) -> float:
@@ -391,12 +413,32 @@ func _try_complete_landing() -> bool:
 		or pitch_degrees > tuning.landing_success_max_pitch_degrees
 	):
 		return false
-	flight_ship.complete_landing(Vector2(
+	var quality: int = FlightLandingModel.classify_touchdown(
+		flight_ship.velocity,
+		flight_ship.rotation,
+		flight_ship.velocity.length(),
+		tuning
+	)
+	if quality == FlightLandingModel.Quality.FAILED:
+		return false
+	if not flight_ship.complete_landing(Vector2(
 		ROUTE_ORIGIN_X + route_visuals.get_landing_contact_distance(),
 		route_visuals.get_landing_pad_y() - 10.0
-	))
+	)):
+		return false
+	var cargo_damage: float = flight_ship.apply_delivery_cargo_damage(
+		FlightLandingModel.get_cargo_damage(quality, tuning)
+	)
 	_route_completed = true
+	_maximum_route_distance = route_definition.get_total_distance()
+	_landing_result = FlightLandingModel.get_result_id(quality)
+	_record_landing_result(_landing_result, cargo_damage)
+	_sync_order_run_resources()
 	route_hud.show_route_complete()
+	_arrival_transition_remaining = maxf(
+		tuning.landing_arrival_transition_delay_seconds,
+		0.0
+	)
 	return true
 
 
@@ -432,6 +474,33 @@ func _update_auto_retry(delta: float) -> void:
 	)
 	if _auto_retry_remaining <= 0.0:
 		restart_from_checkpoint(true)
+
+
+func _update_arrival_transition(delta: float) -> void:
+	if _arrival_transition_remaining < 0.0:
+		return
+	_arrival_transition_remaining = maxf(
+		_arrival_transition_remaining - maxf(delta, 0.0),
+		0.0
+	)
+	if _arrival_transition_remaining > 0.0:
+		return
+	_arrival_transition_remaining = NO_ARRIVAL_TRANSITION_PENDING
+	var scene_router: SceneRouterService = _resolve_scene_router()
+	if (
+		scene_router == null
+		or scene_router.current_stage != SceneRouterService.Stage.FLIGHT
+		or settlement_contract == null
+	):
+		return
+	if not scene_router.request_stage_scene(
+		SceneRouterService.Stage.ARRIVAL,
+		settlement_contract.arrival_scene_path
+	):
+		push_error(
+			"White Noise landing could not enter ARRIVAL: %s"
+			% scene_router.last_error
+		)
 
 
 func _connect_ship_signals() -> void:
@@ -479,6 +548,54 @@ func _resolve_game_state() -> GameStateModel:
 	return get_node_or_null("/root/GameState") as GameStateModel
 
 
+func _resolve_scene_router() -> SceneRouterService:
+	if scene_router_override != null:
+		return scene_router_override
+	return get_node_or_null("/root/SceneRouter") as SceneRouterService
+
+
+func _resolve_order_run_state() -> OrderRunState:
+	var game_state: GameStateModel = _resolve_game_state()
+	return (
+		game_state.get_active_order_run_state()
+		if game_state != null
+		else null
+	)
+
+
+func _sync_order_run_checkpoint(checkpoint_id: StringName) -> void:
+	var run_state: OrderRunState = _resolve_order_run_state()
+	if run_state != null:
+		run_state.active_checkpoint_id = checkpoint_id
+
+
+func _record_landing_result(
+	result_id: StringName,
+	cargo_damage: float
+) -> void:
+	var run_state: OrderRunState = _resolve_order_run_state()
+	if (
+		run_state != null
+		and not run_state.record_landing_result(result_id, cargo_damage)
+	):
+		push_error(
+			"White Noise landing produced an unsupported result: %s"
+			% result_id
+		)
+
+
+func _sync_order_run_resources() -> void:
+	var run_state: OrderRunState = _resolve_order_run_state()
+	if run_state == null or flight_ship == null:
+		return
+	run_state.cargo_integrity = flight_ship.cargo_integrity
+	run_state.hull = flight_ship.hull
+	run_state.shield = flight_ship.shield
+	run_state.fuel = flight_ship.fuel
+	run_state.boost_energy = flight_ship.boost_energy
+	run_state.active_checkpoint_id = flight_ship.get_checkpoint_id()
+
+
 func _resolve_settings_service() -> SettingsServiceModel:
 	if settings_service_override != null:
 		return settings_service_override
@@ -496,10 +613,12 @@ func _validate_configuration() -> bool:
 		or storm_controller == null
 		or environment_feedback == null
 		or storm_controller.profile == null
+		or settlement_contract == null
 	):
 		push_error("White Noise route configuration is incomplete.")
 		return false
 	var errors: PackedStringArray = route_definition.validate()
+	errors.append_array(settlement_contract.validate(data_registry))
 	var authoritative_gravity: float = (
 		BASE_PLANET_GRAVITY * planet_definition.gravity_scale
 	)
