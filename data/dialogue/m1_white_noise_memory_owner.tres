@@ -1,0 +1,70 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=15 format=3]
+
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_sequence.gd" id="1_sequence"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_line.gd" id="2_line"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_condition.gd" id="3_condition"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_effect.gd" id="4_effect"]
+[ext_resource type="Script" path="res://scripts/data/definitions/character_definition.gd" id="5_character"]
+
+[sub_resource type="Resource" id="SpeakerMemoryOwner"]
+script = ExtResource("5_character")
+id = &"character_white_noise_memory_owner"
+display_name_key = &"CHARACTER_WHITE_NOISE_MEMORY_OWNER_ROLE"
+role_key = &"CHARACTER_WHITE_NOISE_MEMORY_OWNER_ROLE"
+
+[sub_resource type="Resource" id="ConditionMinimumIndex"]
+script = ExtResource("3_condition")
+flag_id = &"story_m1_white_noise_choice_minimum_index"
+
+[sub_resource type="Resource" id="ConditionKeepSealed"]
+script = ExtResource("3_condition")
+flag_id = &"story_m1_white_noise_choice_keep_sealed"
+
+[sub_resource type="Resource" id="ConditionLocalCustody"]
+script = ExtResource("3_condition")
+flag_id = &"story_m1_white_noise_choice_local_custody"
+
+[sub_resource type="Resource" id="EffectOptionalCompleted"]
+script = ExtResource("4_effect")
+effect_id = &"story_m1_white_noise_memory_owner_dialogue_completed"
+
+[sub_resource type="Resource" id="LineMinimumIndex"]
+script = ExtResource("2_line")
+id = &"owner_minimum_index"
+speaker = SubResource("SpeakerMemoryOwner")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_OWNER_MINIMUM_INDEX"
+portrait_expression = &"concerned"
+conditions = [SubResource("ConditionMinimumIndex")]
+next_line_id = &"owner_keep_sealed"
+
+[sub_resource type="Resource" id="LineKeepSealed"]
+script = ExtResource("2_line")
+id = &"owner_keep_sealed"
+speaker = SubResource("SpeakerMemoryOwner")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_OWNER_KEEP_SEALED"
+portrait_expression = &"relieved"
+conditions = [SubResource("ConditionKeepSealed")]
+next_line_id = &"owner_local_custody"
+
+[sub_resource type="Resource" id="LineLocalCustody"]
+script = ExtResource("2_line")
+id = &"owner_local_custody"
+speaker = SubResource("SpeakerMemoryOwner")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_OWNER_LOCAL_CUSTODY"
+portrait_expression = &"neutral"
+conditions = [SubResource("ConditionLocalCustody")]
+next_line_id = &"owner_close"
+
+[sub_resource type="Resource" id="LineClose"]
+script = ExtResource("2_line")
+id = &"owner_close"
+speaker = SubResource("SpeakerMemoryOwner")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_OWNER_CLOSE"
+portrait_expression = &"friendly"
+effects = [SubResource("EffectOptionalCompleted")]
+
+[resource]
+script = ExtResource("1_sequence")
+id = &"dialogue_m1_white_noise_memory_owner"
+start_line_id = &"owner_minimum_index"
+lines = [SubResource("LineMinimumIndex"), SubResource("LineKeepSealed"), SubResource("LineLocalCustody"), SubResource("LineClose")]

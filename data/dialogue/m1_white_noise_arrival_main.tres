@@ -1,0 +1,146 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=26 format=3]
+
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_sequence.gd" id="1_sequence"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_line.gd" id="2_line"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_choice.gd" id="3_choice"]
+[ext_resource type="Script" path="res://scripts/narrative/dialogue_effect.gd" id="4_effect"]
+[ext_resource type="Script" path="res://scripts/data/definitions/character_definition.gd" id="5_character"]
+
+[sub_resource type="Resource" id="SpeakerArchivist"]
+script = ExtResource("5_character")
+id = &"character_white_noise_archivist"
+display_name_key = &"CHARACTER_WHITE_NOISE_ARCHIVIST_ROLE"
+role_key = &"CHARACTER_WHITE_NOISE_ARCHIVIST_ROLE"
+
+[sub_resource type="Resource" id="SpeakerMemoryOwner"]
+script = ExtResource("5_character")
+id = &"character_white_noise_memory_owner"
+display_name_key = &"CHARACTER_WHITE_NOISE_MEMORY_OWNER_ROLE"
+role_key = &"CHARACTER_WHITE_NOISE_MEMORY_OWNER_ROLE"
+
+[sub_resource type="Resource" id="EffectMinimumIndex"]
+script = ExtResource("4_effect")
+effect_id = &"story_m1_white_noise_choice_minimum_index"
+
+[sub_resource type="Resource" id="EffectKeepSealed"]
+script = ExtResource("4_effect")
+effect_id = &"story_m1_white_noise_choice_keep_sealed"
+
+[sub_resource type="Resource" id="EffectLocalCustody"]
+script = ExtResource("4_effect")
+effect_id = &"story_m1_white_noise_choice_local_custody"
+
+[sub_resource type="Resource" id="EffectChoiceRecorded"]
+script = ExtResource("4_effect")
+effect_id = &"story_m1_white_noise_archive_choice_recorded"
+
+[sub_resource type="Resource" id="EffectMainCompleted"]
+script = ExtResource("4_effect")
+effect_id = &"story_m1_white_noise_arrival_dialogue_completed"
+
+[sub_resource type="Resource" id="ChoiceMinimumIndex"]
+script = ExtResource("3_choice")
+id = &"minimum_public_index"
+text_key = &"DIALOGUE_M1_WHITE_NOISE_ARRIVAL_CHOICE_MINIMUM_INDEX"
+effects = [SubResource("EffectMinimumIndex")]
+next_line_id = &"arrival_minimum_index_response"
+
+[sub_resource type="Resource" id="ChoiceKeepSealed"]
+script = ExtResource("3_choice")
+id = &"keep_archive_sealed"
+text_key = &"DIALOGUE_M1_WHITE_NOISE_ARRIVAL_CHOICE_KEEP_SEALED"
+effects = [SubResource("EffectKeepSealed")]
+next_line_id = &"arrival_keep_sealed_response"
+
+[sub_resource type="Resource" id="ChoiceLocalCustody"]
+script = ExtResource("3_choice")
+id = &"local_shared_custody"
+text_key = &"DIALOGUE_M1_WHITE_NOISE_ARRIVAL_CHOICE_LOCAL_CUSTODY"
+effects = [SubResource("EffectLocalCustody")]
+next_line_id = &"arrival_local_custody_response"
+
+[sub_resource type="Resource" id="LineHandoff"]
+script = ExtResource("2_line")
+id = &"arrival_handoff"
+speaker = SubResource("SpeakerArchivist")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_ARRIVAL_HANDOFF"
+portrait_expression = &"serious"
+next_line_id = &"arrival_daily_detail"
+
+[sub_resource type="Resource" id="LineDailyDetail"]
+script = ExtResource("2_line")
+id = &"arrival_daily_detail"
+speaker = SubResource("SpeakerArchivist")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_ARRIVAL_DAILY_DETAIL"
+portrait_expression = &"neutral"
+next_line_id = &"arrival_company_stance"
+
+[sub_resource type="Resource" id="LineCompanyStance"]
+script = ExtResource("2_line")
+id = &"arrival_company_stance"
+speaker = SubResource("SpeakerArchivist")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_ARRIVAL_COMPANY_STANCE"
+portrait_expression = &"concerned"
+next_line_id = &"arrival_owner_concern"
+
+[sub_resource type="Resource" id="LineOwnerConcern"]
+script = ExtResource("2_line")
+id = &"arrival_owner_concern"
+speaker = SubResource("SpeakerMemoryOwner")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_ARRIVAL_OWNER_CONCERN"
+portrait_expression = &"serious"
+next_line_id = &"arrival_relay_fragment"
+
+[sub_resource type="Resource" id="LineRelayFragment"]
+script = ExtResource("2_line")
+id = &"arrival_relay_fragment"
+speaker = SubResource("SpeakerArchivist")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_ARRIVAL_RELAY_FRAGMENT"
+portrait_expression = &"neutral"
+next_line_id = &"arrival_choice"
+
+[sub_resource type="Resource" id="LineChoice"]
+script = ExtResource("2_line")
+id = &"arrival_choice"
+speaker = SubResource("SpeakerArchivist")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_ARRIVAL_CHOICE_PROMPT"
+portrait_expression = &"serious"
+choices = [SubResource("ChoiceMinimumIndex"), SubResource("ChoiceKeepSealed"), SubResource("ChoiceLocalCustody")]
+
+[sub_resource type="Resource" id="LineMinimumResponse"]
+script = ExtResource("2_line")
+id = &"arrival_minimum_index_response"
+speaker = SubResource("SpeakerArchivist")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_ARRIVAL_MINIMUM_RESPONSE"
+portrait_expression = &"neutral"
+next_line_id = &"arrival_shared_close"
+
+[sub_resource type="Resource" id="LineKeepResponse"]
+script = ExtResource("2_line")
+id = &"arrival_keep_sealed_response"
+speaker = SubResource("SpeakerMemoryOwner")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_ARRIVAL_KEEP_RESPONSE"
+portrait_expression = &"relieved"
+next_line_id = &"arrival_shared_close"
+
+[sub_resource type="Resource" id="LineCustodyResponse"]
+script = ExtResource("2_line")
+id = &"arrival_local_custody_response"
+speaker = SubResource("SpeakerMemoryOwner")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_ARRIVAL_CUSTODY_RESPONSE"
+portrait_expression = &"neutral"
+next_line_id = &"arrival_shared_close"
+
+[sub_resource type="Resource" id="LineSharedClose"]
+script = ExtResource("2_line")
+id = &"arrival_shared_close"
+speaker = SubResource("SpeakerArchivist")
+text_key = &"DIALOGUE_M1_WHITE_NOISE_ARRIVAL_SHARED_CLOSE"
+portrait_expression = &"friendly"
+effects = [SubResource("EffectChoiceRecorded"), SubResource("EffectMainCompleted")]
+
+[resource]
+script = ExtResource("1_sequence")
+id = &"dialogue_m1_white_noise_arrival_main"
+start_line_id = &"arrival_handoff"
+lines = [SubResource("LineHandoff"), SubResource("LineDailyDetail"), SubResource("LineCompanyStance"), SubResource("LineOwnerConcern"), SubResource("LineRelayFragment"), SubResource("LineChoice"), SubResource("LineMinimumResponse"), SubResource("LineKeepResponse"), SubResource("LineCustodyResponse"), SubResource("LineSharedClose")]

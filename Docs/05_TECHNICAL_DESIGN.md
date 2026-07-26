@@ -1015,6 +1015,23 @@ T-053 起，`FlightControlsHelp` 还绑定场景传入的 `SettingsService`，�
 - 老皮 M0 可使用脚本化站位和简单移动，不需要 NavigationAgent。
 - 小型目的地区域复用同一玩家与互动系统。
 
+T-124 的 `WhiteNoiseArrival` 继续沿用该边界：
+
+- `WhiteNoiseArrivalContract` 只集中引用两段对白、一个主完成标记、三个互斥
+  选择标记、可选对白标记与中继检查标记；它不是 Autoload，也不承担结算。
+- `white_noise_arrival.tscn` 是 `960×360` 的 1.5 屏区域，复用
+  `StationPlayer`、`Interactable2D`、受限 `Camera2D` 和
+  `SceneModalCoordinator`。五个交互点为交付座、维护者、索引终端、记忆持有人
+  与返航升降梯。
+- 主交付对白使用阻塞模态并必须停在三个真实 `Button` 选择；所有选择在对白内
+  汇入共同结束行。设备/索引观察使用 `lock_world_input=false`，允许移动并用
+  `ui_accept` 或超时关闭，同时抑制当前交互提示与重复触发。
+- 返航升降梯在 T-124 只发出 `return_requested`，不会请求 RESULTS、完成订单或
+  发放奖励。T-125 才把该信号接入统一结算与正式场景路由，因此正式白噪
+  Order/Planet Resource 此时继续 `REGISTERED_ONLY`。
+- 角色候选 Resource 继续使用 `*_NAME_PROVISIONAL` 显示键；这两段目的地对白
+  通过局部 `CharacterDefinition` 说话人显示职务称谓，不把候选名静默锁定。
+
 ## 10. 驾驶舱
 
 驾驶舱是 Control/Node2D 组合，而不是 3D：
@@ -1296,7 +1313,7 @@ Delivery Lab 与 Flight Lab。持久 UI 只显示 scenario、章节、订单、�
 保存迁移等验证继续使用测试专用临时路径。`scripts/check_m1_foundation.sh` 作为
 可独立运行的聚合入口，逐项标记 v2 迁移、多星球系统、目录导航、收藏与站点、
 低空投放、加急订单、赤砂回访闭环、档案终端、白噪资格准备、白噪路线、暴雪
-机制与九个 M1 调试启动和
+机制、白噪冰下档案目的地与九个 M1 调试启动和
 M0 完整闭环；该入口由 `scripts/check_project.sh` 调用。
 
 Gate E 入口 `--m1-debug=gate_e` 使用同一隔离合同，从首单完成后的

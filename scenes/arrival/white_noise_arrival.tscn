@@ -1,0 +1,334 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://scripts/arrival/white_noise_arrival.gd" id="1_arrival"]
+[ext_resource type="PackedScene" path="res://scenes/station/station_player.tscn" id="2_player"]
+[ext_resource type="Script" path="res://scripts/station/interactable_2d.gd" id="3_interactable"]
+[ext_resource type="Script" path="res://scripts/ui/scene_modal_coordinator.gd" id="4_modal"]
+[ext_resource type="Resource" path="res://data/arrivals/white_noise_arrival_contract.tres" id="5_contract"]
+[ext_resource type="Font" path="res://data/ui/chinese_ui_font.tres" id="6_chinese_font"]
+
+[sub_resource type="Theme" id="ThemeArrival"]
+default_font = ExtResource("6_chinese_font")
+
+[sub_resource type="RectangleShape2D" id="ShapeOuterHorizontal"]
+size = Vector2(960, 24)
+
+[sub_resource type="RectangleShape2D" id="ShapeOuterVertical"]
+size = Vector2(40, 360)
+
+[sub_resource type="RectangleShape2D" id="ShapeDeliveryInteraction"]
+size = Vector2(104, 70)
+
+[sub_resource type="RectangleShape2D" id="ShapeNpcInteraction"]
+size = Vector2(46, 64)
+
+[sub_resource type="RectangleShape2D" id="ShapeTerminalInteraction"]
+size = Vector2(92, 72)
+
+[sub_resource type="RectangleShape2D" id="ShapeReturnInteraction"]
+size = Vector2(82, 104)
+
+[sub_resource type="StyleBoxFlat" id="StyleHeader"]
+bg_color = Color(0.027451, 0.0823529, 0.133333, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.396078, 0.886275, 0.866667, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 8.0
+content_margin_top = 5.0
+content_margin_right = 8.0
+content_margin_bottom = 5.0
+
+[sub_resource type="StyleBoxFlat" id="StyleStatus"]
+bg_color = Color(0.0392157, 0.0941176, 0.145098, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.843137, 0.52549, 0.741176, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 12.0
+content_margin_top = 7.0
+content_margin_right = 12.0
+content_margin_bottom = 7.0
+
+[node name="WhiteNoiseArrival" type="Node2D"]
+script = ExtResource("1_arrival")
+arrival_contract = ExtResource("5_contract")
+
+[node name="CollisionBodies" type="Node2D" parent="."]
+
+[node name="TopBoundary" type="StaticBody2D" parent="CollisionBodies"]
+position = Vector2(480, 193)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CollisionBodies/TopBoundary"]
+shape = SubResource("ShapeOuterHorizontal")
+
+[node name="BottomBoundary" type="StaticBody2D" parent="CollisionBodies"]
+position = Vector2(480, 342)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CollisionBodies/BottomBoundary"]
+shape = SubResource("ShapeOuterHorizontal")
+
+[node name="LeftBoundary" type="StaticBody2D" parent="CollisionBodies"]
+position = Vector2(20, 180)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CollisionBodies/LeftBoundary"]
+shape = SubResource("ShapeOuterVertical")
+
+[node name="RightBoundary" type="StaticBody2D" parent="CollisionBodies"]
+position = Vector2(940, 180)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CollisionBodies/RightBoundary"]
+shape = SubResource("ShapeOuterVertical")
+
+[node name="StationPlayer" parent="." instance=ExtResource("2_player")]
+unique_name_in_owner = true
+position = Vector2(118, 292)
+initial_facing_direction = Vector2(1, 0)
+
+[node name="SceneModalCoordinator" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("4_modal")
+managed_control_paths = Array[NodePath]([NodePath("../ArrivalUI/OutcomePanel/Content/ObjectiveLabel")])
+
+[node name="Camera2D" type="Camera2D" parent="."]
+unique_name_in_owner = true
+position = Vector2(320, 180)
+position_smoothing_enabled = false
+limit_left = 0
+limit_top = 0
+limit_right = 960
+limit_bottom = 360
+
+[node name="Interactables" type="Node2D" parent="."]
+
+[node name="DeliveryCradle" type="Area2D" parent="Interactables" groups=["arrival_interactable"]]
+unique_name_in_owner = true
+position = Vector2(244, 256)
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("3_interactable")
+interaction_id = &"white_noise_delivery_cradle"
+prompt_key = &"UI_WHITE_NOISE_ARRIVAL_INTERACT_DELIVERY"
+interaction_priority = 90
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Interactables/DeliveryCradle"]
+shape = SubResource("ShapeDeliveryInteraction")
+
+[node name="Archivist" type="Area2D" parent="Interactables" groups=["arrival_interactable"]]
+unique_name_in_owner = true
+position = Vector2(430, 270)
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("3_interactable")
+interaction_id = &"white_noise_archivist"
+prompt_key = &"UI_WHITE_NOISE_ARRIVAL_INTERACT_ARCHIVIST"
+interaction_priority = 100
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Interactables/Archivist"]
+shape = SubResource("ShapeNpcInteraction")
+
+[node name="IndexTerminal" type="Area2D" parent="Interactables" groups=["arrival_interactable"]]
+unique_name_in_owner = true
+position = Vector2(628, 250)
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("3_interactable")
+interaction_id = &"white_noise_index_terminal"
+prompt_key = &"UI_WHITE_NOISE_ARRIVAL_INTERACT_INDEX"
+interaction_priority = 95
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Interactables/IndexTerminal"]
+shape = SubResource("ShapeTerminalInteraction")
+
+[node name="MemoryOwner" type="Area2D" parent="Interactables" groups=["arrival_interactable"]]
+unique_name_in_owner = true
+position = Vector2(792, 270)
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("3_interactable")
+interaction_id = &"white_noise_memory_owner"
+prompt_key = &"UI_WHITE_NOISE_ARRIVAL_INTERACT_OWNER"
+interaction_priority = 100
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Interactables/MemoryOwner"]
+shape = SubResource("ShapeNpcInteraction")
+
+[node name="ReturnLift" type="Area2D" parent="Interactables" groups=["arrival_interactable"]]
+unique_name_in_owner = true
+position = Vector2(904, 250)
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("3_interactable")
+interaction_id = &"white_noise_return_lift"
+prompt_key = &"UI_WHITE_NOISE_ARRIVAL_INTERACT_RETURN"
+interaction_priority = 85
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Interactables/ReturnLift"]
+shape = SubResource("ShapeReturnInteraction")
+
+[node name="WorldLabels" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 960.0
+offset_bottom = 360.0
+mouse_filter = 2
+theme = SubResource("ThemeArrival")
+
+[node name="DeliveryLabel" type="Label" parent="WorldLabels"]
+layout_mode = 0
+offset_left = 174.0
+offset_top = 204.0
+offset_right = 314.0
+offset_bottom = 224.0
+theme_override_colors/font_color = Color(0.905882, 0.741176, 0.403922, 1)
+theme_override_colors/font_outline_color = Color(0.027451, 0.0823529, 0.133333, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 11
+text = "UI_WHITE_NOISE_ARRIVAL_DELIVERY_LABEL"
+horizontal_alignment = 1
+
+[node name="ArchivistLabel" type="Label" parent="WorldLabels"]
+layout_mode = 0
+offset_left = 350.0
+offset_top = 216.0
+offset_right = 510.0
+offset_bottom = 236.0
+theme_override_colors/font_color = Color(0.396078, 0.886275, 0.866667, 1)
+theme_override_colors/font_outline_color = Color(0.027451, 0.0823529, 0.133333, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 11
+text = "UI_WHITE_NOISE_ARRIVAL_ARCHIVIST_LABEL"
+horizontal_alignment = 1
+
+[node name="IndexLabel" type="Label" parent="WorldLabels"]
+layout_mode = 0
+offset_left = 546.0
+offset_top = 190.0
+offset_right = 710.0
+offset_bottom = 210.0
+theme_override_colors/font_color = Color(0.396078, 0.886275, 0.866667, 1)
+theme_override_colors/font_outline_color = Color(0.027451, 0.0823529, 0.133333, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 11
+text = "UI_WHITE_NOISE_ARRIVAL_INDEX_LABEL"
+horizontal_alignment = 1
+
+[node name="OwnerLabel" type="Label" parent="WorldLabels"]
+layout_mode = 0
+offset_left = 704.0
+offset_top = 216.0
+offset_right = 880.0
+offset_bottom = 236.0
+theme_override_colors/font_color = Color(0.843137, 0.52549, 0.741176, 1)
+theme_override_colors/font_outline_color = Color(0.027451, 0.0823529, 0.133333, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 11
+text = "UI_WHITE_NOISE_ARRIVAL_OWNER_LABEL"
+horizontal_alignment = 1
+
+[node name="ReturnLabel" type="Label" parent="WorldLabels"]
+layout_mode = 0
+offset_left = 852.0
+offset_top = 179.0
+offset_right = 956.0
+offset_bottom = 199.0
+theme_override_colors/font_color = Color(0.905882, 0.741176, 0.403922, 1)
+theme_override_colors/font_outline_color = Color(0.027451, 0.0823529, 0.133333, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 11
+text = "UI_WHITE_NOISE_ARRIVAL_RETURN_LABEL"
+horizontal_alignment = 1
+
+[node name="ArrivalUI" type="CanvasLayer" parent="."]
+layer = 5
+
+[node name="LocationPanel" type="PanelContainer" parent="ArrivalUI"]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 310.0
+offset_bottom = 61.0
+theme = SubResource("ThemeArrival")
+theme_override_styles/panel = SubResource("StyleHeader")
+
+[node name="Content" type="VBoxContainer" parent="ArrivalUI/LocationPanel"]
+layout_mode = 2
+theme_override_constants/separation = 1
+
+[node name="LocationLabel" type="Label" parent="ArrivalUI/LocationPanel/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.396078, 0.886275, 0.866667, 1)
+theme_override_font_sizes/font_size = 15
+text = "UI_WHITE_NOISE_ARRIVAL_LOCATION"
+
+[node name="ScopeLabel" type="Label" parent="ArrivalUI/LocationPanel/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.686275, 0.788235, 0.823529, 1)
+theme_override_font_sizes/font_size = 11
+text = "UI_WHITE_NOISE_ARRIVAL_SCOPE"
+
+[node name="OutcomePanel" type="PanelContainer" parent="ArrivalUI"]
+offset_left = 318.0
+offset_top = 8.0
+offset_right = 632.0
+offset_bottom = 78.0
+theme = SubResource("ThemeArrival")
+theme_override_styles/panel = SubResource("StyleHeader")
+
+[node name="Content" type="VBoxContainer" parent="ArrivalUI/OutcomePanel"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="LandingFeedbackLabel" type="Label" parent="ArrivalUI/OutcomePanel/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.741176, 0.403922, 1)
+theme_override_font_sizes/font_size = 12
+text = "UI_WHITE_NOISE_ARRIVAL_LANDING_SMOOTH"
+horizontal_alignment = 1
+
+[node name="ObjectiveLabel" type="Label" parent="ArrivalUI/OutcomePanel/Content"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.839216, 0.929412, 0.941176, 1)
+theme_override_font_sizes/font_size = 11
+text = "UI_WHITE_NOISE_ARRIVAL_OBJECTIVE"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="StatusPanel" type="PanelContainer" parent="ArrivalUI"]
+unique_name_in_owner = true
+visible = false
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -250.0
+offset_top = -124.0
+offset_right = 250.0
+offset_bottom = -24.0
+grow_horizontal = 2
+grow_vertical = 0
+theme = SubResource("ThemeArrival")
+theme_override_styles/panel = SubResource("StyleStatus")
+
+[node name="StatusLabel" type="Label" parent="ArrivalUI/StatusPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.890196, 0.94902, 0.960784, 1)
+theme_override_font_sizes/font_size = 12
+text = "UI_WHITE_NOISE_ARRIVAL_STATUS_INDEX_MINIMUM"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2

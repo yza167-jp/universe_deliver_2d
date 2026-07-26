@@ -135,6 +135,10 @@ run_godot_checked \
   "White Noise layered presentation, generated ambience, motif, and reduced visual noise" \
   --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t123_white_noise_presentation_smoke_runner.gd
 
+run_godot_checked \
+  "White Noise bounded archive destination, local choice, relay fragment, and modal recovery" \
+  --headless --path "${PROJECT_ROOT}" --script res://tests/smoke/t124_white_noise_arrival_smoke_runner.gd
+
 for scenario_id in \
   gate_e \
   red_sand_revisit \
