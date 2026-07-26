@@ -1,0 +1,127 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/white_noise_route_hud.gd" id="1_hud"]
+
+[sub_resource type="SystemFont" id="SystemFontWhiteNoise"]
+font_names = PackedStringArray("PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
+allow_system_fallback = true
+
+[sub_resource type="Theme" id="ThemeWhiteNoise"]
+default_font = SubResource("SystemFontWhiteNoise")
+
+[sub_resource type="StyleBoxFlat" id="StylePanel"]
+bg_color = Color(0.0196078, 0.0823529, 0.129412, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.411765, 0.921569, 0.878431, 0.88)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="WhiteNoiseRouteHUD" type="CanvasLayer"]
+layer = 31
+script = ExtResource("1_hud")
+
+[node name="RoutePanel" type="PanelContainer" parent="."]
+offset_left = 400.0
+offset_top = 8.0
+offset_right = 632.0
+offset_bottom = 82.0
+theme = SubResource("ThemeWhiteNoise")
+theme_override_styles/panel = SubResource("StylePanel")
+
+[node name="Margin" type="MarginContainer" parent="RoutePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 7
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 7
+theme_override_constants/margin_bottom = 5
+
+[node name="Content" type="VBoxContainer" parent="RoutePanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 1
+
+[node name="StageLabel" type="Label" parent="RoutePanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878431, 0.984314, 1, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_WHITE_NOISE_STAGE_ORBITAL_APPROACH"
+
+[node name="ProgressLabel" type="Label" parent="RoutePanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.411765, 0.921569, 0.878431, 1)
+theme_override_font_sizes/font_size = 9
+text = "UI_WHITE_NOISE_ROUTE_PROGRESS"
+
+[node name="BranchLabel" type="Label" parent="RoutePanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.941176, 0.819608, 0.4, 1)
+theme_override_font_sizes/font_size = 9
+text = "UI_WHITE_NOISE_BRANCH_PENDING"
+
+[node name="HintPanel" type="PanelContainer" parent="."]
+offset_left = 8.0
+offset_top = 326.0
+offset_right = 632.0
+offset_bottom = 352.0
+theme = SubResource("ThemeWhiteNoise")
+theme_override_styles/panel = SubResource("StylePanel")
+
+[node name="HintLabel" type="Label" parent="HintPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.760784, 0.878431, 0.921569, 1)
+theme_override_font_sizes/font_size = 9
+text = "UI_WHITE_NOISE_ROUTE_HINTS"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="StatusPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+offset_left = 154.0
+offset_top = 286.0
+offset_right = 486.0
+offset_bottom = 318.0
+theme = SubResource("ThemeWhiteNoise")
+theme_override_styles/panel = SubResource("StylePanel")
+
+[node name="StatusLabel" type="Label" parent="StatusPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.941176, 0.819608, 0.4, 1)
+theme_override_font_sizes/font_size = 10
+text = "UI_WHITE_NOISE_RETRY"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HelpPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+offset_left = 94.0
+offset_top = 92.0
+offset_right = 546.0
+offset_bottom = 278.0
+theme = SubResource("ThemeWhiteNoise")
+theme_override_styles/panel = SubResource("StylePanel")
+
+[node name="Margin" type="MarginContainer" parent="HelpPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 14
+
+[node name="HelpLabel" type="Label" parent="HelpPanel/Margin"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878431, 0.984314, 1, 1)
+theme_override_font_sizes/font_size = 11
+text = "UI_WHITE_NOISE_ROUTE_HELP"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2

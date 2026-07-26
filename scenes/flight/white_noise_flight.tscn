@@ -1,0 +1,129 @@
+[gd_scene load_steps=14 format=3]
+
+[ext_resource type="Script" path="res://scripts/flight/white_noise_flight.gd" id="1_flight"]
+[ext_resource type="Script" path="res://scripts/flight/white_noise_route_visuals.gd" id="2_visuals"]
+[ext_resource type="Script" path="res://scripts/flight/flight_lab_ship.gd" id="3_ship"]
+[ext_resource type="Texture2D" path="res://assets/flight_lab_ship_placeholder.svg" id="4_ship_texture"]
+[ext_resource type="Resource" path="res://data/tuning/flight_tuning_m0.tres" id="5_tuning"]
+[ext_resource type="Resource" path="res://data/tuning/flight_environment_white_noise_orbit.tres" id="6_environment"]
+[ext_resource type="Script" path="res://scripts/flight/flight_laser_weapon.gd" id="7_laser"]
+[ext_resource type="Resource" path="res://data/tuning/flight_route_white_noise_m1.tres" id="8_route"]
+[ext_resource type="Resource" path="res://data/planets/white_noise.tres" id="9_planet"]
+[ext_resource type="Resource" path="res://data/m1_data_registry.tres" id="10_registry"]
+[ext_resource type="PackedScene" path="res://scenes/ui/flight_debug_hud.tscn" id="11_debug_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/white_noise_route_hud.tscn" id="12_route_hud"]
+
+[sub_resource type="RectangleShape2D" id="ShapeShip"]
+size = Vector2(38, 16)
+
+[sub_resource type="ParticleProcessMaterial" id="ParticlesImpactSparks"]
+particle_flag_disable_z = true
+direction = Vector3(-1, 0, 0)
+spread = 180.0
+gravity = Vector3(0, 180, 0)
+initial_velocity_min = 70.0
+initial_velocity_max = 120.0
+scale_min = 1.0
+scale_max = 2.0
+color = Color(0.55, 0.95, 1, 1)
+
+[node name="WhiteNoiseFlight" type="Node2D"]
+script = ExtResource("1_flight")
+route_definition = ExtResource("8_route")
+planet_definition = ExtResource("9_planet")
+data_registry = ExtResource("10_registry")
+
+[node name="Backdrop" type="CanvasLayer" parent="."]
+layer = -20
+
+[node name="DeepBlue" type="ColorRect" parent="Backdrop"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.0117647, 0.0313725, 0.0705882, 1)
+
+[node name="World" type="Node2D" parent="."]
+
+[node name="RouteVisuals" type="Node2D" parent="World"]
+unique_name_in_owner = true
+z_index = -5
+script = ExtResource("2_visuals")
+route_definition = ExtResource("8_route")
+
+[node name="FlightShip" type="CharacterBody2D" parent="World"]
+unique_name_in_owner = true
+position = Vector2(320, 180)
+collision_mask = 1
+script = ExtResource("3_ship")
+stable_start_position = Vector2(320, 180)
+tuning = ExtResource("5_tuning")
+environment_profile = ExtResource("6_environment")
+
+[node name="ShipSprite" type="Sprite2D" parent="World/FlightShip"]
+texture_filter = 1
+texture = ExtResource("4_ship_texture")
+
+[node name="EngineGlow" type="Polygon2D" parent="World/FlightShip"]
+polygon = PackedVector2Array(-23, -5, -34, 0, -23, 5)
+color = Color(0.411765, 0.921569, 0.878431, 0.92)
+
+[node name="BoostGlow" type="Polygon2D" parent="World/FlightShip"]
+visible = false
+polygon = PackedVector2Array(-25, -7, -48, 0, -25, 7)
+color = Color(0.662745, 0.478431, 1, 0.94)
+
+[node name="ReverseGlow" type="Polygon2D" parent="World/FlightShip"]
+visible = false
+polygon = PackedVector2Array(23, -5, 35, 0, 23, 5)
+color = Color(0.811765, 0.984314, 1, 0.9)
+
+[node name="ImpactSparks" type="CPUParticles2D" parent="World/FlightShip"]
+emitting = false
+amount = 10
+lifetime = 0.28
+one_shot = true
+explosiveness = 0.92
+process_material = SubResource("ParticlesImpactSparks")
+
+[node name="LaserWeapon" type="Node2D" parent="World/FlightShip"]
+unique_name_in_owner = true
+position = Vector2(22, 0)
+script = ExtResource("7_laser")
+tuning = ExtResource("5_tuning")
+
+[node name="Beam" type="Line2D" parent="World/FlightShip/LaserWeapon"]
+unique_name_in_owner = true
+visible = false
+z_index = 6
+points = PackedVector2Array(0, 0, 120, 0)
+width = 2.0
+default_color = Color(0.462745, 0.945098, 1, 0.96)
+
+[node name="MuzzleFlash" type="Polygon2D" parent="World/FlightShip/LaserWeapon"]
+unique_name_in_owner = true
+visible = false
+z_index = 7
+polygon = PackedVector2Array(0, -4, 10, 0, 0, 4, 3, 0)
+color = Color(0.811765, 0.984314, 1, 0.96)
+
+[node name="ShotAudio" type="AudioStreamPlayer2D" parent="World/FlightShip/LaserWeapon"]
+unique_name_in_owner = true
+volume_db = -7.0
+max_distance = 720.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/FlightShip"]
+shape = SubResource("ShapeShip")
+
+[node name="FlightCamera" type="Camera2D" parent="World"]
+unique_name_in_owner = true
+position = Vector2(320, 180)
+enabled = true
+
+[node name="FlightDebugHUD" parent="." instance=ExtResource("11_debug_hud")]
+unique_name_in_owner = true
+
+[node name="WhiteNoiseRouteHUD" parent="." instance=ExtResource("12_route_hud")]
+unique_name_in_owner = true

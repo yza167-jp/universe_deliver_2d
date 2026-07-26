@@ -106,6 +106,20 @@ func _run_smoke() -> void:
 		== PlanetDefinition.ContentReadiness.REGISTERED_ONLY,
 		"The isolated express fixture mutated formal registered content."
 	)
+	_check(
+		_registry.find_order(
+			M1DebugScenarioCatalog.ORDER_WHITE_NOISE
+		).content_readiness
+		== OrderDefinition.ContentReadiness.REGISTERED_ONLY
+		and _registry.find_planet(
+			M1ProgressRules.PLANET_WHITE_NOISE
+		).content_readiness
+		== PlanetDefinition.ContentReadiness.REGISTERED_ONLY
+		and _registry.find_planet(
+			M1ProgressRules.PLANET_WHITE_NOISE
+		).flight_scene_path.is_empty(),
+		"The White Noise route fixture mutated formal registered content."
+	)
 
 	await _cleanup()
 	_finish()
@@ -274,6 +288,20 @@ func _check_target_scene(
 			and express_hud.is_timing_visible(),
 			"Express scenario did not open Flight Lab with one isolated timed fixture."
 		)
+	elif scenario_id == M1DebugScenarioCatalog.SCENARIO_WHITE_NOISE_ROUTE:
+		var fixture: OrderDefinition = _controller.get_express_fixture()
+		_check(
+			active_scene is WhiteNoiseFlight
+			and fixture != null
+			and fixture.id
+			== M1DebugScenarioCatalog.DEBUG_WHITE_NOISE_ROUTE_ORDER_ID
+			and fixture.destination_planet != null
+			and fixture.destination_planet.flight_scene_path
+			== M1DebugScenarioCatalog.WHITE_NOISE_ROUTE_SCENE_PATH
+			and _game_state.current_order_id == fixture.id
+			and not express_hud.has_active_express_order(),
+			"White Noise scenario did not open one isolated non-express route fixture."
+		)
 	elif scenario_id == M1DebugScenarioCatalog.SCENARIO_RED_SAND_REVISIT:
 		var revisit_route: RedSandFlight = active_scene as RedSandFlight
 		_check(
@@ -316,7 +344,7 @@ func _finish() -> void:
 	TranslationServer.set_locale(_original_locale)
 	if _failures.is_empty():
 		print(
-			"[t109-m1-debug] PASS: seven deterministic scenarios, exact reset, "
+			"[t109-m1-debug] PASS: eight deterministic scenarios, exact reset, "
 			+ "catalog/lab targets, compact status, save isolation, and "
 			+ "registered-only guards."
 		)

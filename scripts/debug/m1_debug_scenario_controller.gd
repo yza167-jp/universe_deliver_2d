@@ -125,7 +125,7 @@ func _apply_definition(definition: M1DebugScenarioDefinition) -> bool:
 		if definition.fixture_source_order_id.is_empty():
 			active_order = _registry.find_order(definition.active_order_id)
 		else:
-			_express_fixture = _build_express_fixture(definition)
+			_express_fixture = _build_order_fixture(definition)
 			active_order = _express_fixture
 		if active_order == null:
 			return _fail("Debug active order is unavailable.")
@@ -146,21 +146,21 @@ func _apply_definition(definition: M1DebugScenarioDefinition) -> bool:
 	return true
 
 
-func _build_express_fixture(
+func _build_order_fixture(
 	definition: M1DebugScenarioDefinition
 ) -> OrderDefinition:
 	var source: OrderDefinition = _registry.find_order(
 		definition.fixture_source_order_id
 	)
 	if source == null:
-		_fail("Debug express source order is unavailable.")
+		_fail("Debug fixture source order is unavailable.")
 		return null
 	var fixture: OrderDefinition = source.duplicate(true) as OrderDefinition
 	var fixture_planet: PlanetDefinition = (
 		source.destination_planet.duplicate(true) as PlanetDefinition
 	)
 	if fixture == null or fixture_planet == null:
-		_fail("Debug express fixture could not be duplicated.")
+		_fail("Debug order fixture could not be duplicated.")
 		return null
 	fixture.id = definition.active_order_id
 	fixture.content_readiness = OrderDefinition.ContentReadiness.PLAYABLE
@@ -168,9 +168,7 @@ func _build_express_fixture(
 	fixture.unlock_conditions.clear()
 	fixture.story_requirements.clear()
 	fixture_planet.content_readiness = PlanetDefinition.ContentReadiness.PLAYABLE
-	fixture_planet.flight_scene_path = (
-		M1DebugScenarioCatalog.FLIGHT_LAB_SCENE_PATH
-	)
+	fixture_planet.flight_scene_path = definition.target_scene_path
 	fixture.destination_planet = fixture_planet
 	fixture.planet_id = fixture_planet.id
 	return fixture

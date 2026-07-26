@@ -1,0 +1,160 @@
+[gd_resource type="Resource" script_class="WhiteNoiseRouteDefinition" load_steps=16 format=3]
+
+[ext_resource type="Script" path="res://scripts/flight/white_noise_route_definition.gd" id="1_route"]
+[ext_resource type="Script" path="res://scripts/flight/flight_route_segment.gd" id="2_segment"]
+[ext_resource type="Script" path="res://scripts/flight/white_noise_route_branch.gd" id="3_branch"]
+[ext_resource type="Resource" path="res://data/tuning/flight_environment_white_noise_orbit.tres" id="4_orbit"]
+[ext_resource type="Resource" path="res://data/tuning/flight_environment_white_noise_icefield.tres" id="5_icefield"]
+[ext_resource type="Resource" path="res://data/tuning/flight_environment_white_noise_ice_rift.tres" id="6_rift"]
+[ext_resource type="Resource" path="res://data/tuning/flight_environment_white_noise_aurora.tres" id="7_aurora"]
+[ext_resource type="Resource" path="res://data/tuning/flight_environment_white_noise_archive.tres" id="8_archive"]
+[ext_resource type="Resource" path="res://data/tuning/flight_environment_white_noise_landing.tres" id="9_landing"]
+
+[sub_resource type="Resource" id="SegmentOrbitalApproach"]
+script = ExtResource("2_segment")
+id = &"white_noise_orbital_approach"
+display_name_key = &"UI_WHITE_NOISE_STAGE_ORBITAL_APPROACH"
+instruction_key = &"UI_WHITE_NOISE_INSTRUCTION_ORBITAL_APPROACH"
+checkpoint_id = &"checkpoint_white_noise_orbital_approach"
+start_distance = 0.0
+end_distance = 4500.0
+checkpoint_fuel_floor = 100.0
+environment_profile = ExtResource("4_orbit")
+planet_scale_start = 0.5
+planet_scale_end = 1.05
+floor_y = 620.0
+graybox_color = Color(0.0235294, 0.054902, 0.117647, 1)
+
+[sub_resource type="Resource" id="SegmentOpenIcefield"]
+script = ExtResource("2_segment")
+id = &"white_noise_open_icefield"
+display_name_key = &"UI_WHITE_NOISE_STAGE_OPEN_ICEFIELD"
+instruction_key = &"UI_WHITE_NOISE_INSTRUCTION_OPEN_ICEFIELD"
+checkpoint_id = &"checkpoint_white_noise_open_icefield"
+start_distance = 4500.0
+end_distance = 9500.0
+checkpoint_fuel_floor = 88.0
+environment_profile = ExtResource("5_icefield")
+planet_scale_start = 1.05
+planet_scale_end = 1.25
+floor_y = 620.0
+terrain_surface_enabled = true
+graybox_color = Color(0.0705882, 0.180392, 0.278431, 1)
+
+[sub_resource type="Resource" id="SegmentIceRiftSplit"]
+script = ExtResource("2_segment")
+id = &"white_noise_ice_rift_split"
+display_name_key = &"UI_WHITE_NOISE_STAGE_ICE_RIFT"
+instruction_key = &"UI_WHITE_NOISE_INSTRUCTION_ICE_RIFT"
+checkpoint_id = &"checkpoint_white_noise_ice_rift"
+start_distance = 9500.0
+end_distance = 17000.0
+checkpoint_fuel_floor = 72.0
+environment_profile = ExtResource("6_rift")
+planet_scale_start = 1.25
+planet_scale_end = 1.25
+floor_y = 620.0
+terrain_surface_enabled = true
+graybox_color = Color(0.054902, 0.145098, 0.231373, 1)
+
+[sub_resource type="Resource" id="SegmentAuroraBlizzard"]
+script = ExtResource("2_segment")
+id = &"white_noise_aurora_blizzard"
+display_name_key = &"UI_WHITE_NOISE_STAGE_AURORA_BLIZZARD"
+instruction_key = &"UI_WHITE_NOISE_INSTRUCTION_AURORA_BLIZZARD"
+checkpoint_id = &"checkpoint_white_noise_aurora_blizzard"
+start_distance = 17000.0
+end_distance = 23000.0
+checkpoint_fuel_floor = 56.0
+environment_profile = ExtResource("7_aurora")
+planet_scale_start = 1.25
+planet_scale_end = 1.25
+floor_y = 620.0
+terrain_surface_enabled = true
+graybox_color = Color(0.0784314, 0.160784, 0.258824, 1)
+
+[sub_resource type="Resource" id="SegmentArchiveDescent"]
+script = ExtResource("2_segment")
+id = &"white_noise_archive_descent"
+display_name_key = &"UI_WHITE_NOISE_STAGE_ARCHIVE_DESCENT"
+instruction_key = &"UI_WHITE_NOISE_INSTRUCTION_ARCHIVE_DESCENT"
+checkpoint_id = &"checkpoint_white_noise_archive_descent"
+start_distance = 23000.0
+end_distance = 28500.0
+checkpoint_fuel_floor = 40.0
+environment_profile = ExtResource("8_archive")
+planet_scale_start = 1.25
+planet_scale_end = 1.25
+floor_y = 620.0
+terrain_surface_enabled = true
+graybox_color = Color(0.0352941, 0.0901961, 0.137255, 1)
+
+[sub_resource type="Resource" id="SegmentLandingApproach"]
+script = ExtResource("2_segment")
+id = &"white_noise_landing_approach"
+display_name_key = &"UI_WHITE_NOISE_STAGE_LANDING_APPROACH"
+instruction_key = &"UI_WHITE_NOISE_INSTRUCTION_LANDING_APPROACH"
+checkpoint_id = &"checkpoint_white_noise_landing_approach"
+start_distance = 28500.0
+end_distance = 34000.0
+checkpoint_fuel_floor = 24.0
+environment_profile = ExtResource("9_landing")
+planet_scale_start = 1.25
+planet_scale_end = 1.25
+floor_y = 620.0
+terrain_surface_enabled = true
+graybox_color = Color(0.0431373, 0.117647, 0.160784, 1)
+
+[sub_resource type="Resource" id="BranchFast"]
+script = ExtResource("3_branch")
+id = &"white_noise_fast"
+display_name_key = &"UI_WHITE_NOISE_BRANCH_FAST"
+instruction_key = &"UI_WHITE_NOISE_BRANCH_FAST_INSTRUCTION"
+split_distance = 10000.0
+join_distance = 17000.0
+lane_min_y = 140.0
+lane_max_y = 250.0
+retry_y = 180.0
+nominal_duration_seconds = 18.0
+guide_color = Color(0.941176, 0.635294, 0.243137, 1)
+
+[sub_resource type="Resource" id="BranchBalanced"]
+script = ExtResource("3_branch")
+id = &"white_noise_balanced"
+display_name_key = &"UI_WHITE_NOISE_BRANCH_BALANCED"
+instruction_key = &"UI_WHITE_NOISE_BRANCH_BALANCED_INSTRUCTION"
+split_distance = 10000.0
+join_distance = 17000.0
+lane_min_y = 250.0
+lane_max_y = 440.0
+retry_y = 325.0
+nominal_duration_seconds = 24.0
+guide_color = Color(0.411765, 0.921569, 0.878431, 1)
+
+[sub_resource type="Resource" id="BranchScenic"]
+script = ExtResource("3_branch")
+id = &"white_noise_scenic"
+display_name_key = &"UI_WHITE_NOISE_BRANCH_SCENIC"
+instruction_key = &"UI_WHITE_NOISE_BRANCH_SCENIC_INSTRUCTION"
+split_distance = 10000.0
+join_distance = 17000.0
+lane_min_y = 440.0
+lane_max_y = 620.0
+retry_y = 500.0
+nominal_duration_seconds = 34.0
+guide_color = Color(0.760784, 0.545098, 1, 1)
+
+[resource]
+script = ExtResource("1_route")
+id = &"route_white_noise_archive_core"
+nominal_fast_duration_seconds = 88.0
+expected_duration_seconds = 118.0
+nominal_scenic_duration_seconds = 154.0
+reverse_allowance_distance = 520.0
+finish_hold_distance = 260.0
+surface_frame_prepare_start_distance = 3000.0
+surface_frame_lock_distance = 4500.0
+surface_frame_minimum_entry_altitude_meters = 220.0
+surface_frame_descent_reaction_seconds = 1.4
+segments = Array[ExtResource("2_segment")]([SubResource("SegmentOrbitalApproach"), SubResource("SegmentOpenIcefield"), SubResource("SegmentIceRiftSplit"), SubResource("SegmentAuroraBlizzard"), SubResource("SegmentArchiveDescent"), SubResource("SegmentLandingApproach")])
+branches = Array[ExtResource("3_branch")]([SubResource("BranchFast"), SubResource("BranchBalanced"), SubResource("BranchScenic")])

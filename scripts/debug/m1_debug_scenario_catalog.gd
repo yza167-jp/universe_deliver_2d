@@ -10,10 +10,14 @@ const DELIVERY_LAB_SCENE_PATH: String = "res://scenes/flight/delivery_lab.tscn"
 const RED_SAND_ROUTE_SCENE_PATH: String = (
 	"res://scenes/flight/flight_level.tscn"
 )
+const WHITE_NOISE_ROUTE_SCENE_PATH: String = (
+	"res://scenes/flight/white_noise_flight.tscn"
+)
 const STATION_SCENE_PATH: String = "res://scenes/station/station_hub.tscn"
 
 const SCENARIO_RED_SAND_REVISIT: StringName = &"red_sand_revisit"
 const SCENARIO_WHITE_NOISE_CATALOG: StringName = &"white_noise_catalog"
+const SCENARIO_WHITE_NOISE_ROUTE: StringName = &"white_noise_route"
 const SCENARIO_CANOPY_CATALOG: StringName = &"canopy_catalog"
 const SCENARIO_TIDAL_CATALOG: StringName = &"tidal_catalog"
 const SCENARIO_LOW_ALTITUDE_DROP: StringName = &"low_altitude_drop"
@@ -23,6 +27,7 @@ const SCENARIO_GATE_E: StringName = &"gate_e"
 const SCENARIO_IDS: Array[StringName] = [
 	SCENARIO_RED_SAND_REVISIT,
 	SCENARIO_WHITE_NOISE_CATALOG,
+	SCENARIO_WHITE_NOISE_ROUTE,
 	SCENARIO_CANOPY_CATALOG,
 	SCENARIO_TIDAL_CATALOG,
 	SCENARIO_LOW_ALTITUDE_DROP,
@@ -41,6 +46,9 @@ const ORDER_TIDAL: StringName = &"order_m1_tidal_weather_core"
 const ORDER_CANOPY_DROP: StringName = &"side_canopy_spore_drop"
 const ORDER_TIDAL_EXPRESS: StringName = &"side_tidal_beacon_before_eye"
 const DEBUG_EXPRESS_ORDER_ID: StringName = &"debug_m1_express_order"
+const DEBUG_WHITE_NOISE_ROUTE_ORDER_ID: StringName = (
+	&"debug_m1_white_noise_route"
+)
 
 const STORY_M0_COMPLETED: StringName = &"story_red_sand_order_completed"
 const STORY_M0_ARRIVAL: StringName = (
@@ -331,6 +339,8 @@ func _create_definition(
 			return _build_red_sand_revisit()
 		SCENARIO_WHITE_NOISE_CATALOG:
 			return _build_white_noise_catalog()
+		SCENARIO_WHITE_NOISE_ROUTE:
+			return _build_white_noise_route()
 		SCENARIO_CANOPY_CATALOG:
 			return _build_canopy_catalog()
 		SCENARIO_TIDAL_CATALOG:
@@ -393,6 +403,17 @@ func _build_white_noise_catalog() -> M1DebugScenarioDefinition:
 		M1ProgressRules.PLANET_RED_SAND: 2,
 		M1ProgressRules.PLANET_WHITE_NOISE: 0,
 	}
+	return definition
+
+
+func _build_white_noise_route() -> M1DebugScenarioDefinition:
+	var definition: M1DebugScenarioDefinition = _build_white_noise_catalog()
+	definition.scenario_id = SCENARIO_WHITE_NOISE_ROUTE
+	definition.active_order_id = DEBUG_WHITE_NOISE_ROUTE_ORDER_ID
+	definition.fixture_source_order_id = ORDER_WHITE_NOISE
+	definition.target_stage = SceneRouterService.Stage.FLIGHT
+	definition.target_scene_path = WHITE_NOISE_ROUTE_SCENE_PATH
+	definition.preview_only = false
 	return definition
 
 
@@ -574,9 +595,32 @@ func _validate_debug_active_order(
 				"Red Sand revisit debug must open the formal short route."
 			)
 		return
+	if definition.active_order_id == DEBUG_WHITE_NOISE_ROUTE_ORDER_ID:
+		var white_noise_order: OrderDefinition = registry.find_order(
+			definition.fixture_source_order_id
+		)
+		if (
+			white_noise_order == null
+			or white_noise_order.id != ORDER_WHITE_NOISE
+			or white_noise_order.content_readiness
+			!= OrderDefinition.ContentReadiness.REGISTERED_ONLY
+			or white_noise_order.is_express
+			or definition.catalog_focus_order_id != white_noise_order.id
+		):
+			errors.append(
+				"White Noise route fixture must preserve its registered-only formal order."
+			)
+		if (
+			definition.target_stage != SceneRouterService.Stage.FLIGHT
+			or definition.target_scene_path != WHITE_NOISE_ROUTE_SCENE_PATH
+		):
+			errors.append(
+				"White Noise route debug must open its independent route scene."
+			)
+		return
 	if definition.active_order_id != DEBUG_EXPRESS_ORDER_ID:
 		errors.append(
-			"Only the isolated express fixture may seed an active debug order."
+			"Only approved isolated fixtures may seed a debug active order."
 		)
 	if not M1ProgressRules.is_stable_id(definition.active_order_id):
 		errors.append("Debug active order ID is not stable.")

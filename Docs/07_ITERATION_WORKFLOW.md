@@ -122,6 +122,7 @@ GODOT_BIN="/Applications/Godot.app/Contents/MacOS/Godot" \
 "$GODOT_BIN" --path . --language zh_CN -- --m1-debug=gate_e
 "$GODOT_BIN" --path . --language zh_CN -- --m1-debug=red_sand_revisit
 "$GODOT_BIN" --path . --language zh_CN -- --m1-debug=white_noise_catalog
+"$GODOT_BIN" --path . --language zh_CN -- --m1-debug=white_noise_route
 "$GODOT_BIN" --path . --language zh_CN -- --m1-debug=canopy_catalog
 "$GODOT_BIN" --path . --language zh_CN -- --m1-debug=tidal_catalog
 "$GODOT_BIN" --path . --language zh_CN -- --m1-debug=low_altitude_drop
@@ -132,8 +133,9 @@ GODOT_BIN="/Applications/Godot.app/Contents/MacOS/Godot" \
 显示当前注入上下文；按 `F6` 将内存快照和目标场景一起重置。`gate_e` 从首单
 完成后的隔离大厅开始，让玩家正常接取赤砂回访并走完 Gate E；T-112 起
 `red_sand_revisit` 会跳过大厅、直接接取正式回访订单并进入
-`26000–38000 m` 短路线。白噪、穹林、群潮目录仍只能查看尚未落地的
-`REGISTERED_ONLY` 内容，不能接取或出发。
+`26000–38000 m` 短路线。`white_noise_route` 使用独立内存夹具直达 T-120
+六段灰盒，不会把正式白噪订单或星球改为可玩。白噪、穹林、群潮目录仍只能查看
+尚未落地的 `REGISTERED_ONLY` 内容，不能接取或出发。
 
 ### Level 4 — M1 Human Gate
 

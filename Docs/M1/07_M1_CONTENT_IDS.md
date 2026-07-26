@@ -16,8 +16,8 @@
   必做注册表。
 - M0 首单和已完成闭环的赤砂回访为 `PLAYABLE`。白噪、穹林、群潮的 3 份主线与
   3 份必做支线仍为 `REGISTERED_ONLY`：可供目录、依赖和内容开发引用，但在对应
-  剧情与路线任务完成前不能接取或出发。内容落地任务必须显式将对应订单与星球
-  切换为 `PLAYABLE`。
+  正式订单流程完成前不能接取或出发。T-120 的隔离白噪路线夹具不改变正式
+  Resource；内容落地任务必须显式将对应订单与星球切换为 `PLAYABLE`。
 
 ## 星球与环境占位
 
@@ -28,8 +28,34 @@
 | `planet_canopy_world` | 0.83 | `environment_canopy_world_placeholder` | `REGISTERED_ONLY` |
 | `planet_tidal_archipelago` | 0.98 | `environment_tidal_archipelago_placeholder` | `REGISTERED_ONLY` |
 
-三个新环境只提供保守的重力、密度、阻力与终端下降安全值，不代表对应路线手感已经
-完成。它们没有 `flight_scene_path`。
+表中的白噪 profile 仍是正式星球注册占位；穹林和群潮环境也只提供保守参数。
+三个新星球 Resource 均没有 `flight_scene_path`。
+
+### 白噪路线 T-120 灰盒合同
+
+- 路线：`route_white_noise_archive_core`，总长 `34000 m`。
+- 六段：
+  `white_noise_orbital_approach`、
+  `white_noise_open_icefield`、
+  `white_noise_ice_rift_split`、
+  `white_noise_aurora_blizzard`、
+  `white_noise_archive_descent`、
+  `white_noise_landing_approach`。
+- 环境：
+  `environment_white_noise_orbit`、
+  `environment_white_noise_icefield`、
+  `environment_white_noise_ice_rift`、
+  `environment_white_noise_aurora_placeholder`、
+  `environment_white_noise_archive`、
+  `environment_white_noise_landing`。
+- 三条局部分流：
+  `white_noise_fast`、
+  `white_noise_balanced`、
+  `white_noise_scenic`；统一从 `10000 m` 分开，在 `17000 m` 汇合。
+- 独立调试订单：`debug_m1_white_noise_route`，只由
+  `--m1-debug=white_noise_route` 在内存中建立，不进入正式注册表。
+- 路线 profile 以基准 `200 px/s² × planet_white_noise.gravity_scale 1.28`
+  得到统一 `256 px/s²` 重力；T-121 再接入电磁干扰与屏蔽差异。
 
 ## 新模块
 
@@ -110,9 +136,10 @@ T-111 已实现屏蔽罩能力读取：安装时
   `module_high_voltage_shielding`、`station_state_archive_terminal`、
   `planet_white_noise` 导航节点、`chapter_m1_white_noise` 与赤砂回访完成状态。
 
-上述路线值已由 T-112 的实际场景、路线、交付与结算闭环落实。T-114 只解锁
-白噪导航节点和订单预览；`planet_white_noise` 与
-`order_m1_white_noise_archive_core` 仍保持 `REGISTERED_ONLY` 且没有路线场景。
+上述赤砂路线值已由 T-112 的实际场景、路线、交付与结算闭环落实。T-114 只
+解锁白噪导航节点和订单预览；T-120 增加独立灰盒调试场景，但
+`planet_white_noise` 与 `order_m1_white_noise_archive_core` 仍保持
+`REGISTERED_ONLY`，正式星球仍没有 `flight_scene_path`。
 
 新增目的地 ID：
 

@@ -801,7 +801,49 @@ Full Diagnostics
 Provider 更新以剖面为权威并暂缓射线一致性验证，随后必须恢复 RayCast 交叉
 验证。该窗口只处理服务器同步，不能吞掉负 AGL 或长期双源不一致。
 
-### 8.6 赤砂星固定危险与环境反馈
+### 8.6 白噪星独立路线灰盒
+
+T-120 使用独立 `WhiteNoiseFlight` 场景，不实例化、继承或改名赤砂正式路线。
+`WhiteNoiseRouteDefinition` 在通用 `FlightRouteDefinition` 上只增加局部
+`WhiteNoiseRouteBranch` 数组；主路线仍由连续 `FlightRouteSegment`、环境
+Resource 与安全检查点驱动。六段边界为：
+
+```text
+0–4500       轨道/高空接近
+4500–9500    开阔冰原
+9500–17000   冰裂谷与三路分流
+17000–23000  极光和电磁暴雪视觉占位
+23000–28500  地下档案入口
+28500–34000  最终进场与有限着陆台
+```
+
+整段名义快速/常规/观景时长为 `88 / 118 / 154 s`。冰裂谷在 `10000 m`
+按船体实际路线 Y 选择 `white_noise_fast / white_noise_balanced /
+white_noise_scenic`，三路共享 `17000 m` 汇合点；通道使用两条可见冰层分隔
+碰撞和各自的安全重试 Y，不复制三份完整路线。路线重开恢复第一段确定起点，
+阶段重试恢复当前环境、资源下限、速度和对应安全通道。
+
+`WhiteNoiseRouteVisuals` 生成冰原上缘、冰洞顶面、局部分流障碍、极光/风雪
+占位线、竖向档案门框、下降信标和有限着陆台。着陆段从 `28500 m` 开始，
+平台可碰撞前缘为 `32750 m`，接触目标为 `33700 m`，因此最终阶段提供
+`5200 m` 观察、减速和下降距离；路线完成只停在灰盒完成状态，不误入赤砂抵达。
+T-121 之前，极光暴雪不修改 HUD、控制、护盾或资源。
+
+飞船继续使用 M0 `FlightLabShip`、`FlightTuning`、三档重力补偿、伤害、
+Boost/倒车、检查点和 `FlightDebugHUD`。白噪六个 profile 都把
+`planet_white_noise.gravity_scale = 1.28` 映射为 `256 px/s²`，仅按区域改变
+混合、密度、阻力和终端下降保护。`WhiteNoiseRouteHUD` 只提供白噪段名、进度、
+分流/汇合与紧凑帮助；H 继续控制共用 Full Diagnostics，C/G/R 继续使用既有
+Input Map action。
+
+集中调试入口 `--m1-debug=white_noise_route` 由
+`M1DebugScenarioCatalog/Controller` 构建当前进程内的
+`debug_m1_white_noise_route` 夹具。它深拷贝正式白噪订单与星球并只在夹具上
+临时设为可玩、指向独立场景；正式 Resource 继续 `REGISTERED_ONLY` 且没有
+`flight_scene_path`。F6 重建同一内存快照，SaveService 与 SettingsService
+保持既有隔离合同。
+
+### 8.7 赤砂星固定危险与环境反馈
 
 T-041 的陨石和雷击均由场景中的固定节点编排，不使用随机天气：陨石复用
 `DestructibleAsteroid` 的碰撞层、耐久与检查点重置；`FlightLightningStrike`
@@ -832,7 +874,7 @@ T-041 的陨石和雷击均由场景中的固定节点编排，不使用随机�
 Tick 分离，循环音在 Beam 开始时开启一次、停止时关闭；重试统一调用 reset，
 避免残留光柱或音频。
 
-### 8.7 赤砂星低空管制雷达与最后三阶段
+### 8.8 赤砂星低空管制雷达与最后三阶段
 
 阶段 6（`23000–30500 m`）把原低层沙漠与设施雷达内容合并到局部
 `RedSandLowFlightCourse`。场景继续使用手工固定的峡谷/设施 `StaticBody2D`
@@ -853,7 +895,7 @@ Tick 分离，循环音在 Beam 开始时开启一次、停止时关闭；重试
 从高位下降的最终进场，不重新加入雷达或低飞要求。路线提示和高对比度地形
 开关继续只影响可视辅助并保持输入穿透。
 
-### 8.8 赤砂星着陆、重试与抵达交接
+### 8.9 赤砂星着陆、重试与抵达交接
 
 T-043 使用局部 `RedSandLandingZone` 组合大型可读 `StaticBody2D` 着陆台、
 进场提示和安全检查点；飞过路线末端本身不再视为交付完成。接地品质由纯逻辑
@@ -879,7 +921,7 @@ T-043 使用局部 `RedSandLandingZone` 组合大型可读 `StaticBody2D` 着陆
 `SceneRouterService` 从 `FLIGHT` 切换到 `ARRIVAL`。抵达场景只读取已保存结果
 提供最低限度反馈，正式目的地剧情仍属于 T-050。
 
-### 8.9 飞行控制帮助与暂停边界
+### 8.10 飞行控制帮助与暂停边界
 
 `FlightControlsHelp` 是局部、可复用的模态 `Control`，由路线 HUD 实例化，
 不创建全局 UI Manager。赤砂星路线首次 `_ready()` 后延迟打开帮助，先记录原
@@ -903,7 +945,7 @@ T-053 起，`FlightControlsHelp` 还绑定场景传入的 `SettingsService`，�
 独立，因此雷击、碰撞、雷达和重试反馈不会覆盖公司警告。标题的文字等级和符号
 保证严重度不依赖边框颜色。
 
-### 8.10 M1 低空投放与 Delivery Lab
+### 8.11 M1 低空投放与 Delivery Lab
 
 低空投放拆成三个职责：
 
@@ -1208,13 +1250,18 @@ Delivery Lab 与 Flight Lab。持久 UI 只显示 scenario、章节、订单、�
 
 保存迁移等验证继续使用测试专用临时路径。`scripts/check_m1_foundation.sh` 作为
 可独立运行的聚合入口，逐项标记 v2 迁移、多星球系统、目录导航、收藏与站点、
-低空投放、加急订单、赤砂回访闭环、档案终端、白噪资格准备、七个 M1 调试启动和
+低空投放、加急订单、赤砂回访闭环、档案终端、白噪资格准备、白噪路线与八个
+M1 调试启动和
 M0 完整闭环；该入口由 `scripts/check_project.sh` 调用。
 
-Gate E 的第七个入口 `--m1-debug=gate_e` 使用同一隔离合同，从首单完成后的
+Gate E 入口 `--m1-debug=gate_e` 使用同一隔离合同，从首单完成后的
 `STATION` 状态开始，保留赤砂、伊娅、旧中继铭牌、首单信用点与回访资格，但不
 预接订单、不发放屏蔽罩，也不解锁白噪星。玩家因此可以按正式订单终端、配置、
 驾驶舱、短路线、抵达、结算和返站顺序试玩；该入口仍不接触玩家主档。
+
+T-120 新增的 `--m1-debug=white_noise_route` 使用已经获得且安装特高压电屏蔽罩、
+白噪章节与导航资格的确定快照，接取独立调试订单并直接打开白噪灰盒场景。它只
+验证路线、重力、分流、碰撞、检查点和着陆，不代表正式白噪主线已经开放。
 
 ## 18. 依赖策略
 
