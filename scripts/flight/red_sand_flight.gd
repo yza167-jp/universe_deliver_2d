@@ -771,13 +771,16 @@ func _update_altitude_reference(delta: float) -> void:
 	if segment == null:
 		return
 	var route_distance: float = _get_altitude_reference_route_distance()
-	var validate_world_sample: bool = _surface_frame_raycast_deferred_frames <= 0
 	if (
 		landing_zone != null
 		and segment.id == &"red_sand_landing_approach"
-		and route_distance >= landing_zone.get_pad_trailing_edge_route_distance()
+		and route_distance > landing_zone.get_pad_trailing_edge_route_distance()
 	):
-		validate_world_sample = false
+		## The finite platform is the last valid Stage 8 surface. The landing
+		## controller resolves a missed approach before another altitude sample;
+		## retaining the last valid AGL avoids inventing ground beyond the pad.
+		_reset_altitude_invariant_window()
+		return
 	var profile_ground_y: float = _get_canonical_ground_route_y(route_distance)
 	var profile_valid: bool = (
 		_active_segment_index >= FlightAltitudeReferenceProvider.ATMOSPHERE_FINAL_SEGMENT_INDEX
@@ -795,7 +798,7 @@ func _update_altitude_reference(delta: float) -> void:
 		flight_ship,
 		self,
 		delta,
-		validate_world_sample
+		_surface_frame_raycast_deferred_frames <= 0
 	)
 	_surface_frame_raycast_deferred_frames = maxi(
 		_surface_frame_raycast_deferred_frames - 1,

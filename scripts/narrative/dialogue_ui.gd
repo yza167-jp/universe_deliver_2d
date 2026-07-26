@@ -27,7 +27,6 @@ var _is_revealing: bool = false
 var _history_lines: PackedStringArray = []
 var _controls_initialized: bool = false
 var _settings_service: SettingsServiceModel
-var _pending_choice_buttons: Array[Button] = []
 
 
 func _ready() -> void:
@@ -218,16 +217,13 @@ func _clear_choice_buttons() -> void:
 		return
 	for child: Node in choice_container.get_children():
 		choice_container.remove_child(child)
-		_pending_choice_buttons.append(child as Button)
+		child.process_mode = Node.PROCESS_MODE_DISABLED
+		if child is Control:
+			(child as Control).visible = false
+			(child as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(child)
+		child.call_deferred("queue_free")
 	choice_container.visible = false
-	call_deferred("_flush_pending_choice_buttons")
-
-
-func _flush_pending_choice_buttons() -> void:
-	for button in _pending_choice_buttons:
-		if is_instance_valid(button):
-			button.call_deferred("queue_free")
-	_pending_choice_buttons.clear()
 
 
 func _refresh_controls() -> void:
