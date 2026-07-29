@@ -18,6 +18,7 @@ const COCKPIT_LABEL_READY_COLOR: Color = Color("77c9c4")
 const MODAL_DEPARTURE_GATE: StringName = &"station_departure_gate"
 
 var _game_state: GameStateModel
+var _data_registry: GameDataRegistry
 var _scene_router: SceneRouterService
 var _tutorial_controller: StationTutorialController
 var _player: StationPlayer
@@ -119,6 +120,14 @@ func enter_cockpit() -> bool:
 
 func _initialize_controller() -> void:
 	_game_state = get_node_or_null("/root/GameState") as GameStateModel
+	var order_terminal_ui: OrderTerminalUI = get_node_or_null(
+		"../OrderTerminalUILayer/OrderTerminalUI"
+	) as OrderTerminalUI
+	_data_registry = (
+		order_terminal_ui.data_registry
+		if order_terminal_ui != null
+		else null
+	)
 	_scene_router = get_node_or_null("/root/SceneRouter") as SceneRouterService
 	_tutorial_controller = get_node_or_null(
 		"../StationTutorialController"
@@ -158,6 +167,7 @@ func _initialize_controller() -> void:
 	_feedback_timer = get_node_or_null("FeedbackTimer") as Timer
 	if (
 		_game_state == null
+		or _data_registry == null
 		or _scene_router == null
 		or _tutorial_controller == null
 		or _player == null
@@ -215,6 +225,7 @@ func _on_tutorial_stage_changed(_stage: StationTutorialController.Stage) -> void
 
 func _on_runtime_state_reset() -> void:
 	close_departure_gate()
+	_localize_departure_panel()
 	_refresh_route_guidance()
 
 
@@ -222,6 +233,7 @@ func _on_order_status_changed(
 	_order_id: StringName,
 	_status: GameStateModel.OrderStatus
 ) -> void:
+	_localize_departure_panel()
 	_refresh_route_guidance()
 
 
@@ -250,6 +262,7 @@ func _on_cockpit_entry_interacted(_actor: Node) -> void:
 func _open_departure_gate() -> void:
 	if _departure_panel == null or _departure_panel.visible:
 		return
+	_localize_departure_panel()
 	_modal_coordinator.begin_modal(MODAL_DEPARTURE_GATE)
 	_departure_panel.visible = true
 	_enter_cockpit_button.grab_focus()
@@ -340,8 +353,35 @@ func _is_red_sand_revisit_available() -> bool:
 func _localize_departure_panel() -> void:
 	if _departure_title_label == null:
 		return
+	var active_order: OrderDefinition = _resolve_active_order()
 	_departure_title_label.text = tr("UI_DEPARTURE_GATE_TITLE")
-	_departure_summary_label.text = tr("UI_DEPARTURE_GATE_SUMMARY")
-	_departure_body_label.text = tr("UI_DEPARTURE_GATE_BODY")
+	if (
+		active_order != null
+		and active_order.destination_planet != null
+		and active_order.cargo != null
+	):
+		var planet_name: String = tr(
+			String(active_order.destination_planet.display_name_key)
+		)
+		var cargo_name: String = tr(String(active_order.cargo.display_name_key))
+		_departure_summary_label.text = tr(
+			"UI_DEPARTURE_GATE_DYNAMIC_SUMMARY"
+		) % [planet_name, cargo_name]
+		_departure_body_label.text = tr(
+			"UI_DEPARTURE_GATE_DYNAMIC_BODY"
+		) % [cargo_name, planet_name]
+	else:
+		_departure_summary_label.text = tr("UI_DEPARTURE_GATE_SUMMARY")
+		_departure_body_label.text = tr("UI_DEPARTURE_GATE_BODY")
 	_close_button.text = tr("UI_DEPARTURE_GATE_CLOSE")
 	_enter_cockpit_button.text = tr("UI_DEPARTURE_GATE_ENTER_COCKPIT")
+
+
+func _resolve_active_order() -> OrderDefinition:
+	if (
+		_game_state == null
+		or _data_registry == null
+		or _game_state.current_order_id.is_empty()
+	):
+		return null
+	return _data_registry.find_order(_game_state.current_order_id)

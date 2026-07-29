@@ -221,6 +221,12 @@ func show_retry() -> void:
 	_show_status(tr("UI_WHITE_NOISE_RETRY"))
 
 
+func show_failure(reason_key: StringName) -> void:
+	if reason_key.is_empty():
+		return
+	_show_status(tr(String(reason_key)), 3.4)
+
+
 func show_route_complete() -> void:
 	_show_status(
 		tr(

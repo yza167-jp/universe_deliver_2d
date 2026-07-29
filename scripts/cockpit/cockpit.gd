@@ -130,6 +130,7 @@ func _ready() -> void:
 		push_error("Cockpit could not initialize its hotspots, panels, or dialogue UI.")
 		return
 	_active_order = _resolve_active_order()
+	_sync_destination_visual()
 	_navigation_panel.configure(data_registry, _game_state)
 	_travel_controller.configure(_game_state, _active_order)
 	_connect_runtime_signals()
@@ -259,6 +260,7 @@ func set_data_registry(registry: GameDataRegistry) -> void:
 		return
 	_navigation_panel.configure(data_registry, _game_state)
 	_active_order = _resolve_active_order()
+	_sync_destination_visual()
 	_travel_controller.configure(_game_state, _active_order)
 	if _open_panel_id == &"navigation_screen":
 		_populate_device_panel(_open_panel_id)
@@ -331,6 +333,7 @@ func get_navigation_action_text() -> String:
 
 func start_configured_travel() -> bool:
 	_active_order = _resolve_active_order()
+	_sync_destination_visual()
 	if (
 		_active_order == null
 		or _active_order.destination_planet == null
@@ -805,6 +808,7 @@ func _on_travel_completed(destination_id: StringName, _was_skipped: bool) -> voi
 
 func _on_runtime_state_reset() -> void:
 	_active_order = _resolve_active_order()
+	_sync_destination_visual()
 	_travel_main_dialogue_pending = false
 	_travel_controller.configure(_game_state, _active_order)
 	_navigation_panel.configure(data_registry, _game_state)
@@ -834,6 +838,7 @@ func _on_catalog_state_changed() -> void:
 		return
 	_navigation_panel.configure(data_registry, _game_state)
 	_active_order = _resolve_active_order()
+	_sync_destination_visual()
 	if _open_panel_id == &"navigation_screen":
 		_navigation_panel.refresh()
 		_refresh_navigation_action()
@@ -1005,6 +1010,15 @@ func _resolve_active_order() -> OrderDefinition:
 	if _game_state == null or data_registry == null or _game_state.current_order_id.is_empty():
 		return null
 	return data_registry.find_order(_game_state.current_order_id)
+
+
+func _sync_destination_visual() -> void:
+	if _starfield == null:
+		return
+	var destination_id: StringName = &""
+	if _active_order != null and _active_order.destination_planet != null:
+		destination_id = _active_order.destination_planet.id
+	_starfield.set_destination_planet_id(destination_id)
 
 
 func _get_travel_phase_key(phase: GameStateModel.TravelState) -> StringName:

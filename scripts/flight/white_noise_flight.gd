@@ -10,6 +10,16 @@ const BASE_PLANET_GRAVITY: float = 200.0
 const NO_RETRY_PENDING: float = -1.0
 const NO_ARRIVAL_TRANSITION_PENDING: float = -1.0
 const ROUTE_COMPLETE_HOLD_DISTANCE: float = 180.0
+const ROUTE_MINIMUM_Y: float = -160.0
+const ROUTE_MAXIMUM_Y: float = 700.0
+const LANDING_CONTACT_MAX_BELOW_SURFACE: float = 2.0
+const LANDING_UNDERSHOOT_MARGIN: float = 18.0
+const OUT_OF_BOUNDS_FAILURE_KEY: StringName = (
+	&"UI_WHITE_NOISE_ROUTE_FAILURE_OUT_OF_BOUNDS"
+)
+const MISSED_APPROACH_FAILURE_KEY: StringName = (
+	&"UI_WHITE_NOISE_LANDING_MISSED_APPROACH_FAILURE"
+)
 const ASSIST_PRESETS: Array[float] = [
 	FlightAssistMode.OFF,
 	FlightAssistMode.LIMITED,
@@ -100,7 +110,8 @@ func _process(delta: float) -> void:
 		_enforce_route_bounds()
 		_update_branch_state()
 		storm_controller.advance(delta, _maximum_route_distance)
-		_try_complete_landing()
+		if not _try_complete_landing():
+			_check_route_failure()
 		_update_auto_retry(delta)
 		_update_arrival_transition(delta)
 		_sync_camera()
@@ -442,12 +453,17 @@ func _try_complete_landing() -> bool:
 		return false
 	if get_route_distance() < route_visuals.get_landing_contact_distance():
 		return false
+	if get_route_distance() > route_visuals.get_landing_pad_end_distance():
+		return false
 	var horizontal_speed: float = absf(flight_ship.velocity.x)
 	var descent_speed: float = maxf(flight_ship.velocity.y, 0.0)
 	var pitch_degrees: float = absf(flight_ship.get_pitch_degrees())
 	var tuning: FlightTuning = flight_ship.tuning
 	if (
 		flight_ship.position.y < route_visuals.get_landing_pad_y() - 42.0
+		or flight_ship.position.y
+		> route_visuals.get_landing_pad_y()
+		+ LANDING_CONTACT_MAX_BELOW_SURFACE
 		or horizontal_speed > tuning.landing_success_max_horizontal_speed
 		or descent_speed > tuning.landing_success_max_descent_speed
 		or pitch_degrees > tuning.landing_success_max_pitch_degrees
@@ -480,6 +496,30 @@ func _try_complete_landing() -> bool:
 		0.0
 	)
 	return true
+
+
+func _check_route_failure() -> bool:
+	if (
+		_route_completed
+		or flight_ship.is_failed
+		or flight_ship.is_landed
+	):
+		return false
+	if (
+		flight_ship.position.y < ROUTE_MINIMUM_Y
+		or flight_ship.position.y > ROUTE_MAXIMUM_Y
+	):
+		return flight_ship.fail_flight(OUT_OF_BOUNDS_FAILURE_KEY)
+	var route_distance: float = get_route_distance()
+	if (
+		route_distance >= route_visuals.get_landing_pad_start_distance()
+		and flight_ship.position.y
+		> route_visuals.get_landing_pad_y() + LANDING_UNDERSHOOT_MARGIN
+	):
+		return flight_ship.fail_flight(MISSED_APPROACH_FAILURE_KEY)
+	if route_distance > route_visuals.get_landing_pad_end_distance():
+		return flight_ship.fail_flight(MISSED_APPROACH_FAILURE_KEY)
+	return false
 
 
 func _enforce_route_bounds() -> void:
@@ -551,7 +591,8 @@ func _connect_ship_signals() -> void:
 		flight_ship.flight_failed.connect(_on_flight_failed)
 
 
-func _on_flight_failed(_reason_key: StringName) -> void:
+func _on_flight_failed(reason_key: StringName) -> void:
+	route_hud.show_failure(reason_key)
 	_auto_retry_remaining = maxf(
 		flight_ship.tuning.failure_retry_delay_seconds,
 		0.1

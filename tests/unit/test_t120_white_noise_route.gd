@@ -37,6 +37,7 @@ func run() -> Array[String]:
 	_test_playable_boundary(planet, order, failures)
 	_test_debug_scenario(failures)
 	_test_fixed_delta_motion(route, failures)
+	_test_orbital_limited_assist_corridor(route, failures)
 	return failures
 
 
@@ -271,5 +272,60 @@ func _test_fixed_delta_motion(
 			"1.28g fixed-delta flight must remain controllable and stable "
 			+ "at 30/60/120 FPS: %s."
 		) % [positions],
+		failures
+	)
+
+
+func _test_orbital_limited_assist_corridor(
+	route: WhiteNoiseRouteDefinition,
+	failures: Array[String]
+) -> void:
+	var tuning: FlightTuning = load(
+		"res://data/tuning/flight_tuning_m0.tres"
+	) as FlightTuning
+	var profile: FlightEnvironmentProfile = route.segments[0].environment_profile
+	var delta: float = 1.0 / 60.0
+	var elapsed_seconds: float = 0.0
+	var position: Vector2 = Vector2(0.0, 180.0)
+	var velocity: Vector2 = Vector2.ZERO
+	while position.x < route.segments[0].get_length() and elapsed_seconds < 30.0:
+		velocity = FlightMotionModel.step_control_velocity(
+			velocity,
+			0.0,
+			1.0,
+			0.0,
+			tuning,
+			delta
+		)
+		var gravity: float = FlightEnvironmentModel.calculate_effective_gravity(
+			profile,
+			profile.target_gravity_blend,
+			FlightAssistMode.LIMITED
+		)
+		velocity = FlightEnvironmentModel.step_velocity(
+			velocity,
+			gravity,
+			profile,
+			profile.target_air_density,
+			tuning.space_drag,
+			delta
+		)
+		velocity = FlightMotionModel.apply_speed_limits(
+			velocity,
+			0.0,
+			tuning
+		)
+		position += velocity * delta
+		elapsed_seconds += delta
+	expect_true(
+		position.x >= route.segments[0].get_length()
+		and position.y < 500.0
+		and position.y > 180.0
+		and elapsed_seconds < 20.0,
+		(
+			"Limited assist with full thrust must retain the ship inside "
+			+ "the visible orbital corridor before terrain begins: "
+			+ "position=%s elapsed=%.2f."
+		) % [position, elapsed_seconds],
 		failures
 	)

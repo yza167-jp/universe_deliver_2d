@@ -5,6 +5,7 @@ const ROUTE_ORIGIN_X: float = 320.0
 const ICE_FLOOR_Y: float = 620.0
 const LANDING_PAD_START_DISTANCE: float = 32750.0
 const LANDING_CONTACT_DISTANCE: float = 33700.0
+const LANDING_PAD_END_DISTANCE: float = 34000.0
 const LANDING_PAD_Y: float = 560.0
 const BRANCH_OBSTACLE_START_DISTANCE: float = 11200.0
 const BRANCH_OBSTACLE_END_DISTANCE: float = 14800.0
@@ -62,6 +63,10 @@ func get_landing_pad_start_distance() -> float:
 
 func get_landing_contact_distance() -> float:
 	return LANDING_CONTACT_DISTANCE
+
+
+func get_landing_pad_end_distance() -> float:
+	return LANDING_PAD_END_DISTANCE
 
 
 func get_landing_pad_y() -> float:
@@ -695,7 +700,7 @@ func _draw_landing_approach() -> void:
 			24.0
 		)
 	var pad_start_x: float = ROUTE_ORIGIN_X + LANDING_PAD_START_DISTANCE
-	var pad_end_x: float = ROUTE_ORIGIN_X + 34000.0
+	var pad_end_x: float = ROUTE_ORIGIN_X + LANDING_PAD_END_DISTANCE
 	draw_rect(
 		Rect2(
 			pad_start_x,
@@ -723,13 +728,12 @@ func _draw_landing_approach() -> void:
 
 func _build_collision_geometry() -> void:
 	_clear_collision_geometry()
-	_add_collision_rect(
+	_add_collision_segment(
 		&"IcefieldFloorBody",
-		Rect2(
-			ROUTE_ORIGIN_X + 4500.0,
-			ICE_FLOOR_Y,
-			28250.0,
-			260.0
+		Vector2(ROUTE_ORIGIN_X + 4500.0, ICE_FLOOR_Y),
+		Vector2(
+			ROUTE_ORIGIN_X + LANDING_PAD_START_DISTANCE,
+			ICE_FLOOR_Y
 		)
 	)
 	_add_collision_rect(
@@ -771,13 +775,15 @@ func _build_collision_geometry() -> void:
 			230.0
 		)
 	)
-	_add_collision_rect(
+	_add_collision_segment(
 		&"LandingPadBody",
-		Rect2(
+		Vector2(
 			ROUTE_ORIGIN_X + LANDING_PAD_START_DISTANCE,
-			LANDING_PAD_Y,
-			1250.0,
-			120.0
+			LANDING_PAD_Y
+		),
+		Vector2(
+			ROUTE_ORIGIN_X + LANDING_PAD_END_DISTANCE,
+			LANDING_PAD_Y
 		)
 	)
 
@@ -792,6 +798,25 @@ func _add_collision_rect(body_name: StringName, rect: Rect2) -> void:
 	shape.size = rect.size
 	collision_shape.shape = shape
 	collision_shape.position = rect.position + rect.size * 0.5
+	body.add_child(collision_shape)
+	add_child(body)
+	_collision_bodies.append(body)
+
+
+func _add_collision_segment(
+	body_name: StringName,
+	start_point: Vector2,
+	end_point: Vector2
+) -> void:
+	var body := StaticBody2D.new()
+	body.name = body_name
+	body.collision_layer = 1
+	body.collision_mask = 0
+	var collision_shape := CollisionShape2D.new()
+	var shape := SegmentShape2D.new()
+	shape.a = start_point
+	shape.b = end_point
+	collision_shape.shape = shape
 	body.add_child(collision_shape)
 	add_child(body)
 	_collision_bodies.append(body)

@@ -7,6 +7,10 @@ const RED_SAND_DARK: Color = Color("5e2f28")
 const RED_SAND_SURFACE: Color = Color("b86445")
 const RED_SAND_LIGHT: Color = Color("d99468")
 const RED_SAND_ATMOSPHERE: Color = Color(0.95, 0.57, 0.36, 0.34)
+const WHITE_NOISE_DARK: Color = Color("173d57")
+const WHITE_NOISE_SURFACE: Color = Color("5f9faf")
+const WHITE_NOISE_LIGHT: Color = Color("d9f5f4")
+const WHITE_NOISE_ATMOSPHERE: Color = Color(0.33, 0.89, 0.79, 0.3)
 const FAR_STAR_COLOR: Color = Color("70849a")
 const MID_STAR_COLOR: Color = Color("b7c8d7")
 const NEAR_STAR_COLOR: Color = Color("e8dfc8")
@@ -30,6 +34,7 @@ const NEAR_STARS: Array[Vector2] = [
 var _layer_offsets: PackedFloat32Array = PackedFloat32Array([0.0, 0.0, 0.0])
 var _travel_progress: float = 0.0
 var _speed_multiplier: float = 1.0
+var _destination_planet_id: StringName = M1ProgressRules.PLANET_RED_SAND
 
 
 func _process(delta: float) -> void:
@@ -78,6 +83,27 @@ func get_speed_multiplier() -> float:
 	return _speed_multiplier
 
 
+func set_destination_planet_id(planet_id: StringName) -> void:
+	_destination_planet_id = (
+		planet_id
+		if not planet_id.is_empty()
+		else M1ProgressRules.PLANET_RED_SAND
+	)
+	queue_redraw()
+
+
+func get_destination_planet_id() -> StringName:
+	return _destination_planet_id
+
+
+func get_destination_palette_signature() -> StringName:
+	return (
+		&"white_noise_ice"
+		if _destination_planet_id == M1ProgressRules.PLANET_WHITE_NOISE
+		else &"red_sand_warm"
+	)
+
+
 func _draw_destination() -> void:
 	if _travel_progress <= 0.0:
 		draw_circle(Vector2(size.x * 0.72, size.y * 0.42), 34.0, DISTANT_GLOW)
@@ -88,12 +114,27 @@ func _draw_destination() -> void:
 		lerpf(size.y * 0.43, size.y * 0.52, eased_progress)
 	)
 	var planet_radius: float = lerpf(8.0, 66.0, eased_progress)
-	draw_circle(planet_center, planet_radius + 5.0, RED_SAND_ATMOSPHERE)
-	draw_circle(planet_center, planet_radius, RED_SAND_DARK)
+	var is_white_noise: bool = (
+		_destination_planet_id == M1ProgressRules.PLANET_WHITE_NOISE
+	)
+	var atmosphere_color: Color = (
+		WHITE_NOISE_ATMOSPHERE if is_white_noise else RED_SAND_ATMOSPHERE
+	)
+	var dark_color: Color = (
+		WHITE_NOISE_DARK if is_white_noise else RED_SAND_DARK
+	)
+	var surface_color: Color = (
+		WHITE_NOISE_SURFACE if is_white_noise else RED_SAND_SURFACE
+	)
+	var light_color: Color = (
+		WHITE_NOISE_LIGHT if is_white_noise else RED_SAND_LIGHT
+	)
+	draw_circle(planet_center, planet_radius + 5.0, atmosphere_color)
+	draw_circle(planet_center, planet_radius, dark_color)
 	draw_circle(
 		planet_center + Vector2(-planet_radius * 0.18, -planet_radius * 0.12),
 		planet_radius * 0.82,
-		RED_SAND_SURFACE
+		surface_color
 	)
 	draw_arc(
 		planet_center + Vector2(-planet_radius * 0.12, planet_radius * 0.14),
@@ -101,9 +142,19 @@ func _draw_destination() -> void:
 		0.15,
 		2.55,
 		18,
-		RED_SAND_LIGHT,
+		light_color,
 		maxf(1.0, planet_radius * 0.05)
 	)
+	if is_white_noise:
+		draw_arc(
+			planet_center + Vector2(planet_radius * 0.06, -planet_radius * 0.08),
+			planet_radius * 0.68,
+			3.45,
+			5.85,
+			20,
+			Color(WHITE_NOISE_LIGHT, 0.72),
+			maxf(1.0, planet_radius * 0.035)
+		)
 
 
 func _draw_layer(

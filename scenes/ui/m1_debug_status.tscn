@@ -71,3 +71,8 @@ theme_override_colors/font_color = Color(0.466667, 0.788235, 0.768627, 1)
 theme_override_font_sizes/font_size = 8
 text = "UI_M1_DEBUG_STATUS_ISOLATED"
 text_overrun_behavior = 3
+
+[node name="AutoHideTimer" type="Timer" parent="."]
+unique_name_in_owner = true
+wait_time = 5.0
+one_shot = true

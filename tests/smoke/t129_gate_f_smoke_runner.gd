@@ -110,6 +110,26 @@ func _run_smoke() -> void:
 	if _controller.get_definition() == null:
 		await _finish()
 		return
+	_check(
+		status.visible
+		and status.is_auto_hide_pending()
+		and is_equal_approx(status.get_auto_hide_seconds(), 5.0),
+		"Gate F compact debug context did not start its interaction-safe auto-hide."
+	)
+	var auto_hide_timer: Timer = status.get_node_or_null(
+		"AutoHideTimer"
+	) as Timer
+	if auto_hide_timer != null:
+		auto_hide_timer.start(0.05)
+		await create_timer(0.1).timeout
+	_check(
+		auto_hide_timer != null
+		and not status.visible
+		and status.get_context_text().contains(
+			String(_controller.get_definition().focus_planet_id)
+		),
+		"Gate F debug context did not clear the cockpit interaction area."
+	)
 	var initial_signature: String = _controller.get_initial_state_signature()
 	await _wait_frames(4)
 	if not await _enter_main_route_from_station():
@@ -213,8 +233,25 @@ func _enter_main_route_from_station() -> bool:
 	_check(
 		cockpit_entry != null
 		and departure != null
-		and cockpit_entry.interact(player)
-		and departure.enter_cockpit(),
+		and cockpit_entry.interact(player),
+		"Gate F station could not open the White Noise departure gate."
+	)
+	if departure == null or not departure.is_departure_gate_visible():
+		return false
+	var departure_text: String = departure.get_departure_gate_text()
+	_check(
+		departure_text.contains(
+			tr(String(_main_contract.order.destination_planet.display_name_key))
+		)
+		and departure_text.contains(
+			tr(String(_main_contract.order.cargo.display_name_key))
+		)
+		and not departure_text.contains("赤砂星")
+		and not departure_text.contains("深层冷却泵核心"),
+		"Gate F departure gate projected stale Red Sand order content."
+	)
+	_check(
+		departure.enter_cockpit(),
 		"Gate F station could not enter the White Noise cockpit."
 	)
 	await _wait_frames(4)
@@ -222,6 +259,13 @@ func _enter_main_route_from_station() -> bool:
 	_check(cockpit != null, "Gate F cockpit did not instantiate.")
 	if cockpit == null:
 		return false
+	_check(
+		cockpit.get_starfield().get_destination_planet_id()
+		== M1ProgressRules.PLANET_WHITE_NOISE
+		and cockpit.get_starfield().get_destination_palette_signature()
+		== &"white_noise_ice",
+		"Gate F cockpit window did not project the White Noise destination."
+	)
 	var travel: TravelSequenceController = cockpit.get_travel_controller()
 	_check(
 		cockpit.start_configured_travel() and travel != null,
